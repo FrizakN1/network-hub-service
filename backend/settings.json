@@ -1,0 +1,10 @@
+{
+  "Address": "localhost",
+  "Port": "8080",
+  "DbHost": "",
+  "DbPort": "",
+  "DbUser": "",
+  "DbPass": "",
+  "DbName": "",
+  "AllowOrigin": "http://localhost:3000"
+}
