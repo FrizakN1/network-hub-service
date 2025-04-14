@@ -12,6 +12,7 @@ import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import * as mime from 'react-native-mime-types'
 import API_DOMAIN from "../config";
 import {useParams} from "react-router-dom";
+import FetchRequest from "../fetchRequest";
 
 const UploadFile = ({setFiles}) => {
     const [uploadFile, setUploadFile] = useState({
@@ -30,16 +31,15 @@ const UploadFile = ({setFiles}) => {
                 formData.append("file", uploadFile.File);
                 formData.append("houseID", houseID);
 
-                let options = {
-                    method: "POST",
-                    body: formData
-                }
+                // let options = {
+                //     method: "POST",
+                //     body: formData
+                // }
 
-                fetch(`${API_DOMAIN}/upload_file`, options)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data != null) {
-                            setFiles(prevState => [data, ...prevState])
+                FetchRequest("POST", "/upload_file", formData)
+                    .then(response => {
+                        if (response.success && response.data != null) {
+                            setFiles(prevState => [response.data, ...prevState])
                             setUploadFile({
                                 File: null,
                                 Name: "",
@@ -47,7 +47,19 @@ const UploadFile = ({setFiles}) => {
                             })
                         }
                     })
-                    .catch(error => console.error(error))
+                // fetch(`${API_DOMAIN}/upload_file`, options)
+                //     .then(response => response.json())
+                //     .then(data => {
+                //         if (data != null) {
+                //             setFiles(prevState => [data, ...prevState])
+                //             setUploadFile({
+                //                 File: null,
+                //                 Name: "",
+                //                 Icon: null
+                //             })
+                //         }
+                //     })
+                //     .catch(error => console.error(error))
             };
             reader.readAsDataURL(uploadFile.File);
         }

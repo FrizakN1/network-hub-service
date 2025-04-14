@@ -13,6 +13,8 @@ import API_DOMAIN from "../config";
 import {useParams} from "react-router-dom";
 import * as mime from 'react-native-mime-types';
 import UploadFile from "./UploadFile";
+import fetchRequest from "../fetchRequest";
+import FetchRequest from "../fetchRequest";
 
 const FilesTable = () => {
     const [files, setFiles] = useState([])
@@ -23,14 +25,13 @@ const FilesTable = () => {
     useEffect(() => {
         setFiles([])
 
-        fetch(`${API_DOMAIN}/get_files/${houseID}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data != null) {
+        FetchRequest("GET", `/get_files/${houseID}`, null)
+            .then(response => {
+                if (response.success && response.data != null) {
                     let _archiveFiles = []
                     let _files = []
 
-                    for (let file of data) {
+                    for (let file of response.data) {
                         file.InArchive ? _archiveFiles.push(file) : _files.push(file)
                     }
 
@@ -38,7 +39,23 @@ const FilesTable = () => {
                     setArchiveFiles(_archiveFiles)
                 }
             })
-            .catch(error => console.error(error))
+
+        // fetch(`${API_DOMAIN}/get_files/${houseID}`)
+        //     .then(response => response.json())
+        //     .then(data => {
+        //         if (data != null) {
+        //             let _archiveFiles = []
+        //             let _files = []
+        //
+        //             for (let file of data) {
+        //                 file.InArchive ? _archiveFiles.push(file) : _files.push(file)
+        //             }
+        //
+        //             setFiles(_files)
+        //             setArchiveFiles(_archiveFiles)
+        //         }
+        //     })
+        //     .catch(error => console.error(error))
     }, [houseID]);
 
     const handlerDownloadFile = (file) => {
@@ -62,55 +79,89 @@ const FilesTable = () => {
     }
 
     const handlerArchiveFile = (file) => {
-        let options = {
-            method: "POST",
-            body: JSON.stringify(file)
-        }
+        // let options = {
+        //     method: "POST",
+        //     body: JSON.stringify(file)
+        // }
 
-        fetch(`${API_DOMAIN}/archive_file`, options)
-            .then(response => response.json())
-            .then(data => {
-                if (data != null) {
-                   if (data.InArchive) {
-                       setFiles(prevState => prevState.filter(file =>
-                           file.ID !== data.ID
-                       ))
+        FetchRequest("POST", "/archive_file", file)
+            .then(response => {
+                if (response.success && response.data != null) {
+                    if (response.data.InArchive) {
+                        setFiles(prevState => prevState.filter(file =>
+                            file.ID !== response.data.ID
+                        ))
 
-                       let updatedFiles = [data, ...archiveFiles]
+                        let updatedFiles = [response.data, ...archiveFiles]
 
-                       setArchiveFiles(updatedFiles.sort((a, b) => b.ID - a.ID))
-                   } else {
-                       setArchiveFiles(prevState => prevState.filter(file =>
-                           file.ID !== data.ID
-                       ))
+                        setArchiveFiles(updatedFiles.sort((a, b) => b.ID - a.ID))
+                    } else {
+                        setArchiveFiles(prevState => prevState.filter(file =>
+                            file.ID !== response.data.ID
+                        ))
 
-                       let updatedFiles = [data, ...files]
+                        let updatedFiles = [response.data, ...files]
 
-                       setFiles(updatedFiles.sort((a, b) => b.ID - a.ID))
-                   }
+                        setFiles(updatedFiles.sort((a, b) => b.ID - a.ID))
+                    }
                 }
             })
-            .catch(error => console.error(error))
+
+        // fetch(`${API_DOMAIN}/archive_file`, options)
+        //     .then(response => response.json())
+        //     .then(data => {
+        //         if (data != null) {
+        //            if (data.InArchive) {
+        //                setFiles(prevState => prevState.filter(file =>
+        //                    file.ID !== data.ID
+        //                ))
+        //
+        //                let updatedFiles = [data, ...archiveFiles]
+        //
+        //                setArchiveFiles(updatedFiles.sort((a, b) => b.ID - a.ID))
+        //            } else {
+        //                setArchiveFiles(prevState => prevState.filter(file =>
+        //                    file.ID !== data.ID
+        //                ))
+        //
+        //                let updatedFiles = [data, ...files]
+        //
+        //                setFiles(updatedFiles.sort((a, b) => b.ID - a.ID))
+        //            }
+        //         }
+        //     })
+        //     .catch(error => console.error(error))
     }
 
     const handlerDeleteFile = (file) => {
-        let options = {
-            method: "POST",
-            body: JSON.stringify(file)
-        }
+        // let options = {
+        //     method: "POST",
+        //     body: JSON.stringify(file)
+        // }
 
-        fetch(`${API_DOMAIN}/delete_file`, options)
-            .then(response => response.json())
-            .then(data => {
-                if (data != null) {
-                    if (data.InArchive) {
-                        setArchiveFiles(prevState => prevState.filter(file => file.ID !== data.ID))
+        FetchRequest("POST", "/delete_file", file)
+            .then(response => {
+                if (response.success && response.data != null) {
+                    if (response.data.InArchive) {
+                        setArchiveFiles(prevState => prevState.filter(file => file.ID !== response.data.ID))
                     } else {
                         setFiles(prevState => prevState.filter(file => file.ID !== file.ID))
                     }
                 }
             })
-            .catch(error => console.error(error))
+
+        // fetch(`${API_DOMAIN}/delete_file`, options)
+        //     .then(response => response.json())
+        //     .then(data => {
+        //         if (data != null) {
+        //             if (data.InArchive) {
+        //                 setArchiveFiles(prevState => prevState.filter(file => file.ID !== data.ID))
+        //             } else {
+        //                 setFiles(prevState => prevState.filter(file => file.ID !== file.ID))
+        //             }
+        //         }
+        //     })
+        //     .catch(error => console.error(error))
     }
 
     const getIcon = (fileName) => {

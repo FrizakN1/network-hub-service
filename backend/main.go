@@ -11,5 +11,9 @@ func main() {
 
 	database.Connection(config)
 
+	if err := database.CheckAdmin(config); err != nil {
+		return
+	}
+
 	_ = router.Initialization(config).Run(config.Address + ":" + config.Port)
 }

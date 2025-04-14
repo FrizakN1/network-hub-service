@@ -1,10 +1,11 @@
 {
   "Address": "localhost",
   "Port": "8080",
-  "DbHost": "",
-  "DbPort": "",
-  "DbUser": "",
+  "DbHost": "127.0.0.1",
+  "DbPort": "5432",
+  "DbUser": "postgres",
   "DbPass": "",
   "DbName": "",
-  "AllowOrigin": "http://localhost:3000"
+  "AllowOrigin": "http://localhost:3000",
+  "SuperAdminPassword": "superadmin"
 }

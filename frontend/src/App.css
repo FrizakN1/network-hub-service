@@ -107,6 +107,167 @@ input {
   font-family: 'Nunito', sans-serif;
 }
 
+section.login {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 500;
+  color: #ffffff;
+  background-color: #232323;
+}
+
+.login .box{
+  position: relative;
+  width: 400px;
+  height: 500px;
+  border-radius: 40px;
+  overflow: hidden;
+}
+
+.login .box:before{
+  content: '';
+  position: absolute;
+  width: 400px;
+  height: 500px;
+  top: -50%;
+  left: -50%;
+  background: linear-gradient(0deg,transparent,
+  rgba(37,147,184),rgba(37,147,184));
+  transform-origin: bottom right;
+  animation: animate 5s linear infinite;
+}
+
+.login .box:after{
+  content: '';
+  position: absolute;
+  width: 400px;
+  height: 500px;
+  bottom: -50%;
+  right: -50%;
+  background: linear-gradient(0deg,rgba(37,147,184),
+  rgba(37,147,184),transparent);
+  transform-origin: top left;
+  animation: animate 5s linear infinite;
+}
+
+@keyframes animate {
+  0%{
+    transform: rotate(0deg);
+  }
+  100%{
+    transform: rotate(360deg);
+  }
+}
+
+.login .form{
+  position: absolute;
+  background-color: rgb(30, 30, 30);
+  border-radius: 40px;
+  /*box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);*/
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+  font-size: 18px;
+  inset: 2px;
+  z-index: 1;
+}
+
+.login .form div {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 150px;
+  flex-direction: column;
+}
+
+.login .form svg {
+  font-size: 56px;
+  color: rgba(37,147,184);
+}
+
+.login .form div label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 80%;
+  position: relative;
+}
+
+.login .form div label span{
+  position: absolute;
+  left: 0;
+  padding: 10px 10px 10px;
+  pointer-events: none;
+  transition-duration: 500ms;
+}
+
+.login .form div label input{
+  font-size: 1em;
+  padding: 10px 10px ;
+  width: 100%;
+  z-index: 2;
+  background-color: transparent;
+  color: #fff;
+}
+
+.login .form div label input::selection{
+  background: #858585;
+}
+
+.login .form div label input:valid ~ span,
+.login .form div label input:focus ~ span{
+  color: rgba(37,147,184);
+  transform: translateY(-30px);
+  font-size: 0.85em;
+}
+
+.login .form div label i{
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  background-color: rgba(37,147,184);
+  width: 100%;
+  border-radius: 4px;
+  transition-duration: 500ms;
+  pointer-events: none;
+}
+
+.login .form div label input:valid ~ i,
+.login .form div label input:focus ~ i{
+  height: 40px;
+}
+
+.login .form div label p{
+  position: absolute;
+  left: 0;
+  bottom: -25px;
+  font-size: 0.7em;
+  padding: 10px 10px 10px;
+  pointer-events: none;
+  color: #ff0000;
+  font-weight: bold;
+}
+
+.login .form button {
+  background-color: rgba(37,147,184);
+  color: white;
+  font-size: inherit;
+  border-radius: 10px;
+  padding: 10px 30px;
+  transition-duration: 500ms;
+}
+
+.login .form button:active {
+  opacity: 0.8;
+}
+
 .home {
   height: calc(100vh - 196px);
   width: 100%;

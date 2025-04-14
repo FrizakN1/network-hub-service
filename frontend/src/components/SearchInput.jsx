@@ -1,7 +1,7 @@
 import React, {useRef, useState} from "react";
 import switcher from "ai-switcher-translit";
-import API_DOMAIN from "../config";
 import {useNavigate} from "react-router-dom";
+import FetchRequest from "../fetchRequest";
 
 const SearchInput = ({defaultValue = ""}) => {
     const [inputValue, setInputValue] = useState(defaultValue)
@@ -24,23 +24,34 @@ const SearchInput = ({defaultValue = ""}) => {
 
         if (value.length > 0) {
             debounceTimer.current = setTimeout(() => {
-                let options = {
-                    method: "POST",
-                    body: JSON.stringify({
-                        Text: value,
-                    })
-                }
+                // let options = {
+                //     method: "POST",
+                //     body: JSON.stringify({
+                //         Text: value,
+                //     })
+                // }
 
-                fetch(`${API_DOMAIN}/search`, options)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data != null) {
-                            setSuggestions(data?.Addresses || [])
-                        } else {
-                            setSuggestions([])
+                FetchRequest("POST", "/search", {Text: value})
+                    .then(response => {
+                        if (response.success) {
+                            if (response.data != null) {
+                                setSuggestions(response.data?.Addresses || [])
+                            } else {
+                                setSuggestions([])
+                            }
                         }
                     })
-                    .catch(error => console.error(error))
+
+                // fetch(`${API_DOMAIN}/search`, options)
+                //     .then(response => response.json())
+                //     .then(data => {
+                //         if (data != null) {
+                //             setSuggestions(data?.Addresses || [])
+                //         } else {
+                //             setSuggestions([])
+                //         }
+                //     })
+                //     .catch(error => console.error(error))
             }, 300)
         } else {
             setSuggestions([])

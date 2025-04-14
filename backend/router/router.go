@@ -5,13 +5,22 @@ import (
 	"backend/settings"
 	"backend/utils"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
+
+var jwtSecret = []byte("!S@crEtW0r@")
+
+type Claims struct {
+	SessionHash string `json:"hash"`
+	jwt.StandardClaims
+}
 
 // Переменная для хранения конфигурации из файла settings.json
 var config settings.Setting
@@ -58,6 +67,10 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 
 	// Групировка запросов содержащих в запросе /api в отдельный роутер routerAPI
 	routerAPI := router.Group("/api")
+
+	routerAPI.POST("/login", handlerLogin)
+
+	routerAPI.Use(authMiddleware())
 
 	// Обработка запросов
 	routerAPI.POST("/search", handlerGetSuggestions)
@@ -244,4 +257,81 @@ func handlerError(c *gin.Context, err error, code int) {
 	fmt.Println(err)
 	c.JSON(code, nil)
 	c.Abort()
+}
+
+func generateToken(hash string) (string, error) {
+	claims := &Claims{
+		SessionHash:    hash,
+		StandardClaims: jwt.StandardClaims{},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtSecret)
+}
+
+func authMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			fmt.Println("Не обнаружен заголовок авторизации")
+			c.JSON(401, gin.H{"error": "Не обнаружен заголовок авторизации"})
+			c.Abort()
+			return
+		}
+
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			fmt.Println("Неверный формат токена")
+			c.JSON(401, gin.H{"error": "Неверный формат токена"})
+			c.Abort()
+			return
+		}
+
+		tokenString := parts[1]
+		claims := &Claims{}
+
+		token, e := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtSecret, nil
+		})
+		if e != nil {
+			fmt.Println(e)
+			fmt.Println("Неверный токен")
+			utils.Logger.Println(e)
+			c.JSON(401, gin.H{"error": "Неверный токен"})
+			c.Abort()
+			return
+		}
+
+		if !token.Valid {
+			fmt.Println("Токен не валиден")
+			c.JSON(401, gin.H{"error": "Токен не валиден"})
+			c.Abort()
+			return
+		}
+
+		session := database.GetSession(claims.SessionHash)
+		if session == nil {
+			fmt.Println("Сессия не найдена")
+			c.JSON(401, gin.H{"error": "Сессия не найдена"})
+			c.Abort()
+			return
+		}
+
+		c.Set("session", session)
+
+		c.Next()
+	}
+}
+
+func checkSession(c *gin.Context) (*database.Session, bool) {
+	session, ok := c.Get("session")
+	if !ok {
+		return nil, false
+	}
+
+	sessionObj, ok := session.(*database.Session)
+	if !ok {
+		return nil, false
+	}
+
+	return sessionObj, true
 }

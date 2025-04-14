@@ -35,6 +35,7 @@ func Connection(config *settings.Setting) {
 
 	errorsList = append(errorsList, prepareEnums()...)
 	errorsList = append(errorsList, prepareRequests()...)
+	errorsList = append(errorsList, prepareUsers()...)
 
 	if len(errorsList) > 0 {
 		for _, i := range errorsList {
@@ -44,4 +45,6 @@ func Connection(config *settings.Setting) {
 	}
 
 	LoadEnums(enumsMap)
+	LoadRole(roleMap)
+	LoadSession(sessionMap)
 }

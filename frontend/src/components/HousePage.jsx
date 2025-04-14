@@ -6,6 +6,8 @@ import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faDownload, faFileWord} from "@fortawesome/free-solid-svg-icons";
 import FilesTable from "./FilesTable";
 import UploadFile from "./UploadFile";
+import fetchRequest from "../fetchRequest";
+import FetchRequest from "../fetchRequest";
 
 const HousePage = () => {
     const { houseID } = useParams()
@@ -13,15 +15,23 @@ const HousePage = () => {
     const [isLoaded, setIsLoaded] = useState(false)
 
     useEffect(() => {
-        fetch(`${API_DOMAIN}/get_house/${houseID}`, {method: "GET"})
-            .then(response => response.json())
-            .then(data => {
-                if (data != null) {
-                    setAddress(data)
+        FetchRequest("GET", `/get_house/${houseID}`, null)
+            .then(response => {
+                if (response.success && response.data != null) {
+                    setAddress(response.data)
                     setIsLoaded(true)
                 }
             })
-            .catch(error => console.error(error))
+
+        // fetch(`${API_DOMAIN}/get_house/${houseID}`, {method: "GET"})
+        //     .then(response => response.json())
+        //     .then(data => {
+        //         if (data != null) {
+        //             setAddress(data)
+        //             setIsLoaded(true)
+        //         }
+        //     })
+        //     .catch(error => console.error(error))
     }, []);
 
     return (

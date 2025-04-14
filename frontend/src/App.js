@@ -5,12 +5,13 @@ import MainPage from "./components/MainPage";
 import HousePage from "./components/HousePage";
 import ResultPage from "./components/ResultPage";
 import ListPage from "./components/ListPage";
+import Authorization from "./components/Authorization";
 
 function App() {
     return (
         <Router>
             <Routes>
-                {/*<Route path="/login" element={<Authorization />} />*/}
+                <Route path="/login" element={<Authorization />} />
                 <Route path="/" element={<PrivateRoute />}>
                     <Route path="" element={<MainPage />} />
                     <Route path="/house/:houseID" element={<HousePage />} />

@@ -7,20 +7,14 @@ import (
 )
 
 type Setting struct {
-	Address       string
-	Port          string
-	DbHost        string
-	DbPort        string
-	DbUser        string
-	DbPass        string
-	DbName        string
-	AllowOrigin   string
-	Notifications struct {
-		DayShortTermTaskBeforeEnd int
-		DayLongTermTaskBeforeEnd  int
-		HourStartSend             int
-	}
-	TelegramBotToken   string
+	Address            string
+	Port               string
+	DbHost             string
+	DbPort             string
+	DbUser             string
+	DbPass             string
+	DbName             string
+	AllowOrigin        string
 	SuperAdminPassword string
 }
 
