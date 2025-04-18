@@ -3,8 +3,49 @@ package router
 import (
 	"backend/database"
 	"backend/utils"
+	"errors"
 	"github.com/gin-gonic/gin"
 )
+
+func handlerGetUsers(c *gin.Context) {
+	sessionHash, ok := c.Get("sessionHash")
+	if !ok {
+		err := errors.New("сессия не найдена")
+		utils.Logger.Println(err)
+		handlerError(c, err, 400)
+		return
+	}
+
+	session := database.GetSession(sessionHash.(string))
+
+	if session.User.Role.Value != "admin" {
+		c.JSON(403, nil)
+		return
+	}
+
+	users, err := database.GetUsers()
+	if err != nil {
+		utils.Logger.Println(err)
+		handlerError(c, err, 400)
+		return
+	}
+
+	c.JSON(200, users)
+}
+
+func handlerGetAuth(c *gin.Context) {
+	sessionHash, ok := c.Get("sessionHash")
+	if !ok {
+		err := errors.New("сессия не найдена")
+		utils.Logger.Println(err)
+		handlerError(c, err, 400)
+		return
+	}
+
+	session := database.GetSession(sessionHash.(string))
+
+	c.JSON(200, session.User)
+}
 
 func handlerLogin(c *gin.Context) {
 	var (
@@ -45,6 +86,8 @@ func handlerLogin(c *gin.Context) {
 		return
 	}
 
+	user.Password = ""
+
 	hash, err := database.CreateSession(user)
 	if err != nil {
 		utils.Logger.Println(err)
@@ -60,7 +103,6 @@ func handlerLogin(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{
-		"token":    token,
-		"userRole": user.Role.Value,
+		"token": token,
 	})
 }

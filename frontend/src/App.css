@@ -369,7 +369,13 @@ section.login {
   background-color: rgb(37,147,184);
 }
 
-.contain table {
+.users {
+  display: flex;
+  justify-content: center;
+}
+
+/*.contain table {*/
+table {
   color: #ffffff;
   width: 80%;
   border-collapse: collapse;
@@ -384,63 +390,104 @@ table .row-type-2 {
   background-color: rgb(30, 30, 30);
 }
 
-.contain table .col1 {
-  width: 50%;
-}.contain table .col2 {
-  width: 40%;
-}.contain table .col3 {
-  width: 10%;
+/*.contain table .col1 {*/
+/*  width: 50%;*/
+/*}.contain table .col2 {*/
+/*  width: 40%;*/
+/*}*/
+table td:last-child, table th:last-child {
   padding: unset !important;
   text-align: center;
 }
 
-.contain table .col1 {
-  width: 50%;
-}.contain table .col2 {
-  width: 35%;
-}.contain table .col3 {
-  width: 15%;
-  padding: unset !important;
-  text-align: right;
+.contain table td:last-child, .contain table th:last-child {
+  width: 9.5%;
 }
+.contain table.archive td:last-child, .contain table.archive th:last-child {
+  width: 14%;
+}
+
+.users table td:last-child, .users table th:last-child {
+  width: 11%;
+}
+
+/*.contain table .col1 {*/
+/*  width: 50%;*/
+/*}.contain table .col2 {*/
+/*  width: 35%;*/
+/*}.contain table .col3 {*/
+/*  width: 15%;*/
+/*  padding: unset !important;*/
+/*  text-align: right;*/
+/*}*/
 
 .contain table .col1 svg, .upload label svg {
   margin-right: 5px;
   font-size: 30px;
 }
 
-.contain table td.col3 svg {
+/*.contain table td:last-child svg {*/
+table td:last-child svg {
   cursor: pointer;
   transition-duration: 200ms;
 }
 
-.contain table td.col3 svg:hover {
+.contain table td:last-child svg:hover {
   background-color: #4ecb84;
 }
-
-.contain table td.col3 svg:first-child:hover {
+.contain table td:last-child svg:first-child:hover {
   background-color: rgba(37,147,184);
 }
-
-.contain table td.col3 svg:last-child:hover {
-  background-color: #e71616;
+.contain table td:last-child svg:last-child:hover {
+  background-color: #ee5037;
 }
 
-.contain table th, .contain table td {
+.users table td:last-child svg:hover {
+  background-color: rgba(37,147,184);
+}
+.users table td:last-child svg:last-child:hover {
+  background-color: #ee5037;
+}
+
+/*.contain table th, .contain table td {*/
+table th, table td {
   text-align: left;
   padding: 20px 30px;
 }
 
-.contain table td.col3 svg {
+/*.contain table td.col3 svg {*/
+.contain table td:last-child svg {
   padding: 25px;
 }
 
-.contain table th {
+.users table td:last-child svg {
+  padding: 15px;
+}
+
+/*.contain table th {*/
+table th {
   font-size: 18px;
 }
 
-.contain table td {
+/*.contain table td {*/
+table td {
   font-size: 20px;
+}
+
+table span {
+  border-radius: 8px;
+  padding: 2px 10px;
+}
+
+.bg-green {
+    /*background-color: #4ecb84;*/
+    background-color: #4ecb84;
+    color: #ffffff;
+}
+
+.bg-red {
+    background-color: #ee5037;
+    color: #ffffff;
 }
 
 .empty {
@@ -563,6 +610,7 @@ input[type="file"] {
 
 nav {
   width: 100%;
+  padding: 0 10%;
   display: flex;
   justify-content: center;
   margin-bottom: 50px;
@@ -570,7 +618,7 @@ nav {
 
 nav ul {
   display: flex;
-  width: 80%;
+  width: 100%;
 }
 
 nav ul li {
@@ -589,4 +637,21 @@ nav ul li:hover {
 
 nav ul li.active {
   border-bottom: 2px solid rgb(37,147,184);
+}
+
+nav div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+nav div span, nav div button {
+  color: #ffffff;
+}
+
+nav div button {
+  background-color: rgb(37,147,184);
+  border-radius: 4px;
+  font-size: 16px;
+  padding: 3px 10px;
 }

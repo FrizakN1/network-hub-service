@@ -80,6 +80,8 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 	routerAPI.POST("/archive_file", handlerArchiveFile)
 	routerAPI.POST("/delete_file", handlerDeleteFile)
 	routerAPI.POST("/get_list", handlerGetList)
+	routerAPI.GET("/get_auth", handlerGetAuth)
+	routerAPI.GET("/get_users", handlerGetUsers)
 
 	return router
 }
@@ -316,7 +318,7 @@ func authMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("session", session)
+		c.Set("sessionHash", session.Hash)
 
 		c.Next()
 	}

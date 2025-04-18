@@ -29,7 +29,7 @@ const FetchRequest = async (method, url, body) => {
 
         return { success: true, data };
     } catch (error) {
-        console.log(error)
+        console.error(error)
         return { success: false, error };
     }
 }

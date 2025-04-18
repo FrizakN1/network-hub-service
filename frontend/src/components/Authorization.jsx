@@ -39,7 +39,6 @@ const Authorization = () => {
                         const authToken = response.data.token
                         if (authToken) {
                             localStorage.setItem("token", authToken);
-                            localStorage.setItem("user-role",  response.data.userRole)
                             window.location.href = "/"
                         }
                     }

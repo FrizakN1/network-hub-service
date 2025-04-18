@@ -1,44 +1,52 @@
 import React, {useEffect, useState} from "react";
 import {Outlet, Navigate, useNavigate, useLocation} from "react-router-dom";
+import API_DOMAIN from "../config";
+import FetchRequest from "../fetchRequest";
 
 
-const PrivateRoute = () => {
+const PrivateRoute = ({requiredAdmin}) => {
     const location = useLocation()
     const navigate = useNavigate()
     const [token, setToken] = useState(localStorage.getItem("token"))
+    const [user, setUser] = useState(null)
+    const [isLoaded, setIsLoaded] = useState(false)
+
+    // useEffect(() => {
+    //     setToken(localStorage.getItem("token"))
+    // }, [location.pathname]);
 
     useEffect(() => {
-        setToken(localStorage.getItem("token"))
-    }, [location.pathname]);
+        FetchRequest("GET", "/get_auth", null)
+            .then(response => {
+                if (response.success && response.data != null) {
+                    setToken(localStorage.getItem("token"))
+                    setUser(response.data)
+                }
 
-    // const token = localStorage.getItem("token")
-    //
-    // if (token) {
-    //     return (
-    //         <div className={"app"}>
-    //             <Outlet/>
-    //         </div>
-    //     )
-    // } else {
-    //     return <Navigate to="/login"/>;
-    // }
+                setIsLoaded(true)
+            })
+    }, []);
+
 
     if (token) {
         return (
             <div className={"app"}>
-                <nav>
+                {isLoaded && <><nav>
                     <ul>
-                        <li className={!location.pathname.includes("list") ? "active" : ""}
+                        <li className={!location.pathname.includes("list") && !location.pathname.includes("users") ? "active" : ""}
                             onClick={() => navigate("/")}>Поиск</li>
                         <li className={location.pathname.includes("list") ? "active" : ""}
                             onClick={() => navigate("/list")}>Список адресов с файлами</li>
-                        <li>
-                            <span>123</span>
-                            <button>Выход</button>
-                        </li>
+                        {user.Role.Value === "admin" && <li className={location.pathname.includes("users") ? "active" : ""}
+                                                 onClick={() => navigate("/users")}>Пользователи</li>}
                     </ul>
+                    <div>
+                        <span style={{color: "#fff"}}>{user.Login}</span>
+                        <button>Выход</button>
+                    </div>
                 </nav>
-                <Outlet/>
+                {requiredAdmin ? user.Role.Value === "admin" ? <Outlet/> : <Navigate to="/" /> : <Outlet/>}
+                </>}
             </div>
         )
     } else {

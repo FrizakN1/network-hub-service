@@ -6,6 +6,7 @@ import HousePage from "./components/HousePage";
 import ResultPage from "./components/ResultPage";
 import ListPage from "./components/ListPage";
 import Authorization from "./components/Authorization";
+import UsersPage from "./components/UsersPage";
 
 function App() {
     return (
@@ -17,6 +18,9 @@ function App() {
                     <Route path="/house/:houseID" element={<HousePage />} />
                     <Route path="/result" element={<ResultPage />} />
                     <Route path="/list" element={<ListPage />} />
+                </Route>
+                <Route path="/" element={<PrivateRoute requiredAdmin={true} />}>
+                    <Route path="/users" element={<UsersPage />} />
                 </Route>
             </Routes>
         </Router>

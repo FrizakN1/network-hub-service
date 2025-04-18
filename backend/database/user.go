@@ -52,7 +52,7 @@ func prepareUsers() []string {
 	}
 
 	query["GET_USERS"], e = Link.Prepare(`
-		SELECT * FROM "User"
+		SELECT id, role_id, login, name, baned, created_at, updated_at FROM "User"
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
@@ -136,6 +136,48 @@ func prepareUsers() []string {
 	return errorsList
 }
 
+func GetUsers() ([]User, error) {
+	stmt, ok := query["GET_USERS"]
+	if !ok {
+		err := errors.New("запрос GET_USERS не подготовлен")
+		utils.Logger.Println(err)
+		return nil, err
+	}
+
+	rows, err := stmt.Query()
+	if err != nil {
+		utils.Logger.Println(err)
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var users []User
+
+	for rows.Next() {
+		var user User
+
+		if err = rows.Scan(
+			&user.ID,
+			&user.Role.ID,
+			&user.Login,
+			&user.Name,
+			&user.Baned,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		); err != nil {
+			utils.Logger.Println(err)
+			return nil, err
+		}
+
+		user.Role = roleMap[user.Role.ID]
+
+		users = append(users, user)
+	}
+
+	return users, nil
+}
+
 func (user *User) EditUser() error {
 	stmt, ok := query["EDIT_USER"]
 	if !ok {
@@ -182,6 +224,8 @@ func (user *User) CreateUser() error {
 		utils.Logger.Println(err)
 		return err
 	}
+
+	user.Role = roleMap[user.Role.ID]
 
 	user.Password = ""
 
