@@ -30,13 +30,15 @@ type Address struct {
 }
 
 type File struct {
-	ID        int
-	House     AddressElement
-	Path      string
-	Name      string
-	UploadAt  int64
-	Data      string
-	InArchive bool
+	ID             int
+	House          AddressElement
+	Node           Node
+	Path           string
+	Name           string
+	UploadAt       int64
+	Data           string
+	InArchive      bool
+	IsPreviewImage bool
 }
 
 type Search struct {
@@ -55,7 +57,7 @@ func prepareRequests() []string {
 
 	query["GET_SUGGESTIONS"], e = Link.Prepare(`
 		SELECT s.name, s.type_id, st.short_name, h.id, h.name, h.type_id, ht.short_name, 
-		       (SELECT COUNT(*) FROM "Files" AS f
+		       (SELECT COUNT(*) FROM "House_files" AS f
 			                        WHERE f.house_id = h.id ) 
         FROM "Street" AS s
         JOIN "House" AS h ON s.id = h.street_id
@@ -102,8 +104,8 @@ func prepareRequests() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["CREATE_FILE"], e = Link.Prepare(`
-		INSERT INTO "Files"(house_id, file_path, file_name, upload_at, in_archive) 
+	query["CREATE_FILE_HOUSE"], e = Link.Prepare(`
+		INSERT INTO "House_files"(house_id, file_path, file_name, upload_at, in_archive) 
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
     `)
@@ -111,23 +113,46 @@ func prepareRequests() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["GET_FILES"], e = Link.Prepare(`
-		SELECT * FROM "Files" WHERE house_id = $1
+	query["CREATE_FILE_NODE"], e = Link.Prepare(`
+		INSERT INTO "Node_files"(node_id, file_path, file_name, upload_at, in_archive, is_preview_image) 
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id
+    `)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
+	}
+
+	query["GET_HOUSE_FILES"], e = Link.Prepare(`
+		SELECT * FROM "House_files" WHERE house_id = $1
 		ORDER BY upload_at DESC 
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["ARCHIVE_FILE"], e = Link.Prepare(`
-		UPDATE "Files" SET in_archive = $2 WHERE id = $1
+	query["ARCHIVE_FILE_HOUSE"], e = Link.Prepare(`
+		UPDATE "House_files" SET in_archive = $2 WHERE id = $1
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["DELETE_FILE"], e = Link.Prepare(`
-		DELETE FROM "Files" WHERE id = $1
+	query["ARCHIVE_FILE_NODE"], e = Link.Prepare(`
+		UPDATE "Node_files" SET in_archive = $2 WHERE id = $1
+    `)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
+	}
+
+	query["DELETE_FILE_HOUSE"], e = Link.Prepare(`
+		DELETE FROM "House_files" WHERE id = $1
+    `)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
+	}
+
+	query["DELETE_FILE_NODE"], e = Link.Prepare(`
+		DELETE FROM "Node_files" WHERE id = $1
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
@@ -135,7 +160,7 @@ func prepareRequests() []string {
 
 	query["GET_LIST"], e = Link.Prepare(`
 		SELECT s.name, s.type_id, st.short_name, h.id, h.name, h.type_id, ht.short_name, 
-		       (SELECT COUNT(*) FROM "Files" AS f
+		       (SELECT COUNT(*) FROM "House_files" AS f
 			                        WHERE f.house_id = h.id ) 
         FROM "Street" AS s
         JOIN "House" AS h ON s.id = h.street_id
@@ -143,7 +168,7 @@ func prepareRequests() []string {
         JOIN "House_type" AS ht ON h.type_id = ht.id
         WHERE EXISTS (
 			SELECT 1 
-			FROM "Files" AS f
+			FROM "House_files" AS f
 			WHERE f.house_id = h.id
 		)
         OFFSET $1
@@ -159,7 +184,7 @@ func prepareRequests() []string {
         JOIN "House" AS h ON s.id = h.street_id
         WHERE EXISTS (
 			SELECT 1 
-			FROM "Files" AS f
+			FROM "House_files" AS f
 			WHERE f.house_id = h.id
 		)
     `)
@@ -236,10 +261,10 @@ func GetList(offset int) ([]Address, int, error) {
 	return addresses, count, nil
 }
 
-func (file *File) Delete() error {
-	stmt, ok := query["DELETE_FILE"]
+func (file *File) Delete(key string) error {
+	stmt, ok := query["DELETE_FILE_"+key]
 	if !ok {
-		err := "запрос не подготовлен"
+		err := "запрос DELETE_FILE_" + key + " не подготовлен"
 		utils.Logger.Println(err)
 		return errors.New(err)
 	}
@@ -253,10 +278,10 @@ func (file *File) Delete() error {
 	return nil
 }
 
-func (file *File) Archive() error {
-	stmt, ok := query["ARCHIVE_FILE"]
+func (file *File) Archive(key string) error {
+	stmt, ok := query["ARCHIVE_FILE_"+key]
 	if !ok {
-		err := "запрос не подготовлен"
+		err := "запрос ARCHIVE_FILE_" + key + " не подготовлен"
 		utils.Logger.Println(err)
 		return errors.New(err)
 	}
@@ -269,15 +294,25 @@ func (file *File) Archive() error {
 		return err
 	}
 
+	var fileData []byte
+
+	fileData, err = ioutil.ReadFile(file.Path)
+	if err != nil {
+		utils.Logger.Println(err)
+		return err
+	}
+
+	file.Data = base64.StdEncoding.EncodeToString(fileData)
+
 	return nil
 }
 
-func GetFiles(houseID int) ([]File, error) {
-	stmt, ok := query["GET_FILES"]
+func GetHouseFiles(houseID int) ([]File, error) {
+	stmt, ok := query["GET_HOUSE_FILES"]
 	if !ok {
-		err := "запрос не подготовлен"
+		err := errors.New("запрос GET_HOUSE_FILES не подготовлен")
 		utils.Logger.Println(err)
-		return nil, errors.New(err)
+		return nil, err
 	}
 
 	rows, err := stmt.Query(houseID)
@@ -320,10 +355,44 @@ func GetFiles(houseID int) ([]File, error) {
 	return files, nil
 }
 
-func (file *File) Create() error {
-	stmt, ok := query["CREATE_FILE"]
+func (file *File) CreateForNode() error {
+	stmt, ok := query["CREATE_FILE_NODE"]
 	if !ok {
-		err := "запрос не подготовлен"
+		err := "запрос CREATE_FILE_NODE не подготовлен"
+		utils.Logger.Println(err)
+		return errors.New(err)
+	}
+
+	err := stmt.QueryRow(
+		file.Node.ID,
+		file.Path,
+		file.Name,
+		file.UploadAt,
+		file.InArchive,
+		file.IsPreviewImage,
+	).Scan(&file.ID)
+	if err != nil {
+		utils.Logger.Println(err)
+		return err
+	}
+
+	var fileData []byte
+
+	fileData, err = ioutil.ReadFile(file.Path)
+	if err != nil {
+		utils.Logger.Println(err)
+		return err
+	}
+
+	file.Data = base64.StdEncoding.EncodeToString(fileData)
+
+	return nil
+}
+
+func (file *File) CreateForHouse() error {
+	stmt, ok := query["CREATE_FILE_HOUSE"]
+	if !ok {
+		err := "запрос CREATE_FILE_HOUSE не подготовлен"
 		utils.Logger.Println(err)
 		return errors.New(err)
 	}
@@ -339,6 +408,16 @@ func (file *File) Create() error {
 		utils.Logger.Println(err)
 		return err
 	}
+
+	var fileData []byte
+
+	fileData, err = ioutil.ReadFile(file.Path)
+	if err != nil {
+		utils.Logger.Println(err)
+		return err
+	}
+
+	file.Data = base64.StdEncoding.EncodeToString(fileData)
 
 	return nil
 }

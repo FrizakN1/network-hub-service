@@ -16,16 +16,16 @@ import UploadFile from "./UploadFile";
 import fetchRequest from "../fetchRequest";
 import FetchRequest from "../fetchRequest";
 
-const FilesTable = () => {
+const FilesTable = ({type}) => {
     const [files, setFiles] = useState([])
     const [archiveFiles, setArchiveFiles] = useState([])
     const [activeTab, setActiveTab] = useState(1)
-    const { houseID } = useParams()
+    const { id } = useParams()
 
     useEffect(() => {
         setFiles([])
 
-        FetchRequest("GET", `/get_files/${houseID}`, null)
+        FetchRequest("GET", `/get_${type}_files/${id}`, null)
             .then(response => {
                 if (response.success && response.data != null) {
                     let _archiveFiles = []
@@ -39,24 +39,7 @@ const FilesTable = () => {
                     setArchiveFiles(_archiveFiles)
                 }
             })
-
-        // fetch(`${API_DOMAIN}/get_files/${houseID}`)
-        //     .then(response => response.json())
-        //     .then(data => {
-        //         if (data != null) {
-        //             let _archiveFiles = []
-        //             let _files = []
-        //
-        //             for (let file of data) {
-        //                 file.InArchive ? _archiveFiles.push(file) : _files.push(file)
-        //             }
-        //
-        //             setFiles(_files)
-        //             setArchiveFiles(_archiveFiles)
-        //         }
-        //     })
-        //     .catch(error => console.error(error))
-    }, [houseID]);
+    }, [id, type]);
 
     const handlerDownloadFile = (file) => {
         const decodedData = atob(file.Data);
@@ -79,11 +62,6 @@ const FilesTable = () => {
     }
 
     const handlerArchiveFile = (file) => {
-        // let options = {
-        //     method: "POST",
-        //     body: JSON.stringify(file)
-        // }
-
         FetchRequest("POST", "/archive_file", file)
             .then(response => {
                 if (response.success && response.data != null) {
@@ -106,39 +84,9 @@ const FilesTable = () => {
                     }
                 }
             })
-
-        // fetch(`${API_DOMAIN}/archive_file`, options)
-        //     .then(response => response.json())
-        //     .then(data => {
-        //         if (data != null) {
-        //            if (data.InArchive) {
-        //                setFiles(prevState => prevState.filter(file =>
-        //                    file.ID !== data.ID
-        //                ))
-        //
-        //                let updatedFiles = [data, ...archiveFiles]
-        //
-        //                setArchiveFiles(updatedFiles.sort((a, b) => b.ID - a.ID))
-        //            } else {
-        //                setArchiveFiles(prevState => prevState.filter(file =>
-        //                    file.ID !== data.ID
-        //                ))
-        //
-        //                let updatedFiles = [data, ...files]
-        //
-        //                setFiles(updatedFiles.sort((a, b) => b.ID - a.ID))
-        //            }
-        //         }
-        //     })
-        //     .catch(error => console.error(error))
     }
 
     const handlerDeleteFile = (file) => {
-        // let options = {
-        //     method: "POST",
-        //     body: JSON.stringify(file)
-        // }
-
         FetchRequest("POST", "/delete_file", file)
             .then(response => {
                 if (response.success && response.data != null) {
@@ -149,19 +97,6 @@ const FilesTable = () => {
                     }
                 }
             })
-
-        // fetch(`${API_DOMAIN}/delete_file`, options)
-        //     .then(response => response.json())
-        //     .then(data => {
-        //         if (data != null) {
-        //             if (data.InArchive) {
-        //                 setArchiveFiles(prevState => prevState.filter(file => file.ID !== data.ID))
-        //             } else {
-        //                 setFiles(prevState => prevState.filter(file => file.ID !== file.ID))
-        //             }
-        //         }
-        //     })
-        //     .catch(error => console.error(error))
     }
 
     const getIcon = (fileName) => {
@@ -192,9 +127,13 @@ const FilesTable = () => {
         return icon
     }
 
+    const handlerAddFile = (file) => {
+        setFiles(prevState => [file, ...prevState])
+    }
+
     return (
-        <div>
-            <UploadFile setFiles={setFiles}/>
+        <div style={{paddingBottom: "20px"}}>
+            <UploadFile returnFile={handlerAddFile} type={type}/>
             <div className="contain tables">
                 <div className="tabs">
                     <div className={activeTab === 1 ? "tab active" : "tab"} onClick={() => setActiveTab(1)}>Актуальные файлы</div>
@@ -202,7 +141,7 @@ const FilesTable = () => {
                 </div>
                 {activeTab === 1 ?
                     files.length > 0 ? (
-                                <table>
+                                <table className="files">
                                     <thead>
                                     <tr className={"row-type-2"}>
                                         <th className={"col1"}>Название файла</th>
@@ -243,7 +182,7 @@ const FilesTable = () => {
                                         <td className={"col2"}>{new Date(file.UploadAt * 1000).toLocaleString().slice(0, 17)}</td>
                                         <td className={"col3"}>
                                             <FontAwesomeIcon icon={faDownload} title="Скачать" onClick={() => handlerDownloadFile(file)}/>
-                                            <FontAwesomeIcon icon={faFolderMinus} title="Востановить" onClick={() => handlerArchiveFile(file)}/>
+                                            <FontAwesomeIcon icon={faFolderMinus} title="Восстановить" onClick={() => handlerArchiveFile(file)}/>
                                             <FontAwesomeIcon icon={faTrash} title="Удалить" onClick={() => handlerDeleteFile(file)}/>
                                         </td>
                                     </tr>

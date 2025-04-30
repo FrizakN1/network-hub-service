@@ -15,15 +15,6 @@ const ResultPage = () => {
 
     useEffect(() => {
         if (query.length > 0 && typeof query === "string") {
-            // let options = {
-            //     method: "POST",
-            //     body: JSON.stringify({
-            //         Text: query,
-            //         Limit: 20,
-            //         Offset: (offset-1)*20,
-            //     })
-            // }
-            
             let body = {
                 Text: query,
                 Limit: 20,
@@ -41,17 +32,6 @@ const ResultPage = () => {
                         setIsLoaded(true)
                     }
                 })
-
-            // fetch(`${API_DOMAIN}/search`, options)
-            //     .then(response => response.json())
-            //     .then(data => {
-            //         if (data != null) {
-            //             setAddresses(data?.Addresses || [])
-            //             setCount(data?.Count || 0)
-            //         }
-            //         setIsLoaded(true)
-            //     })
-            //     .catch(error => console.error(error))
         }
     }, [query, offset]);
 

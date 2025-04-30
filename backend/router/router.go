@@ -7,6 +7,10 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"image"
+	"image/jpeg"
+	"image/png"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -73,15 +77,32 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 	routerAPI.Use(authMiddleware())
 
 	// Обработка запросов
+	routerAPI.GET("/logout", handlerLogout)
 	routerAPI.POST("/search", handlerGetSuggestions)
 	routerAPI.GET("/get_house/:id", handlerGetHouse)
 	routerAPI.POST("/upload_file", handlerUploadFile)
-	routerAPI.GET("/get_files/:id", handlerGetFiles)
+	routerAPI.GET("/get_house_files/:id", handlerGetHouseFiles)
+	routerAPI.GET("/get_node_files/:id", handlerGetNodeFiles)
+	routerAPI.GET("/get_node_images/:id", handlerGetNodeImages)
 	routerAPI.POST("/archive_file", handlerArchiveFile)
 	routerAPI.POST("/delete_file", handlerDeleteFile)
 	routerAPI.POST("/get_list", handlerGetList)
 	routerAPI.GET("/get_auth", handlerGetAuth)
 	routerAPI.GET("/get_users", handlerGetUsers)
+	routerAPI.POST("/change_user_status", handlerChangeUserStatus)
+	routerAPI.GET("/get_roles", handlerGetRoles)
+	routerAPI.POST("/create_user", handlerCreateUser)
+	routerAPI.POST("/edit_user", handlerEditUser)
+	routerAPI.POST("/get_nodes", handlerGetNodes)
+	routerAPI.POST("/get_search_nodes", handlerGetSearchNodes)
+	routerAPI.POST("/get_nodes/:id", handlerGetHouseNodes)
+	routerAPI.GET("/get_node/:id", handlerGetNode)
+	routerAPI.POST("/create_node", handlerCreateNode)
+	routerAPI.POST("/edit_node", handlerEditNode)
+	routerAPI.GET("/get_owners", handlerGetOwners)
+	routerAPI.POST("/create_:reference", handlerCreateReferenceRecord)
+	routerAPI.POST("/edit_:reference", handlerEditReferenceRecord)
+	routerAPI.GET("/get_node_types", handlerGetNodeTypes)
 
 	return router
 }
@@ -118,7 +139,15 @@ func handlerDeleteFile(c *gin.Context) {
 		return
 	}
 
-	err = file.Delete()
+	var key string
+
+	if file.House.ID > 0 {
+		key = "HOUSE"
+	} else {
+		key = "NODE"
+	}
+
+	err = file.Delete(key)
 	if err != nil {
 		handlerError(c, err, 400)
 		return
@@ -144,7 +173,15 @@ func handlerArchiveFile(c *gin.Context) {
 		return
 	}
 
-	err = file.Archive()
+	var key string
+
+	if file.House.ID > 0 {
+		key = "HOUSE"
+	} else {
+		key = "NODE"
+	}
+
+	err = file.Archive(key)
 	if err != nil {
 		handlerError(c, err, 400)
 		return
@@ -153,7 +190,7 @@ func handlerArchiveFile(c *gin.Context) {
 	c.JSON(200, file)
 }
 
-func handlerGetFiles(c *gin.Context) {
+func handlerGetHouseFiles(c *gin.Context) {
 	houseID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -161,7 +198,7 @@ func handlerGetFiles(c *gin.Context) {
 		return
 	}
 
-	files, err := database.GetFiles(houseID)
+	files, err := database.GetHouseFiles(houseID)
 	if err != nil {
 		handlerError(c, err, 400)
 		return
@@ -173,14 +210,26 @@ func handlerGetFiles(c *gin.Context) {
 func handlerUploadFile(c *gin.Context) {
 	var uploadFile database.File
 	var err error
+	var fileFor = c.PostForm("type")
 
-	uploadFile.House.ID, err = strconv.Atoi(c.PostForm("houseID"))
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
+	// Обработка ID (остается без изменений)
+	if fileFor == "house" {
+		uploadFile.House.ID, err = strconv.Atoi(c.PostForm("id"))
+		if err != nil {
+			utils.Logger.Println(err)
+			handlerError(c, err, 400)
+			return
+		}
+	} else {
+		uploadFile.Node.ID, err = strconv.Atoi(c.PostForm("id"))
+		if err != nil {
+			utils.Logger.Println(err)
+			handlerError(c, err, 400)
+			return
+		}
 	}
 
+	// Получаем файл
 	file, err := c.FormFile("file")
 	if err != nil {
 		utils.Logger.Println(err)
@@ -192,22 +241,150 @@ func handlerUploadFile(c *gin.Context) {
 	uploadFile.Name = file.Filename
 	uploadFile.Path = filepath.Join("./upload", timeNow+"_"+uploadFile.Name)
 
-	err = c.SaveUploadedFile(file, uploadFile.Path)
+	// Открываем файл для обработки
+	srcFile, err := file.Open()
+	if err != nil {
+		utils.Logger.Println(err)
+		handlerError(c, err, 400)
+		return
+	}
+	defer srcFile.Close()
+
+	// Определяем тип файла по расширению
+	ext := strings.ToLower(filepath.Ext(uploadFile.Name))
+	isImage := false
+	var img image.Image
+	var format string
+
+	// Проверяем, является ли файл изображением (jpeg/png)
+	if ext == ".jpg" || ext == ".jpeg" || ext == ".png" {
+		isImage = true
+
+		// Декодируем изображение
+		img, format, err = image.Decode(srcFile)
+		if err != nil {
+			utils.Logger.Println(err)
+			handlerError(c, err, 400)
+			return
+		}
+	}
+
+	// Создаем файл для сохранения
+	dstFile, err := os.Create(uploadFile.Path)
+	if err != nil {
+		utils.Logger.Println(err)
+		handlerError(c, err, 400)
+		return
+	}
+	defer dstFile.Close()
+
+	if isImage {
+		// Оптимизируем изображение в зависимости от формата
+		switch format {
+		case "jpeg":
+			// JPEG: качество 50%
+			err = jpeg.Encode(dstFile, img, &jpeg.Options{Quality: 50})
+		case "png":
+			// PNG: максимальное сжатие
+			encoder := png.Encoder{CompressionLevel: png.BestCompression}
+			err = encoder.Encode(dstFile, img)
+		}
+		if err != nil {
+			utils.Logger.Println(err)
+			handlerError(c, err, 400)
+			return
+		}
+	} else {
+		// Для не-изображений просто копируем файл как есть
+		_, err = io.Copy(dstFile, srcFile)
+		if err != nil {
+			utils.Logger.Println(err)
+			handlerError(c, err, 400)
+			return
+		}
+	}
+
+	uploadFile.UploadAt = time.Now().Unix()
+
+	// Остальная логика (остается без изменений)
+	if fileFor == "house" {
+		err = uploadFile.CreateForHouse()
+	} else {
+		uploadFile.IsPreviewImage, err = strconv.ParseBool(c.PostForm("onlyImage"))
+		if err != nil {
+			utils.Logger.Println(err)
+			handlerError(c, err, 400)
+			return
+		}
+
+		err = uploadFile.CreateForNode()
+	}
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
 	}
 
-	uploadFile.UploadAt = time.Now().Unix()
-
-	err = uploadFile.Create()
-	if err != nil {
-		handlerError(c, err, 400)
-		return
-	}
-
 	c.JSON(200, uploadFile)
+	//var uploadFile database.File
+	//var err error
+	//var fileFor = c.PostForm("type")
+	//
+	//if fileFor == "house" {
+	//	uploadFile.House.ID, err = strconv.Atoi(c.PostForm("id"))
+	//	if err != nil {
+	//		utils.Logger.Println(err)
+	//		handlerError(c, err, 400)
+	//		return
+	//	}
+	//} else {
+	//	uploadFile.Node.ID, err = strconv.Atoi(c.PostForm("id"))
+	//	if err != nil {
+	//		utils.Logger.Println(err)
+	//		handlerError(c, err, 400)
+	//		return
+	//	}
+	//}
+	//
+	//file, err := c.FormFile("file")
+	//if err != nil {
+	//	utils.Logger.Println(err)
+	//	handlerError(c, err, 400)
+	//	return
+	//}
+	//
+	//timeNow := strconv.Itoa(int(time.Now().Unix()))
+	//uploadFile.Name = file.Filename
+	//uploadFile.Path = filepath.Join("./upload", timeNow+"_"+uploadFile.Name)
+	//
+	//err = c.SaveUploadedFile(file, uploadFile.Path)
+	//if err != nil {
+	//	utils.Logger.Println(err)
+	//	handlerError(c, err, 400)
+	//	return
+	//}
+	//
+	//uploadFile.UploadAt = time.Now().Unix()
+	//
+	//if fileFor == "house" {
+	//	err = uploadFile.CreateForHouse()
+	//} else {
+	//	uploadFile.IsPreviewImage, err = strconv.ParseBool(c.PostForm("onlyImage"))
+	//	if err != nil {
+	//		utils.Logger.Println(err)
+	//		handlerError(c, err, 400)
+	//		return
+	//	}
+	//
+	//	err = uploadFile.CreateForNode()
+	//}
+	//if err != nil {
+	//	utils.Logger.Println(err)
+	//	handlerError(c, err, 400)
+	//	return
+	//}
+	//
+	//c.JSON(200, uploadFile)
 }
 
 func handlerGetHouse(c *gin.Context) {

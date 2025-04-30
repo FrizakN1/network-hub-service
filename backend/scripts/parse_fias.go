@@ -115,7 +115,7 @@ func main() {
 	insertTypes(Link)
 
 	// Открываем файл с улицами и т.д.
-	file, err := os.Open("import/AS_ADDR_OBJ_20240919_03aa65ac-8d75-4e6a-9ed2-7003b18af4e4.XML")
+	file, err := os.Open("import/AS_ADDR_OBJ.XML")
 	if err != nil {
 		fmt.Println("Ошибка открытия файла:", err)
 		return
@@ -131,7 +131,7 @@ func main() {
 	}
 
 	// Открываем файл с домами
-	file, err = os.Open("import/AS_HOUSES_20240919_d446562c-a0e4-4f9e-92e1-422f8fadd78c.XML")
+	file, err = os.Open("import/AS_HOUSES.XML")
 	if err != nil {
 		fmt.Println("Ошибка открытия файла:", err)
 		return
@@ -147,7 +147,7 @@ func main() {
 	}
 
 	// Открываем файл со связями объектов
-	file, err = os.Open("import/AS_MUN_HIERARCHY_20240919_4d4a6d35-acdf-4f76-9a90-ab65d660884f.XML")
+	file, err = os.Open("import/AS_MUN_HIERARCHY.XML")
 	if err != nil {
 		fmt.Println("Ошибка открытия файла:", err)
 		return
@@ -163,7 +163,7 @@ func main() {
 	}
 
 	// Открываем файл с подтипами домов
-	file, err = os.Open("import/AS_ADDHOUSE_TYPES_20240205_7b2b32ed-4041-4b02-a12e-f0bd8aa3e801.XML")
+	file, err = os.Open("import/AS_ADDHOUSE_TYPES.XML")
 	if err != nil {
 		fmt.Println("Ошибка открытия файла:", err)
 		return
@@ -283,7 +283,7 @@ func main() {
 // Заносит в БД типы домов и квартир
 func insertTypes(Link *sql.DB) {
 	// Открываем файл с типами домов
-	file, err := os.Open("import/AS_HOUSE_TYPES_20240205_0164de47-607c-4416-abd3-0d1f4c9971a5.XML")
+	file, err := os.Open("import/AS_HOUSE_TYPES.XML")
 	if err != nil {
 		fmt.Println("Ошибка открытия файла:", err)
 		return

@@ -52,14 +52,14 @@ func prepareUsers() []string {
 	}
 
 	query["GET_USERS"], e = Link.Prepare(`
-		SELECT id, role_id, login, name, baned, created_at, updated_at FROM "User"
+		SELECT id, role_id, login, name, baned, created_at, updated_at FROM "User" ORDER BY id
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
 	}
 
 	query["GET_USER"], e = Link.Prepare(`
-		SELECT * FROM "User" WHERE id = $1
+		SELECT role_id, login, name, baned, created_at, updated_at FROM "User" WHERE id = $1
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
@@ -75,7 +75,7 @@ func prepareUsers() []string {
 	}
 
 	query["EDIT_USER"], e = Link.Prepare(`
-		UPDATE "User" SET role_id = $2, login = $3, name = $4, password = $5, updated_at = $6
+		UPDATE "User" SET role_id = $2, login = $3, name = $4, updated_at = $5
 		WHERE id = $1
     `)
 	if e != nil {
@@ -119,7 +119,7 @@ func prepareUsers() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["CHANGE_SUPER_ADMIN_PASSWORD"], e = Link.Prepare(`
+	query["CHANGE_USER_PASSWORD"], e = Link.Prepare(`
 		UPDATE "User" SET password = $2 WHERE id = $1
     `)
 	if e != nil {
@@ -133,7 +133,66 @@ func prepareUsers() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
+	query["CHANGE_USER_STATUS"], e = Link.Prepare(`
+		UPDATE "User" SET baned = NOT baned WHERE id = $1
+		RETURNING baned
+    `)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
+	}
+
 	return errorsList
+}
+
+func GetRoles() []Role {
+	var roles []Role
+
+	for _, role := range roleMap {
+		roles = append(roles, role)
+	}
+
+	return roles
+}
+
+func (user *User) ChangeStatus() error {
+	stmt, ok := query["CHANGE_USER_STATUS"]
+	if !ok {
+		err := errors.New("запрос CHANGE_USER_STATUS не подготовлен")
+		utils.Logger.Println(err)
+		return err
+	}
+
+	if err := stmt.QueryRow(user.ID).Scan(&user.Baned); err != nil {
+		utils.Logger.Println(err)
+		return err
+	}
+
+	return nil
+}
+
+func (user *User) GetUser() error {
+	stmt, ok := query["GET_USER"]
+	if !ok {
+		err := errors.New("запрос GET_USER не подготовлен")
+		utils.Logger.Println(err)
+		return err
+	}
+
+	if err := stmt.QueryRow(user.ID).Scan(
+		&user.Role.ID,
+		&user.Login,
+		&user.Name,
+		&user.Baned,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	); err != nil {
+		utils.Logger.Println(err)
+		return err
+	}
+
+	user.Role = roleMap[user.Role.ID]
+
+	return nil
 }
 
 func GetUsers() ([]User, error) {
@@ -186,20 +245,17 @@ func (user *User) EditUser() error {
 		return err
 	}
 
-	if err := stmt.QueryRow(
+	_, err := stmt.Exec(
+		user.ID,
 		user.Role.ID,
 		user.Login,
 		user.Name,
-		user.Password,
-		user.Baned,
-		user.CreatedAt,
 		user.UpdatedAt,
-	).Scan(&user.ID); err != nil {
+	)
+	if err != nil {
 		utils.Logger.Println(err)
 		return err
 	}
-
-	user.Password = ""
 
 	return nil
 }
@@ -226,8 +282,6 @@ func (user *User) CreateUser() error {
 	}
 
 	user.Role = roleMap[user.Role.ID]
-
-	user.Password = ""
 
 	return nil
 }
@@ -421,7 +475,9 @@ func CheckAdmin(config *settings.Setting) error {
 	}
 
 	if encryptPass != admin.Password {
-		if e = admin.ChangeSuperAdminPassword(encryptPass); e != nil {
+		admin.Password = encryptPass
+
+		if e = admin.ChangeUserPassword(); e != nil {
 			utils.Logger.Println(e)
 			return e
 		}
@@ -435,13 +491,13 @@ func CheckAdmin(config *settings.Setting) error {
 	return nil
 }
 
-func (user *User) ChangeSuperAdminPassword(newPassword string) error {
-	stmt, ok := query["CHANGE_SUPER_ADMIN_PASSWORD"]
+func (user *User) ChangeUserPassword() error {
+	stmt, ok := query["CHANGE_USER_PASSWORD"]
 	if !ok {
-		return errors.New("запрос CHANGE_SUPER_ADMIN_PASSWORD не подготовлен")
+		return errors.New("запрос CHANGE_USER_PASSWORD не подготовлен")
 	}
 
-	_, e := stmt.Exec(user.ID, newPassword)
+	_, e := stmt.Exec(user.ID, user.Password)
 	if e != nil {
 		return e
 	}
@@ -479,13 +535,13 @@ func CreateAdmin(config *settings.Setting) error {
 	return nil
 }
 
-func DeleteUserSessions(id int) error {
+func DeleteUserSessions(userID int) error {
 	stmt, ok := query["GET_USER_SESSIONS"]
 	if !ok {
 		return errors.New("запрос GET_USER_SESSIONS не подготовлен")
 	}
 
-	rows, e := stmt.Query(id)
+	rows, e := stmt.Query(userID)
 	if e != nil {
 		return e
 	}
@@ -506,4 +562,27 @@ func DeleteUserSessions(id int) error {
 	}
 
 	return nil
+}
+
+func (user *User) ValidateUser(action string) bool {
+	if len(user.Name) == 0 || len(user.Login) == 0 {
+		return false
+	}
+
+	_, ok := roleMap[user.Role.ID]
+	if !ok {
+		return false
+	}
+
+	if action == "create" {
+		if len(user.Password) < 6 {
+			return false
+		}
+	} else if len(user.Password) != 0 {
+		if len(user.Password) < 6 {
+			return false
+		}
+	}
+
+	return true
 }

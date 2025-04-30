@@ -7,6 +7,11 @@ import ResultPage from "./components/ResultPage";
 import ListPage from "./components/ListPage";
 import Authorization from "./components/Authorization";
 import UsersPage from "./components/UsersPage";
+import ReferencesPage from "./components/ReferencesPage";
+import ReferencePage from "./components/ReferencePage";
+import NodeViewPage from "./components/NodeViewPage";
+import NodesPage from "./components/NodesPage";
+import HardwarePage from "./components/HardwarePage";
 
 function App() {
     return (
@@ -15,12 +20,24 @@ function App() {
                 <Route path="/login" element={<Authorization />} />
                 <Route path="/" element={<PrivateRoute />}>
                     <Route path="" element={<MainPage />} />
-                    <Route path="/house/:houseID" element={<HousePage />} />
+                    <Route path="/house/:id" element={<HousePage />} />
                     <Route path="/result" element={<ResultPage />} />
                     <Route path="/list" element={<ListPage />} />
                 </Route>
                 <Route path="/" element={<PrivateRoute requiredAdmin={true} />}>
                     <Route path="/users" element={<UsersPage />} />
+                </Route>
+                <Route path="/references/" element={<PrivateRoute requiredAdmin={true} />}>
+                    <Route path="" element={<ReferencesPage />} />
+                    <Route path="owners/" element={<ReferencePage reference={"owners"}/>} />
+                    <Route path="node_types/" element={<ReferencePage reference={"node_types"} />} />
+                </Route>
+                <Route path="/nodes/" element={<PrivateRoute requiredAdmin={true} />}>
+                    <Route path="" element={<NodesPage />} />
+                    <Route path="view/:id" element={<NodeViewPage />} />
+                </Route>
+                <Route path="/hardware/" element={<PrivateRoute requiredAdmin={true} />}>
+                    <Route path="" element={<HardwarePage />} />
                 </Route>
             </Routes>
         </Router>

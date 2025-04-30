@@ -36,6 +36,7 @@ func Connection(config *settings.Setting) {
 	errorsList = append(errorsList, prepareEnums()...)
 	errorsList = append(errorsList, prepareRequests()...)
 	errorsList = append(errorsList, prepareUsers()...)
+	errorsList = append(errorsList, prepareNodes()...)
 
 	if len(errorsList) > 0 {
 		for _, i := range errorsList {

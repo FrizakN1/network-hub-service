@@ -1,24 +1,64 @@
 import React, {useEffect, useState} from "react";
 import FetchRequest from "../fetchRequest";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import {faBan, faDownload, faEye, faFolderMinus, faFolderPlus, faPen, faTrash} from "@fortawesome/free-solid-svg-icons";
+import {
+    faBan,
+    faCircleCheck,
+    faPen, faPlus,
+} from "@fortawesome/free-solid-svg-icons";
+import UserModalCreate from "./UserModalCreate";
 
 const UsersPage = () => {
     const [users, setUsers] = useState([])
+    const [isLoaded, setIsLoaded] = useState(false)
+    const [modalCreate, setModalCreate] = useState(false)
+    const [modalEdit, setModalEdit] = useState({
+        State: false,
+        EditUser: {}
+    })
 
     useEffect(() => {
         FetchRequest("GET", "/get_users", null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setUsers(response.data)
-                    console.log(response.data)
                 }
+
+                setIsLoaded(true)
             })
     }, []);
 
+    const changeUserStatus = (userID) => {
+        FetchRequest("POST", "/change_user_status", {ID: Number(userID)})
+            .then(response => {
+                if (response.success && response.data != null) {
+                    setUsers(prevState => prevState.map(user =>
+                        user.ID === response.data.ID ? response.data : user
+                    ))
+                }
+            })
+    }
+
+    const handlerAddUser = (user) => {
+        setUsers(prevState => [...prevState, user])
+    }
+
+    const handlerEditUser = (user) => {
+        setUsers(prevState => prevState.map(_user => user.ID === _user.ID ? user : _user))
+    }
+
     return (
         <section className="users">
-            {users.length > 0 ? (
+            {modalCreate && <UserModalCreate action="create" setState={setModalCreate} returnUser={handlerAddUser}/>}
+            {modalEdit.State && <UserModalCreate action="edit"
+                                                 setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))}
+                                                 returnUser={handlerEditUser}
+                                                 editUser={modalEdit.EditUser}
+            />}
+            <div className="buttons">
+                <button onClick={() => setModalCreate(true)}><FontAwesomeIcon icon={faPlus}/> Создать пользователя</button>
+            </div>
+            {isLoaded && <>{users.length > 0 ? (
                     <table>
                         <thead>
                         <tr className={"row-type-2"}>
@@ -41,9 +81,13 @@ const UsersPage = () => {
                                 <td>{user.Baned ? <span className={"bg-red"}>Заблокирован</span> : <span className={"bg-green"}>Активен</span>}</td>
                                 <td>{new Date(user.CreatedAt * 1000).toLocaleString().slice(0, 17)}</td>
                                 <td>
-                                    <FontAwesomeIcon icon={faEye} title="Просмотр" />
-                                    <FontAwesomeIcon icon={faPen} title="Редактировать" />
-                                    <FontAwesomeIcon icon={faBan} title="Заблокировать" />
+                                    {/*<FontAwesomeIcon icon={faEye} title="Просмотр" />*/}
+                                    <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditUser: user})}/>
+                                    {user.Baned ?
+                                        <FontAwesomeIcon icon={faCircleCheck} className="unban" title="Разаблокировать" onClick={() => changeUserStatus(user.ID)}/>
+                                        :
+                                        <FontAwesomeIcon icon={faBan} className="ban" title="Заблокировать" onClick={() => changeUserStatus(user.ID)}/>
+                                    }
                                 </td>
                             </tr>
                         ))}
@@ -52,7 +96,7 @@ const UsersPage = () => {
                 )
                 :
                 <div className="empty">Таблица пуста</div>
-            }
+            }</>}
         </section>
     )
 }

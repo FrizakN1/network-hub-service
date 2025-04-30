@@ -6,6 +6,12 @@ import (
 	"fmt"
 )
 
+type Enum struct {
+	ID        int
+	Name      string
+	CreatedAt int64
+}
+
 var query map[string]*sql.Stmt
 var enumsMap map[string]map[string]bool
 

@@ -28,8 +28,6 @@ const AddressesTable = ({addresses, count, setOffset, h = null}) => {
     useEffect(() => {
         setOffset(currentPage)
 
-        console.log(allPage)
-
         if (allPage.length <= 7) {
             setShowPages(
                 <div className="pages">
