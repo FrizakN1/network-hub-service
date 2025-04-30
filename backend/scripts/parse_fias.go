@@ -1,6 +1,7 @@
 package main
 
 import (
+	"backend/settings"
 	"database/sql"
 	"encoding/xml"
 	"fmt"
@@ -70,13 +71,15 @@ func main() {
 	var streetTypes []HouseType
 	mainObjectID := "731553"
 
+	config := settings.Load("../settings.json")
+
 	// Подключаемся к БД
 	Link, err := sql.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		"localhost",
-		"5432",
-		"postgres",
-		"1234",
-		"addressSchema"))
+		config.DbHost,
+		"222",
+		config.DbUser,
+		config.DbPass,
+		config.DbName))
 	if err != nil {
 		fmt.Println(err)
 		return
