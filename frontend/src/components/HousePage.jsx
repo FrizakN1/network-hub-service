@@ -8,7 +8,6 @@ import FilesTable from "./FilesTable";
 import UploadFile from "./UploadFile";
 import fetchRequest from "../fetchRequest";
 import FetchRequest from "../fetchRequest";
-import NodesTable1 from "./NodesTable1";
 import NodeModalCreate from "./NodeModalCreate";
 import NodesTable from "./NodesTable";
 

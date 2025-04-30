@@ -2,7 +2,6 @@ import React, {useEffect, useState} from "react";
 import {Link, useParams} from "react-router-dom";
 import FetchRequest from "../fetchRequest";
 import FilesTable from "./FilesTable";
-import NodesTable1 from "./NodesTable1";
 import ImageTable from "./ImageTable";
 
 const NodeViewPage = () => {
