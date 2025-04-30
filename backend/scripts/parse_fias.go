@@ -76,7 +76,7 @@ func main() {
 	// Подключаемся к БД
 	Link, err := sql.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		config.DbHost,
-		"222",
+		config.DbPort,
 		config.DbUser,
 		config.DbPass,
 		config.DbName))
