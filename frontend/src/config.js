@@ -1,3 +1,3 @@
-const API_DOMAIN = "http://localhost:8080/api"
+const API_DOMAIN = "http://localhost/api"
 
 export default API_DOMAIN;
