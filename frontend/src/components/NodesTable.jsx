@@ -8,11 +8,14 @@ import {
     faPen, faPlus, faSquareCheck,
     faTrash
 } from "@fortawesome/free-solid-svg-icons";
+import {
+    faCircle, faCircleDot
+} from "@fortawesome/free-regular-svg-icons"
 import FetchRequest from "../fetchRequest";
 import NodeModalCreate from "./NodeModalCreate";
 import {useNavigate} from "react-router-dom";
 
-const NodesTable = ({id = 0, canCreate = false, action, selectFunction}) => {
+const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNode}) => {
     const searchDebounceTimer = useRef(0)
     const [nodes, setNodes] = useState([])
     const [isLoaded, setIsLoaded] = useState(false)
@@ -161,7 +164,7 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction}) => {
                             <td>{node.Zone.String}</td>
                             {action === "select" ?
                                 <td>
-                                    <FontAwesomeIcon icon={faSquareCheck} title="Выбрать" onClick={() => selectFunction(node)}/>
+                                    <FontAwesomeIcon icon={selectNode?.ID === node.ID ? faCircleDot : faCircle} title="Выбрать" onClick={() => selectFunction(node)}/>
                                 </td>
                             :
                                 <td>

@@ -742,15 +742,17 @@ nav div button {
   height: 90%;
   width: 80%;
   padding: 0 20px;
+  border-left: 1px solid rgb(37,147,184);
+  border-right: 1px solid rgb(37,147,184);
 }
 
 .modal-table .contain::-webkit-scrollbar{
-  width: 10px;
+  width: 7px;
   background-color: transparent;
 }
 
 .modal-table .contain::-webkit-scrollbar-thumb{
-  background-color: rgb(37,147,184);;
+  background-color: rgb(37,147,184);
   border-radius: 10px;
   border: 2px solid transparent;
 }
@@ -897,7 +899,7 @@ nav div button {
 
 .custom-select .select-input {
   text-align: center;
-  padding: 9px 15px;
+  padding: 9px 15px !important;
 }
 
 .custom-select .list {
@@ -908,6 +910,7 @@ nav div button {
   width: 100%;
   top: 45px;
   overflow: hidden;
+  z-index: 10000;
 }
 
 .custom-select .list li {

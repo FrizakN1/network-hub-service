@@ -19,10 +19,14 @@ const PrivateRoute = ({requiredAdmin}) => {
     useEffect(() => {
         if (location.pathname.includes("list")) {
             setActiveTab(2)
-        } else if (location.pathname.includes("users")) {
+        } else if (location.pathname.includes("nodes")) {
             setActiveTab(3)
-        } else if (location.pathname.includes("references")) {
+        } else if (location.pathname.includes("hardware")) {
             setActiveTab(4)
+        } else if (location.pathname.includes("users")) {
+            setActiveTab(5)
+        } else if (location.pathname.includes("references")) {
+            setActiveTab(6)
         }
 
         FetchRequest("GET", "/get_auth", null)

@@ -31,6 +31,8 @@ const NodeModalCreate = ({action, setState, editNode, returnNode}) => {
         Name: true,
     })
     const [generalNode, setGeneralNode] = useState(false)
+    const [nodeTypes, setNodeTypes] = useState([])
+    const [owners, setOwners] = useState([])
     const { id } = useParams()
 
     const handlerModalCreateClose = (e) => {
@@ -38,6 +40,22 @@ const NodeModalCreate = ({action, setState, editNode, returnNode}) => {
             setState(false)
         }
     }
+
+    useEffect(() => {
+        FetchRequest("GET", "/get_node_types", null)
+            .then(response => {
+                if (response.success && response.data != null) {
+                    setNodeTypes(response.data)
+                }
+            })
+
+        FetchRequest("GET", "/get_owners", null)
+            .then(response => {
+                if (response.success && response.data != null) {
+                    setOwners(response.data)
+                }
+            })
+    }, []);
 
     useEffect(() => {
         if (action === "edit") {
@@ -170,7 +188,7 @@ const NodeModalCreate = ({action, setState, editNode, returnNode}) => {
 
     return (
         <div className={"modal-window"} onMouseDown={handlerModalCreateClose}>
-            {modalSelectTable.State && <ModalSelectTable uri={modalSelectTable.Uri} type={modalSelectTable.Type} selectRecord={modalSelectTable.SelectRecord} setState={(state) => setModalSelectTable(prevState => ({...prevState, State: state}))}/>}
+            {modalSelectTable.State && <ModalSelectTable uri={modalSelectTable.Uri} alreadySelect={fields.Parent} type={modalSelectTable.Type} selectRecord={modalSelectTable.SelectRecord} setState={(state) => setModalSelectTable(prevState => ({...prevState, State: state}))}/>}
             <div className="form node">
                 <h2>{action === "create" ? "Создание узла" : "Изменение узла"}</h2>
                 <div className="fields">
@@ -189,15 +207,25 @@ const NodeModalCreate = ({action, setState, editNode, returnNode}) => {
 
                            <label>
                                <span>Тип узла</span>
-                               <div className="select-field" onClick={() => setModalSelectTable({State: true, Uri: "/get_node_types", Type: "node_type", SelectRecord: handlerSelectNodeType})}>{fields.Type.Name === "" ? "Выбрать..." : fields.Type.Name}</div>
+                               <CustomSelect placeholder="Выбрать" value={fields.Type.Name} values={nodeTypes} setValue={handlerSelectNodeType}/>
                                {!validation.Type && <InputErrorDescription text={"Поле не может быть пустым"}/>}
                            </label>
+                           {/*<label>*/}
+                           {/*    <span>Тип узла</span>*/}
+                           {/*    <div className="select-field" onClick={() => setModalSelectTable({State: true, Uri: "/get_node_types", Type: "node_type", SelectRecord: handlerSelectNodeType})}>{fields.Type.Name === "" ? "Выбрать..." : fields.Type.Name}</div>*/}
+                           {/*    {!validation.Type && <InputErrorDescription text={"Поле не может быть пустым"}/>}*/}
+                           {/*</label>*/}
 
                            <label>
                                <span>Владелец узла</span>
-                               <div className="select-field" onClick={() => setModalSelectTable({State: true, Uri: "/get_owners", Type: "owner", SelectRecord: handlerSelectOwner})}>{fields.Owner.Name === "" ? "Выбрать..." : fields.Owner.Name}</div>
+                               <CustomSelect placeholder="Выбрать" value={fields.Owner.Name} values={owners} setValue={handlerSelectOwner}/>
                                {!validation.Owner && <InputErrorDescription text={"Поле не может быть пустым"}/>}
                            </label>
+                           {/*<label>*/}
+                           {/*    <span>Владелец узла</span>*/}
+                           {/*    <div className="select-field" onClick={() => setModalSelectTable({State: true, Uri: "/get_owners", Type: "owner", SelectRecord: handlerSelectOwner})}>{fields.Owner.Name === "" ? "Выбрать..." : fields.Owner.Name}</div>*/}
+                           {/*    {!validation.Owner && <InputErrorDescription text={"Поле не может быть пустым"}/>}*/}
+                           {/*</label>*/}
 
                            <label>
                                <span>Название</span>
