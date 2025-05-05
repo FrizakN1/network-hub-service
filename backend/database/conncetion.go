@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/lib/pq"
+	"github.com/pressly/goose/v3"
 )
 
 var Link *sql.DB
@@ -26,6 +27,18 @@ func Connection(config *settings.Setting) {
 
 	e = Link.Ping()
 	if e != nil {
+		fmt.Println(e)
+		utils.Logger.Println(e)
+		return
+	}
+
+	if e = goose.SetDialect("postgres"); e != nil {
+		fmt.Println(e)
+		utils.Logger.Println(e)
+		return
+	}
+
+	if e = goose.Up(Link, "migrations"); e != nil {
 		fmt.Println(e)
 		utils.Logger.Println(e)
 		return
