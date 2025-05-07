@@ -15,7 +15,7 @@ import FetchRequest from "../fetchRequest";
 import NodeModalCreate from "./NodeModalCreate";
 import {useNavigate} from "react-router-dom";
 
-const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNode}) => {
+const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNode, defaultAddress}) => {
     const searchDebounceTimer = useRef(0)
     const [nodes, setNodes] = useState([])
     const [isLoaded, setIsLoaded] = useState(false)
@@ -131,7 +131,7 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
     return (
         <div className="contain nodes">
             {canCreate && <>
-                {modalCreate && <NodeModalCreate action={"create"} setState={setModalCreate} returnNode={handlerAddNode}/>}
+                {modalCreate && <NodeModalCreate action={"create"} setState={setModalCreate} returnNode={handlerAddNode} defaultAddress={defaultAddress}/>}
                 {modalEdit.State && <NodeModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editNode={modalEdit.EditNode} returnNode={handlerEditNode}/>}
                 <div className="contain">
                     <button className="add-node" onClick={() => setModalCreate(true)}>

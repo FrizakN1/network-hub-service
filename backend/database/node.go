@@ -57,8 +57,12 @@ func prepareNodes() []string {
 	}
 
 	query["GET_HOUSE_NODES"], e = Link.Prepare(`
-		SELECT n.*, nt.name, no.name, (SELECT p.name FROM "Node" AS p WHERE p.id = n.parent_id) AS parent_name
+		SELECT n.*, s.name, st.short_name, h.name, ht.short_name, nt.name, no.name, (SELECT p.name FROM "Node" AS p WHERE p.id = n.parent_id) AS parent_name
 		FROM "Node" AS n
+		JOIN "House" AS h ON n.house_id = h.id
+        JOIN "Street" AS s ON s.id = h.street_id
+        JOIN "Street_type" AS st ON s.type_id = st.id
+        JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Node_type" AS nt ON n.type_id = nt.id
 		JOIN "Node_owner" AS no ON n.owner_id = no.id
 		WHERE n.house_id = $1 
@@ -178,7 +182,8 @@ func prepareNodes() []string {
 	}
 
 	query["EDIT_NODE"], e = Link.Prepare(`
-		UPDATE "Node" SET parent_id = $2, type_id = $3, owner_id = $4, name = $5, zone = $6, placement = $7, supply = $8, access = $9, description = $10, updated_at = $11
+		UPDATE "Node" SET parent_id = $2, type_id = $3, owner_id = $4, name = $5, zone = $6, placement = $7, supply = $8,
+		                  access = $9, description = $10, updated_at = $11, house_id = $12
 		WHERE id = $1	
     `)
 	if e != nil {
@@ -386,6 +391,7 @@ func (node *Node) EditNode() error {
 		node.Access,
 		node.Description,
 		node.UpdatedAt,
+		node.Address.House.ID,
 	)
 	if err != nil {
 		utils.Logger.Println(err)
@@ -615,6 +621,10 @@ func GetHouseNodes(houseID int, offset int) ([]Node, int, error) {
 			&node.Description,
 			&node.CreatedAt,
 			&node.UpdatedAt,
+			&node.Address.Street.Name,
+			&node.Address.Street.Type.ShortName,
+			&node.Address.House.Name,
+			&node.Address.House.Type.ShortName,
 			&node.Type.Name,
 			&node.Owner.Name,
 			&parentName,

@@ -4,8 +4,9 @@ import CustomSelect from "./CustomSelect";
 import ModalSelectTable from "./ModalSelectTable";
 import FetchRequest from "../fetchRequest";
 import {useParams} from "react-router-dom";
+import SearchInput from "./SearchInput";
 
-const NodeModalCreate = ({action, setState, editNode, returnNode}) => {
+const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress = null}) => {
     const validateDebounceTimer = useRef(0)
     const [modalSelectTable, setModalSelectTable] = useState({
         State: false,
@@ -17,6 +18,17 @@ const NodeModalCreate = ({action, setState, editNode, returnNode}) => {
         Parent: {ID: 0, Name: ""},
         Type: {ID: 0, Name: ""},
         Owner: {ID: 0, Name: ""},
+        HouseID: 0,
+        Address: {
+            Street: {
+                Name: "",
+                Type: {ShortName: ""}
+            },
+            House: {
+                Name: "",
+                Type: {ShortName: ""}
+            }
+        },
         Name: "",
         Zone: "",
         Placement: "",
@@ -29,11 +41,11 @@ const NodeModalCreate = ({action, setState, editNode, returnNode}) => {
         Type: true,
         Owner: true,
         Name: true,
+        Address: true
     })
     const [generalNode, setGeneralNode] = useState(false)
     const [nodeTypes, setNodeTypes] = useState([])
     const [owners, setOwners] = useState([])
-    const { id } = useParams()
 
     const handlerModalCreateClose = (e) => {
         if (e.target.className === "modal-window") {
@@ -60,9 +72,10 @@ const NodeModalCreate = ({action, setState, editNode, returnNode}) => {
     useEffect(() => {
         if (action === "edit") {
             setGeneralNode(editNode.Parent == null)
-            
+
             setFields({
                 Parent: editNode.Parent != null ? editNode.Parent : {ID: 0, Name: ""},
+                Address: editNode.Address,
                 Type: editNode.Type,
                 Owner: editNode.Owner,
                 Name: editNode.Name,
@@ -72,8 +85,10 @@ const NodeModalCreate = ({action, setState, editNode, returnNode}) => {
                 Access: editNode.Access.String,
                 Description: editNode.Description.String,
             })
+        } else if (defaultAddress != null) {
+            setFields(prevState => ({...prevState, Address: defaultAddress}))
         }
-    }, [action, editNode]);
+    }, [action, editNode, defaultAddress]);
 
     const validateField = (name, value) => {
         let isValid = true
@@ -88,6 +103,9 @@ const NodeModalCreate = ({action, setState, editNode, returnNode}) => {
                 break
             case "Parent":
                 isValid = generalNode || value.ID > 0
+                break
+            case "Address":
+                isValid = value.House.ID > 0
                 break
             default: isValid = true
         }
@@ -122,6 +140,8 @@ const NodeModalCreate = ({action, setState, editNode, returnNode}) => {
                 return fields[field].ID !== editNode[field].ID
             case "Parent":
                 return editNode.Parent != null ? fields.Parent.ID !== editNode[field].ID : fields.Parent !== editNode.Parent
+            case "Address":
+                return editNode.Address.House.ID !== fields.Address.House.ID
             default: return false
         }
     }
@@ -152,7 +172,7 @@ const NodeModalCreate = ({action, setState, editNode, returnNode}) => {
 
         let body = {
             Parent: generalNode ? null : fields.Parent,
-            Address: {House: {ID: Number(id)}},
+            Address: fields.Address,
             Type: fields.Type,
             Owner: fields.Owner,
             Name: fields.Name,
@@ -186,12 +206,21 @@ const NodeModalCreate = ({action, setState, editNode, returnNode}) => {
         setFields(prevState => ({...prevState, Owner: owner}))
     }
 
+    const handlerSelectAddress = (address) => {
+        setFields(prevState => ({...prevState, Address: address}))
+    }
+
     return (
         <div className={"modal-window"} onMouseDown={handlerModalCreateClose}>
             {modalSelectTable.State && <ModalSelectTable uri={modalSelectTable.Uri} alreadySelect={fields.Parent} type={modalSelectTable.Type} selectRecord={modalSelectTable.SelectRecord} setState={(state) => setModalSelectTable(prevState => ({...prevState, State: state}))}/>}
             <div className="form node">
                 <h2>{action === "create" ? "Создание узла" : "Изменение узла"}</h2>
                 <div className="fields">
+                    <label>
+                        <span>Адрес</span>
+                        <SearchInput defaultValue={fields.Address.House.ID > 0 ? `${fields.Address.Street.Type.ShortName} ${fields.Address.Street.Name}, ${fields.Address.House.Type.ShortName} ${fields.Address.House.Name}` : ""} action="select" returnAddress={handlerSelectAddress}/>
+                        {!validation.Address && <InputErrorDescription text={"Некорректный адрес"}/>}
+                    </label>
                    <div className="row">
                        <div className="column">
                            <label>

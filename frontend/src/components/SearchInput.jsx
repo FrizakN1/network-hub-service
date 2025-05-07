@@ -1,14 +1,18 @@
-import React, {useRef, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import switcher from "ai-switcher-translit";
 import {useNavigate} from "react-router-dom";
 import FetchRequest from "../fetchRequest";
 
-const SearchInput = ({defaultValue = ""}) => {
+const SearchInput = ({defaultValue = "", action, returnAddress}) => {
     const [inputValue, setInputValue] = useState(defaultValue)
     const [suggestions, setSuggestions] = useState([])
     const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
     const debounceTimer = useRef(0)
     const navigate = useNavigate()
+
+    useEffect(() => {
+        setInputValue(defaultValue)
+    }, [defaultValue]);
 
     const handlerChange = (e) => {
         setInputValue(e.target.value)
@@ -24,34 +28,12 @@ const SearchInput = ({defaultValue = ""}) => {
 
         if (value.length > 0) {
             debounceTimer.current = setTimeout(() => {
-                // let options = {
-                //     method: "POST",
-                //     body: JSON.stringify({
-                //         Text: value,
-                //     })
-                // }
-
                 FetchRequest("POST", "/search", {Text: value})
                     .then(response => {
                         if (response.success) {
-                            if (response.data != null) {
-                                setSuggestions(response.data?.Addresses || [])
-                            } else {
-                                setSuggestions([])
-                            }
+                            setSuggestions(response.data?.Addresses != null ? response.data.Addresses : [])
                         }
                     })
-
-                // fetch(`${API_DOMAIN}/search`, options)
-                //     .then(response => response.json())
-                //     .then(data => {
-                //         if (data != null) {
-                //             setSuggestions(data?.Addresses || [])
-                //         } else {
-                //             setSuggestions([])
-                //         }
-                //     })
-                //     .catch(error => console.error(error))
             }, 300)
         } else {
             setSuggestions([])
@@ -74,21 +56,29 @@ const SearchInput = ({defaultValue = ""}) => {
             if (activeSuggestionIndex >= 0) {
                 let suggestion = suggestions[activeSuggestionIndex]
 
-                navigate(`/house/${suggestion.House.ID}`)
+                if (action === "select") {
+                    returnAddress(suggestion)
+                } else {
+                    navigate(`/house/${suggestion.House.ID}`)
+                }
 
                 setInputValue(`${suggestion.Street.Type.ShortName} ${suggestion.Street.Name}, ${suggestion.House.Type.ShortName} ${suggestion.House.Name}`);
                 setSuggestions([]);
                 setActiveSuggestionIndex(-1)
             } else if (inputValue.length > 0) {
-                navigate('/result', {
-                    state: { query: switcher.getSwitch(inputValue, {
-                            input: {
-                                ".": ".",
-                                ",": ",",
-                            }
-                        })
-                    }
-                });
+                if (action === "select") {
+                    returnAddress(suggestions[0])
+                } else {
+                    navigate('/result', {
+                        state: { query: switcher.getSwitch(inputValue, {
+                                input: {
+                                    ".": ".",
+                                    ",": ",",
+                                }
+                            })
+                        }
+                    });
+                }
                 clearTimeout(debounceTimer.current)
                 setSuggestions([]);
             }
@@ -100,7 +90,11 @@ const SearchInput = ({defaultValue = ""}) => {
     };
 
     const handleClickSuggestion = (suggestion) => {
-        navigate(`/house/${suggestion.House.ID}`)
+        if (action === "select") {
+            returnAddress(suggestion)
+        } else {
+            navigate(`/house/${suggestion.House.ID}`)
+        }
 
         setInputValue(`${suggestion.Street.Type.ShortName} ${suggestion.Street.Name}, ${suggestion.House.Type.ShortName} ${suggestion.House.Name}`);
         setSuggestions([]);

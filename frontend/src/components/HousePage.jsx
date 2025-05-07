@@ -37,7 +37,7 @@ const HousePage = () => {
                     {activeTab === 1 && <FilesTable type="house"/>}
                     {activeTab === 2 &&
                         <div>
-                            <NodesTable id={Number(id)} canCreate={true}/>
+                            <NodesTable id={Number(id)} canCreate={true} defaultAddress={address}/>
                         </div>
                     }
                     {activeTab === 3 &&
