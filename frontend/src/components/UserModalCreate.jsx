@@ -53,7 +53,7 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
 
 
     const validateField = (name, value) => {
-        let isValid = true
+        let isValid
 
         switch (name) {
             case "Name":

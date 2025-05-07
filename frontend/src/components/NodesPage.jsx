@@ -4,7 +4,7 @@ import NodesTable from "./NodesTable";
 const NodesPage = () => {
     return (
         <section className="nodes">
-            <NodesTable />
+            <NodesTable canCreate={true}/>
         </section>
     )
 }

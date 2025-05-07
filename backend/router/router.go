@@ -44,7 +44,7 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 		// Получение ссылки из запроса
 		origin := c.Request.Header.Get("Origin")
 
-		// Проверка ссылок на соответсвие
+		// Проверка ссылок на соответствие
 		if allowedOrigin == origin {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 			c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -65,7 +65,6 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 			} else {
 				c.Next()
 			}
-			//c.AbortWithStatus(http.StatusUnauthorized)
 		}
 	})
 
@@ -83,6 +82,7 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 	routerAPI.POST("/upload_file", handlerUploadFile)
 	routerAPI.GET("/get_house_files/:id", handlerGetHouseFiles)
 	routerAPI.GET("/get_node_files/:id", handlerGetNodeFiles)
+	routerAPI.GET("/get_hardware_files/:id", handlerGetHardwareFiles)
 	routerAPI.GET("/get_node_images/:id", handlerGetNodeImages)
 	routerAPI.POST("/archive_file", handlerArchiveFile)
 	routerAPI.POST("/delete_file", handlerDeleteFile)
@@ -103,6 +103,18 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 	routerAPI.POST("/create_:reference", handlerCreateReferenceRecord)
 	routerAPI.POST("/edit_:reference", handlerEditReferenceRecord)
 	routerAPI.GET("/get_node_types", handlerGetNodeTypes)
+	routerAPI.GET("/get_hardware_types", handlerGetHardwareTypes)
+	routerAPI.GET("/get_operation_modes", handlerGetOperationModes)
+	routerAPI.POST("/create_switch", handlerCreateSwitch)
+	routerAPI.POST("/edit_switch", handlerEditSwitch)
+	routerAPI.GET("/get_switches", handlerGetSwitches)
+	routerAPI.POST("/get_hardware", handlerGetHardware)
+	routerAPI.GET("/get_hardware/:id", handlerGetHardwareByID)
+	routerAPI.POST("/get_search_hardware", handlerGetSearchHardware)
+	routerAPI.POST("/get_house_hardware/:id", handlerGetHouseHardware)
+	routerAPI.POST("/get_node_hardware/:id", handlerGetNodeHardware)
+	routerAPI.POST("/create_hardware", handlerCreateHardware)
+	routerAPI.POST("/edit_hardware", handlerEditHardware)
 
 	return router
 }
@@ -143,8 +155,10 @@ func handlerDeleteFile(c *gin.Context) {
 
 	if file.House.ID > 0 {
 		key = "HOUSE"
-	} else {
+	} else if file.Node.ID > 0 {
 		key = "NODE"
+	} else if file.Hardware.ID > 0 {
+		key = "HARDWARE"
 	}
 
 	err = file.Delete(key)
@@ -177,8 +191,10 @@ func handlerArchiveFile(c *gin.Context) {
 
 	if file.House.ID > 0 {
 		key = "HOUSE"
-	} else {
+	} else if file.Node.ID > 0 {
 		key = "NODE"
+	} else if file.Hardware.ID > 0 {
+		key = "HARDWARE"
 	}
 
 	err = file.Archive(key)
@@ -215,18 +231,15 @@ func handlerUploadFile(c *gin.Context) {
 	// Обработка ID (остается без изменений)
 	if fileFor == "house" {
 		uploadFile.House.ID, err = strconv.Atoi(c.PostForm("id"))
-		if err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
-			return
-		}
-	} else {
+	} else if fileFor == "node" {
 		uploadFile.Node.ID, err = strconv.Atoi(c.PostForm("id"))
-		if err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
-			return
-		}
+	} else {
+		uploadFile.Hardware.ID, err = strconv.Atoi(c.PostForm("id"))
+	}
+	if err != nil {
+		utils.Logger.Println(err)
+		handlerError(c, err, 400)
+		return
 	}
 
 	// Получаем файл
@@ -307,18 +320,16 @@ func handlerUploadFile(c *gin.Context) {
 	uploadFile.UploadAt = time.Now().Unix()
 
 	// Остальная логика (остается без изменений)
-	if fileFor == "house" {
-		err = uploadFile.CreateForHouse()
-	} else {
+	if fileFor == "node" {
 		uploadFile.IsPreviewImage, err = strconv.ParseBool(c.PostForm("onlyImage"))
 		if err != nil {
 			utils.Logger.Println(err)
 			handlerError(c, err, 400)
 			return
 		}
-
-		err = uploadFile.CreateForNode()
 	}
+
+	err = uploadFile.CreateFile(strings.ToUpper(fileFor))
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)

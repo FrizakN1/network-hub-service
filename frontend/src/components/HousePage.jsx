@@ -1,15 +1,10 @@
 import React, {useEffect, useState} from "react";
 import {useParams} from "react-router-dom";
-import API_DOMAIN from "../config";
 import SearchInput from "./SearchInput";
-import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import {faDownload, faEye, faFileWord, faPen, faPlus, faTrash} from "@fortawesome/free-solid-svg-icons";
 import FilesTable from "./FilesTable";
-import UploadFile from "./UploadFile";
-import fetchRequest from "../fetchRequest";
 import FetchRequest from "../fetchRequest";
-import NodeModalCreate from "./NodeModalCreate";
 import NodesTable from "./NodesTable";
+import HardwareTable from "./HardwareTable";
 
 const HousePage = () => {
     const { id } = useParams()
@@ -25,16 +20,6 @@ const HousePage = () => {
                     setIsLoaded(true)
                 }
             })
-
-        // fetch(`${API_DOMAIN}/get_house/${houseID}`, {method: "GET"})
-        //     .then(response => response.json())
-        //     .then(data => {
-        //         if (data != null) {
-        //             setAddress(data)
-        //             setIsLoaded(true)
-        //         }
-        //     })
-        //     .catch(error => console.error(error))
     }, []);
 
     return (
@@ -52,7 +37,12 @@ const HousePage = () => {
                     {activeTab === 1 && <FilesTable type="house"/>}
                     {activeTab === 2 &&
                         <div>
-                            <NodesTable id={id} canCreate={true}/>
+                            <NodesTable id={Number(id)} canCreate={true}/>
+                        </div>
+                    }
+                    {activeTab === 3 &&
+                        <div>
+                            <HardwareTable type={"house"} id={Number(id)} canCreate={true}/>
                         </div>
                     }
                 </div>

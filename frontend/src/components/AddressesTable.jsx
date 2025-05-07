@@ -76,6 +76,8 @@ const AddressesTable = ({addresses, count, setOffset, h = null}) => {
                         <div key={`address-${index}`} className="address" onClick={() => navigate(`/house/${address.House.ID}`)}>
                             <h3>{address.Street.Type.ShortName} {address.Street.Name}, {address.House.Type.ShortName} {address.House.Name}</h3>
                             <span>(файлов загружено: {address.FileAmount})</span>
+                            <span>(количество узлов: {address.NodeAmount})</span>
+                            <span>(количество оборудования: {address.HardwareAmount})</span>
                         </div>
                     ))}
                 </div>

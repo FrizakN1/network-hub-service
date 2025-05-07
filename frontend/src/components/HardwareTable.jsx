@@ -5,47 +5,52 @@ import {
     faAngleRight,
     faAnglesLeft, faAnglesRight,
     faEye,
-    faPen, faPlus, faSquareCheck,
+    faPen,
+    faPlus,
     faTrash
 } from "@fortawesome/free-solid-svg-icons";
-import {
-    faCircle, faCircleDot
-} from "@fortawesome/free-regular-svg-icons"
-import FetchRequest from "../fetchRequest";
-import NodeModalCreate from "./NodeModalCreate";
+import {faCircle, faCircleDot} from "@fortawesome/free-regular-svg-icons";
 import {useNavigate} from "react-router-dom";
+import FetchRequest from "../fetchRequest";
+import HardwareModalCreate from "./HardwareModalCreate";
 
-const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNode}) => {
+const HardwareTable = ({id = 0, type, canCreate = false}) => {
+    const [modalCreate, setModalCreate] = useState(false)
+    const [modalEdit, setModalEdit] = useState({
+        State: false,
+        EditHardware: null
+    })
     const searchDebounceTimer = useRef(0)
-    const [nodes, setNodes] = useState([])
+    const [hardware, setHardware] = useState([])
     const [isLoaded, setIsLoaded] = useState(false)
     const [currentPage, setCurrentPage] = useState(1)
     const [allPage, setAllPage] = useState([])
     const [showPages, setShowPages] = useState(null)
     const [search, setSearch] = useState("")
     const [count, setCount] = useState(0)
-    const [modalCreate, setModalCreate] = useState(false)
-    const [modalEdit, setModalEdit] = useState({
-        State: false,
-        EditNode: {}
-    })
     const navigate = useNavigate()
 
     useEffect(() => {
-        handlerGetNodes()
+        handlerGetHardware()
     }, []);
 
-    const handlerGetNodes = (value = "") => {
+    const handlerGetHardware = (value = "") => {
         let body = {
             Offset: Number((currentPage-1)*20)
         }
 
         if (value.length > 0) body = {...body, Text: value}
 
-        FetchRequest("POST", value.length > 0 ? `/get_search_nodes` : `/get_nodes${id > 0 ? `/${id}` : ""}`, body)
+        let uri = "/get_hardware"
+
+        if (type === "house") uri =  `/get_house_hardware/${id}`
+
+        if (type === "node") uri =  `/get_node_hardware/${id}`
+
+        FetchRequest("POST", value.length > 0 ? `/get_search_hardware` : uri, body)
             .then(response => {
                 if (response.success) {
-                    setNodes(response.data.Nodes != null ? response.data.Nodes : [])
+                    setHardware(response.data.Hardware != null ? response.data.Hardware : [])
                     setCount(response.data.Count)
                     setIsLoaded(true)
                 }
@@ -58,7 +63,7 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
         clearTimeout(searchDebounceTimer.current)
 
         searchDebounceTimer.current = setTimeout(() =>  {
-            handlerGetNodes(e.target.value)
+            handlerGetHardware(e.target.value)
         }, 500)
     }
 
@@ -79,7 +84,7 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
     }, [count, currentPage]);
 
     useEffect(() => {
-        handlerGetNodes(search)
+        handlerGetHardware(search)
 
         if (allPage.length <= 7) {
             setShowPages(
@@ -120,65 +125,59 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
         }
     }, [allPage, currentPage])
 
-    const handlerAddNode = (node) => {
-        setNodes(prevState => prevState.length < 20 ? [...prevState, node] : prevState)
+    const handlerAddHardware = (_hardware) => {
+        setHardware(prevState => prevState.length < 20 ? [...prevState, _hardware] : prevState)
     }
 
-    const handlerEditNode = (node) => {
-        setNodes(prevState => prevState.map(_node => _node.ID === node.ID ? node : _node))
+    const handlerEditHardware = (_hardware) => {
+        setHardware(prevState => prevState.map(rec => rec.ID === _hardware.ID ? _hardware : rec))
     }
 
     return (
-        <div className="contain nodes">
+        <div className="contain hardware">
             {canCreate && <>
-                {modalCreate && <NodeModalCreate action={"create"} setState={setModalCreate} returnNode={handlerAddNode}/>}
-                {modalEdit.State && <NodeModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editNode={modalEdit.EditNode} returnNode={handlerEditNode}/>}
+                {modalCreate && <HardwareModalCreate action={"create"} setState={setModalCreate} returnHardware={handlerAddHardware}/>}
+                {modalEdit.State && <HardwareModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editHardware={modalEdit.EditHardware} returnHardware={handlerEditHardware}/>}
                 <div className="contain">
-                    <button className="add-node" onClick={() => setModalCreate(true)}>
-                        <FontAwesomeIcon icon={faPlus}/> Добавить узел
+                    <button className="add-hardware" onClick={() => setModalCreate(true)}>
+                        <FontAwesomeIcon icon={faPlus}/> Добавить оборудование
                     </button>
                 </div>
             </>}
             {id === 0 && <input className="search" placeholder={"Поиск..."} type="text" value={search} onChange={handlerSearch}/>}
-            {nodes.length > 0 ?
+            {hardware.length > 0 ?
                 <table>
                     <thead>
                     <tr className={"row-type-2"}>
                         <th>ID</th>
-                        <th>Название</th>
-                        {id > 0 ? "" : <th>Адрес</th>}
-                        <th>Тип</th>
-                        <th>Владелец</th>
-                        <th>Район</th>
+                        <th>Тип оборудования</th>
+                        {type !== "node" && <th>Узел</th>}
+                        {type !== "house" && <th>Адрес</th>}
+                        <th>Модель</th>
+                        <th>IP адрес</th>
                         <th></th>
                     </tr>
                     </thead>
                     <tbody>
-                    {isLoaded && nodes.map((node, index) => (
+                    {isLoaded && hardware.map((_hardware, index) => (
                         <tr key={index} className={index % 2 === 0 ? 'row-type-1' : 'row-type-2'}>
-                            <td>{node.ID}</td>
-                            <td>{node.Name}</td>
-                            {id > 0 ? "" : <td>{`${node.Address.Street.Type.ShortName} ${node.Address.Street.Name}, ${node.Address.House.Type.ShortName} ${node.Address.House.Name}`}</td>}
-                            <td>{node.Type.Name}</td>
-                            <td>{node.Owner.Name}</td>
-                            <td>{node.Zone.String}</td>
-                            {action === "select" ?
-                                <td>
-                                    <FontAwesomeIcon icon={selectNode?.ID === node.ID ? faCircleDot : faCircle} title="Выбрать" onClick={() => selectFunction(node)}/>
-                                </td>
-                            :
-                                <td>
-                                    <FontAwesomeIcon icon={faEye} title="Просмотр" onClick={() => navigate(`/nodes/view/${node.ID}`)}/>
-                                    <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditNode: node})}/>
-                                    <FontAwesomeIcon icon={faTrash} title="Удалить" />
-                                </td>
-                            }
+                            <td>{_hardware.ID}</td>
+                            <td>{_hardware.Type.TranslateValue}</td>
+                            {type !== "node" && <td>{_hardware.Node.Name}</td>}
+                            {type !== "house" && <td>{`${_hardware.Node.Address.Street.Type.ShortName} ${_hardware.Node.Address.Street.Name}, ${_hardware.Node.Address.House.Type.ShortName} ${_hardware.Node.Address.House.Name}`}</td>}
+                            <td>{_hardware.Type.Value === "switch" ? _hardware.Switch.Name : "-"}</td>
+                            <td>{_hardware.Type.Value === "switch" && _hardware.IpAddress.Valid ? _hardware.IpAddress.String : "-"}</td>
+                            <td>
+                                <FontAwesomeIcon icon={faEye} title="Просмотр" onClick={() => navigate(`/hardware/view/${_hardware.ID}`)}/>
+                                <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditHardware: _hardware})}/>
+                                <FontAwesomeIcon icon={faTrash} title="Удалить" />
+                            </td>
                         </tr>
                     ))}
                     </tbody>
                 </table>
                 :
-                <div className="empty">Нет узлов</div>
+                <div className="empty">Нет оборудования</div>
             }
             <div className="pagination">
                 <div className="start" onClick={() => setCurrentPage(1)}><FontAwesomeIcon icon={faAnglesLeft}/>
@@ -203,4 +202,4 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
     )
 }
 
-export default NodesTable
+export default HardwareTable

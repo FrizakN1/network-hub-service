@@ -7,9 +7,11 @@ import (
 )
 
 type Enum struct {
-	ID        int
-	Name      string
-	CreatedAt int64
+	ID             int
+	Name           string
+	Value          string
+	TranslateValue string
+	CreatedAt      int64
 }
 
 var query map[string]*sql.Stmt

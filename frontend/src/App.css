@@ -338,20 +338,18 @@ section.login {
   justify-content: center;
 }
 
-.contain.nodes {
+.contain.nodes, .contain.hardware {
   flex-direction: column;
   align-items: center;
   gap: 20px;
 }
 
-.contain.nodes .search {
+.contain.nodes .search, .contain.hardware .search {
   width: 80%;
   font-size: 20px;
   padding: 20px;
   color: #ffffff;
   background-color: rgb(30, 30, 30);
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
   border: 1px solid rgba(37,147,184);
 }
 
@@ -471,7 +469,11 @@ table.nodes td:last-child, table.nodes th:last-child {
   width: calc(72px * 3);
 }
 
-.nodes table td:last-child, table.nodes th:last-child {
+.nodes table td:last-child, .nodes table th:last-child {
+  width: calc(72px * 3);
+}
+
+.hardware table td:last-child, table.hardware th:last-child {
   width: calc(72px * 3);
 }
 
@@ -647,7 +649,7 @@ input[type="file"] {
   background-color: rgb(30,30,30);
 }
 
-.addresses-table .pagination, .nodes .pagination {
+.addresses-table .pagination, .nodes .pagination, .hardware .pagination {
   display: flex;
   user-select: none;
   align-items: center;
@@ -815,7 +817,7 @@ nav div button {
   border: 2px solid transparent;
 }
 
-.modal-window .form.node {
+.modal-window .form.node, .modal-window .form.switch {
   width: 1200px !important;
 }
 
@@ -833,6 +835,7 @@ nav div button {
   position: relative;
   font-size: 18px;
   padding: 0 30px;
+  gap: 20px;
   /*justify-content: flex-start;*/
 }
 
@@ -870,6 +873,17 @@ nav div button {
   border: 1px solid rgb(37,147,184);
   font-size: 20px !important;
   padding: 5px 15px !important;
+}
+
+.modal-window .form .fields label textarea::-webkit-scrollbar{
+  width: 10px;
+  background-color: rgb(36, 36, 36);
+}
+
+.modal-window .form .fields label textarea::-webkit-scrollbar-thumb{
+  background-color: rgba(37,147,184);
+  border-radius: 10px;
+  border: 2px solid rgb(36, 36, 36);
 }
 
 .modal-window .form .fields label .select-field {
@@ -954,7 +968,7 @@ nav div button {
   margin-right: 5px;
 }
 
-.contain .add-node {
+.contain .add-node, .contain .add-hardware {
   display: flex;
   gap: 5px;
   justify-content: center;
@@ -962,7 +976,6 @@ nav div button {
   color: #ffffff;
   font-size: 18px;
   padding: 25px 0;
-  margin-bottom: 20px;
   width: 80%;
   background-color: rgb(37,147,184);
 }
@@ -1027,7 +1040,7 @@ label.checkbox input[type="checkbox"]:checked + span:after {
   background-color: rgb(37,147,184);
 }
 
-section.node-view .info {
+.info {
   display: flex;
   color: #ffffff;
   width: 80%;
@@ -1035,7 +1048,7 @@ section.node-view .info {
   margin-bottom: 20px;
 }
 
-section.node-view .info .column {
+.info .column {
   width: 50%;
   display: flex;
   flex-direction: column;
@@ -1043,35 +1056,35 @@ section.node-view .info .column {
   gap: 15px;
 }
 
-section.node-view .info .block span {
+.info .block span {
   font-size: 18px;
   display: block;
   margin: 0 0 5px 10px;
 }
 
-section.node-view .info .block p {
+.info .block p {
   padding: 10px 20px;
   border: 1px solid rgb(37,147,184);
   border-radius: 8px;
   font-size: 20px;
 }
 
-section.node-view .info .block a {
+.info .block a {
   color: rgb(37,147,184);
 }
 
-section.node-view .info .column.textarea p {
+.info .column .block.textarea p {
   height: 122px;
   overflow-y: auto;
   white-space: pre-line;
 }
 
-section.node-view .info .column.textarea p::-webkit-scrollbar{
+.info .column .block.textarea p::-webkit-scrollbar{
   width: 10px;
   background-color: rgb(36, 36, 36);
 }
 
-section.node-view .info .column.textarea p::-webkit-scrollbar-thumb{
+.info .column .block.textarea p::-webkit-scrollbar-thumb{
   background-color: rgba(37,147,184);
   border-radius: 10px;
   border: 2px solid rgb(36, 36, 36);

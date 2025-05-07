@@ -3,6 +3,7 @@ import {Link, useParams} from "react-router-dom";
 import FetchRequest from "../fetchRequest";
 import FilesTable from "./FilesTable";
 import ImageTable from "./ImageTable";
+import HardwareTable from "./HardwareTable";
 
 const NodeViewPage = () => {
     const { id } = useParams()
@@ -59,20 +60,20 @@ const NodeViewPage = () => {
                                 <p>{node.UpdatedAt.Valid ? new Date(node.UpdatedAt.Int64 * 1000).toLocaleString().slice(0, 17) : "-"}</p>
                             </div>
                         </div>
-                        <div className="column textarea">
-                            <div className="block">
+                        <div className="column">
+                            <div className="block textarea">
                                 <span>Расположение узла</span>
                                 <p>{node.Placement.String}</p>
                             </div>
-                            <div className="block">
+                            <div className="block textarea">
                                 <span>Питание узла</span>
                                 <p>{node.Supply.String}</p>
                             </div>
-                            <div className="block">
+                            <div className="block textarea">
                                 <span>Доступ к узлу</span>
                                 <p>{node.Access.String}</p>
                             </div>
-                            <div className="block">
+                            <div className="block textarea">
                                 <span>Описание узла</span>
                                 <p>{node.Description.String}</p>
                             </div>
@@ -84,10 +85,12 @@ const NodeViewPage = () => {
                 <div className="tabs">
                     <div className={activeTab === 1 ? "tab active" : "tab"} onClick={() => setActiveTab(1)}>Изображения</div>
                     <div className={activeTab === 2 ? "tab active" : "tab"} onClick={() => setActiveTab(2)}>Файлы</div>
+                    <div className={activeTab === 3 ? "tab active" : "tab"} onClick={() => setActiveTab(3)}>Оборудование</div>
                 </div>
             </div>
             {activeTab === 1 && <ImageTable type="node"/>}
             {activeTab === 2 && <FilesTable type="node"/>}
+            {activeTab === 3 && <HardwareTable type="node" id={Number(id)} canCreate={true}/>}
         </section>
     )
 }

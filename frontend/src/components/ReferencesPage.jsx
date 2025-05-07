@@ -12,6 +12,15 @@ const ReferencesPage = () => {
                     <Link to="/references/owners">
                         Владельцы узлов
                     </Link>
+                    <Link to="/references/hardware_types">
+                        Типы оборудования
+                    </Link>
+                    <Link to="/references/operation_modes">
+                        Режимы работы коммутаторов
+                    </Link>
+                    <Link to="/references/switches">
+                        Модели коммутаторов
+                    </Link>
                 </div>
             </div>
         </section>

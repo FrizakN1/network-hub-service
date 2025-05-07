@@ -178,6 +178,7 @@ func handlerCreateReferenceRecord(c *gin.Context) {
 	}
 
 	var referenceRecord database.Enum
+	reference := strings.ToUpper(c.Param("reference"))
 
 	if err := c.BindJSON(&referenceRecord); err != nil {
 		utils.Logger.Println(err)
@@ -185,14 +186,26 @@ func handlerCreateReferenceRecord(c *gin.Context) {
 		return
 	}
 
-	if len(referenceRecord.Name) == 0 {
-		c.JSON(400, nil)
-		return
+	switch reference {
+	case "NODE_TYPE":
+	case "OWNER":
+		if len(referenceRecord.Name) == 0 {
+			c.JSON(400, nil)
+			return
+		}
+		break
+	case "HARDWARE_TYPE":
+	case "OPERATION_MODE":
+		if len(referenceRecord.Value) == 0 || len(referenceRecord.TranslateValue) == 0 {
+			c.JSON(400, nil)
+			return
+		}
+		break
 	}
 
 	referenceRecord.CreatedAt = time.Now().Unix()
 
-	if err := referenceRecord.CreateReferenceRecord(strings.ToUpper(c.Param("reference"))); err != nil {
+	if err := referenceRecord.CreateReferenceRecord(reference); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return

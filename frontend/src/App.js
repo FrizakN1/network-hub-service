@@ -12,6 +12,7 @@ import ReferencePage from "./components/ReferencePage";
 import NodeViewPage from "./components/NodeViewPage";
 import NodesPage from "./components/NodesPage";
 import HardwarePage from "./components/HardwarePage";
+import HardwareViewPage from "./components/HardwareViewPage";
 
 function App() {
     return (
@@ -31,6 +32,9 @@ function App() {
                     <Route path="" element={<ReferencesPage />} />
                     <Route path="owners/" element={<ReferencePage reference={"owners"}/>} />
                     <Route path="node_types/" element={<ReferencePage reference={"node_types"} />} />
+                    <Route path="hardware_types/" element={<ReferencePage reference={"hardware_types"} />} />
+                    <Route path="operation_modes/" element={<ReferencePage reference={"operation_modes"} />} />
+                    <Route path="switches/" element={<ReferencePage reference={"switches"} />} />
                 </Route>
                 <Route path="/nodes/" element={<PrivateRoute requiredAdmin={true} />}>
                     <Route path="" element={<NodesPage />} />
@@ -38,6 +42,7 @@ function App() {
                 </Route>
                 <Route path="/hardware/" element={<PrivateRoute requiredAdmin={true} />}>
                     <Route path="" element={<HardwarePage />} />
+                    <Route path="view/:id" element={<HardwareViewPage />} />
                 </Route>
             </Routes>
         </Router>

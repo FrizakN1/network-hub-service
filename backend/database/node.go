@@ -138,6 +138,36 @@ func prepareNodes() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
+	query["CREATE_HARDWARE_TYPE"], e = Link.Prepare(`
+		INSERT INTO "Hardware_type"(value, translate_value, created_at) VALUES ($1, $2, $3)
+		RETURNING id
+    `)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
+	}
+
+	query["EDIT_HARDWARE_TYPE"], e = Link.Prepare(`
+		UPDATE "Hardware_type" SET value = $2, translate_value = $3 WHERE id = $1
+    `)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
+	}
+
+	query["CREATE_OPERATION_MODE"], e = Link.Prepare(`
+		INSERT INTO "Operation_mode"(value, translate_value, created_at) VALUES ($1, $2, $3)
+		RETURNING id
+    `)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
+	}
+
+	query["EDIT_OPERATION_MODE"], e = Link.Prepare(`
+		UPDATE "Operation_mode" SET value = $2, translate_value = $3 WHERE id = $1
+    `)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
+	}
+
 	query["CREATE_NODE"], e = Link.Prepare(`
 		INSERT INTO "Node"(parent_id, house_id, type_id, owner_id, name, zone, placement, supply, access, description, created_at, updated_at) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
@@ -215,23 +245,6 @@ func prepareNodes() []string {
 	return errorsList
 }
 
-func countSearchNodes(search string) (int, error) {
-	stmt, ok := query["GET_SEARCH_NODES_COUNT"]
-	if !ok {
-		err := errors.New("запрос GET_SEARCH_NODES_COUNT не подготовлен")
-		utils.Logger.Println(err)
-		return 0, err
-	}
-
-	var count int
-	if err := stmt.QueryRow(search).Scan(&count); err != nil {
-		utils.Logger.Println(err)
-		return 0, err
-	}
-
-	return count, nil
-}
-
 func GetSearchNodes(search string, offset int) ([]Node, int, error) {
 	stmt, ok := query["GET_SEARCH_NODES"]
 	if !ok {
@@ -240,7 +253,7 @@ func GetSearchNodes(search string, offset int) ([]Node, int, error) {
 		return nil, 0, err
 	}
 
-	count, err := countSearchNodes(search)
+	count, err := countRecord("GET_SEARCH_NODES_COUNT", search)
 	if err != nil {
 		utils.Logger.Println(err)
 		return nil, 0, err
@@ -283,7 +296,7 @@ func GetSearchNodes(search string, offset int) ([]Node, int, error) {
 			&node.Type.Name,
 			&node.Owner.Name,
 			&parentName,
-		); err != nil && errors.Is(err, sql.ErrNoRows) {
+		); err != nil && !errors.Is(err, sql.ErrNoRows) {
 			utils.Logger.Println(err)
 			return nil, 0, err
 		}
@@ -425,10 +438,23 @@ func (referenceRecord *Enum) EditReferenceRecord(reference string) error {
 		return err
 	}
 
-	_, err := stmt.Exec(referenceRecord.ID, referenceRecord.Name)
-	if err != nil {
-		utils.Logger.Println(err)
-		return err
+	switch reference {
+	case "NODE_TYPE":
+	case "OWNER":
+		_, err := stmt.Exec(referenceRecord.ID, referenceRecord.Name)
+		if err != nil {
+			utils.Logger.Println(err)
+			return err
+		}
+		break
+	case "HARDWARE_TYPE":
+	case "OPERATION_MODE":
+		_, err := stmt.Exec(referenceRecord.ID, referenceRecord.Value, referenceRecord.TranslateValue)
+		if err != nil {
+			utils.Logger.Println(err)
+			return err
+		}
+		break
 	}
 
 	return nil
@@ -442,12 +468,23 @@ func (referenceRecord *Enum) CreateReferenceRecord(reference string) error {
 		return err
 	}
 
-	if err := stmt.QueryRow(
-		referenceRecord.Name,
-		referenceRecord.CreatedAt,
-	).Scan(&referenceRecord.ID); err != nil {
-		utils.Logger.Println(err)
-		return err
+	if reference == "NODE_TYPE" || reference == "OWNER" {
+		if err := stmt.QueryRow(
+			referenceRecord.Name,
+			referenceRecord.CreatedAt,
+		).Scan(&referenceRecord.ID); err != nil {
+			utils.Logger.Println(err)
+			return err
+		}
+	} else {
+		if err := stmt.QueryRow(
+			referenceRecord.Value,
+			referenceRecord.TranslateValue,
+			referenceRecord.CreatedAt,
+		).Scan(&referenceRecord.ID); err != nil {
+			utils.Logger.Println(err)
+			return err
+		}
 	}
 
 	return nil
@@ -534,23 +571,6 @@ func (node *Node) GetNode() error {
 	return nil
 }
 
-func countHouseNodes(houseID int) (int, error) {
-	stmt, ok := query["GET_HOUSE_NODES_COUNT"]
-	if !ok {
-		err := errors.New("запрос GET_SEARCH_NODES_COUNT не подготовлен")
-		utils.Logger.Println(err)
-		return 0, err
-	}
-
-	var count int
-	if err := stmt.QueryRow(houseID).Scan(&count); err != nil {
-		utils.Logger.Println(err)
-		return 0, err
-	}
-
-	return count, nil
-}
-
 func GetHouseNodes(houseID int, offset int) ([]Node, int, error) {
 	stmt, ok := query["GET_HOUSE_NODES"]
 	if !ok {
@@ -559,7 +579,7 @@ func GetHouseNodes(houseID int, offset int) ([]Node, int, error) {
 		return nil, 0, err
 	}
 
-	count, err := countHouseNodes(houseID)
+	count, err := countRecord("GET_HOUSE_NODES_COUNT", houseID)
 	if err != nil {
 		utils.Logger.Println(err)
 		return nil, 0, err
@@ -598,7 +618,7 @@ func GetHouseNodes(houseID int, offset int) ([]Node, int, error) {
 			&node.Type.Name,
 			&node.Owner.Name,
 			&parentName,
-		); err != nil && errors.Is(err, sql.ErrNoRows) {
+		); err != nil && !errors.Is(err, sql.ErrNoRows) {
 			utils.Logger.Println(err)
 			return nil, 0, err
 		}
@@ -613,23 +633,6 @@ func GetHouseNodes(houseID int, offset int) ([]Node, int, error) {
 	return nodes, count, nil
 }
 
-func countNodes() (int, error) {
-	stmt, ok := query["GET_NODES_COUNT"]
-	if !ok {
-		err := errors.New("запрос GET_NODES_COUNT не подготовлен")
-		utils.Logger.Println(err)
-		return 0, err
-	}
-
-	var count int
-	if err := stmt.QueryRow().Scan(&count); err != nil {
-		utils.Logger.Println(err)
-		return 0, err
-	}
-
-	return count, nil
-}
-
 func GetNodes(offset int) ([]Node, int, error) {
 	stmt, ok := query["GET_NODES"]
 	if !ok {
@@ -638,7 +641,7 @@ func GetNodes(offset int) ([]Node, int, error) {
 		return nil, 0, err
 	}
 
-	count, err := countNodes()
+	count, err := countRecord("GET_NODES_COUNT", nil)
 	if err != nil {
 		utils.Logger.Println(err)
 		return nil, 0, err
@@ -681,7 +684,7 @@ func GetNodes(offset int) ([]Node, int, error) {
 			&node.Type.Name,
 			&node.Owner.Name,
 			&parentName,
-		); err != nil && errors.Is(err, sql.ErrNoRows) {
+		); err != nil && !errors.Is(err, sql.ErrNoRows) {
 			utils.Logger.Println(err)
 			return nil, 0, err
 		}
