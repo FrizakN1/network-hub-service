@@ -9,7 +9,7 @@ import (
 
 var Logger *log.Logger
 
-func init() {
+func InitLogger() {
 	currentDate := time.Now().String()[0:10]
 
 	loggerFile, e := os.OpenFile("logs/"+currentDate+".log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)

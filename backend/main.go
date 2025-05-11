@@ -4,9 +4,12 @@ import (
 	"backend/database"
 	"backend/router"
 	"backend/settings"
+	"backend/utils"
 )
 
 func main() {
+	utils.InitLogger()
+
 	config := settings.Load("settings.json")
 
 	database.Connection(config)

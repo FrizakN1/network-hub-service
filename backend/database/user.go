@@ -344,7 +344,7 @@ func CreateSession(user User) (string, error) {
 		return "", err
 	}
 
-	if sessionMap != nil {
+	if sessionMap == nil {
 		sessionMap = make(map[string]Session)
 	}
 
