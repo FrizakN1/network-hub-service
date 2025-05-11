@@ -21,7 +21,13 @@ const ResultPage = () => {
                 Offset: (offset-1)*20,
             }
 
-            FetchRequest("POST", "/search", body)
+            let params = new URLSearchParams({
+                search: query,
+                limit: String(20),
+                offset: String((offset-1)*20)
+            })
+
+            FetchRequest("GET", `/houses/search?${params.toString()}`, body)
                 .then(response => {
                     if (response.success) {
                         if (response.data != null) {

@@ -9,7 +9,11 @@ const ListPage = () => {
     const [isLoaded, setIsLoaded] = useState(false)
 
     useEffect(() => {
-        FetchRequest("POST", "/get_list", (offset-1)*20)
+        let params = new URLSearchParams({
+            offset: String((offset-1)*20)
+        })
+
+        FetchRequest("GET", `/houses?${params.toString()}`, null)
             .then(response => {
                 if (response.success) {
                     if (response.data != null) {

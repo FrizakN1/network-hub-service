@@ -43,7 +43,7 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
     }, [action, editUser]);
 
     useEffect(() => {
-        FetchRequest("GET", "/get_roles", null)
+        FetchRequest("GET", "/references/roles", null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setRoles(response.data)
@@ -136,7 +136,7 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
 
         if (action === "edit") {body = {...editUser, ...fields}}
 
-        FetchRequest("POST", `/${action}_user`, body)
+        FetchRequest(action === "create" ? "POST" : "PUT", `/users`, body)
             .then(response => {
                 if (response.success && response.data != null) {
                     returnUser(response.data)

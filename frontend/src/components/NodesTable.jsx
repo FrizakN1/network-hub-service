@@ -36,13 +36,26 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
     }, []);
 
     const handlerGetNodes = (value = "") => {
-        let body = {
-            Offset: Number((currentPage-1)*20)
+        // let body = {
+        //     Offset: Number((currentPage-1)*20)
+        // }
+        //
+        // if (value.length > 0) body = {...body, Text: value}
+        let uri = "/nodes"
+        let params = new URLSearchParams({
+            offset: String((currentPage-1)*20),
+        })
+
+        if (value.length > 0) {
+            params.set("search", value)
+            uri = "/nodes/search"
         }
 
-        if (value.length > 0) body = {...body, Text: value}
+        if (id > 0) {
+            uri = `/houses/${id}/nodes`
+        }
 
-        FetchRequest("POST", value.length > 0 ? `/get_search_nodes` : `/get_nodes${id > 0 ? `/${id}` : ""}`, body)
+        FetchRequest("GET", `${uri}?${params.toString()}`, null)
             .then(response => {
                 if (response.success) {
                     setNodes(response.data.Nodes != null ? response.data.Nodes : [])

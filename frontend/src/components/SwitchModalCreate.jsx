@@ -37,7 +37,7 @@ const SwitchModalCreate = ({action, setState, returnSwitch, editSwitch}) => {
     }
 
     useEffect(() => {
-        FetchRequest("GET", "/get_operation_modes", null)
+        FetchRequest("GET", "/references/operation_modes", null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setOperationModes(response.data)
@@ -155,7 +155,7 @@ const SwitchModalCreate = ({action, setState, returnSwitch, editSwitch}) => {
 
         if (action === "edit") {body = {...editSwitch, ...body}}
 
-        FetchRequest("POST", `/${action}_switch`, body)
+        FetchRequest(action === "create" ? "POST" : "PUT", `/switches`, body)
             .then(response => {
                 if (response.success && response.data != null) {
                     returnSwitch(response.data)

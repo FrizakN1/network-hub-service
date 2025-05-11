@@ -28,7 +28,11 @@ const SearchInput = ({defaultValue = "", action, returnAddress}) => {
 
         if (value.length > 0) {
             debounceTimer.current = setTimeout(() => {
-                FetchRequest("POST", "/search", {Text: value})
+                let params = new URLSearchParams({
+                    search: value
+                })
+
+                FetchRequest("GET", `/houses/search?${params.toString()}`, null)
                     .then(response => {
                         if (response.success) {
                             setSuggestions(response.data?.Addresses != null ? response.data.Addresses : [])

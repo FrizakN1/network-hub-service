@@ -46,11 +46,13 @@ func Connection(config *settings.Setting) {
 
 	errorsList := make([]string, 0)
 
-	errorsList = append(errorsList, prepareEnums()...)
-	errorsList = append(errorsList, prepareRequests()...)
+	errorsList = append(errorsList, prepareReferences()...)
+	errorsList = append(errorsList, prepareHouse()...)
 	errorsList = append(errorsList, prepareUsers()...)
 	errorsList = append(errorsList, prepareNodes()...)
 	errorsList = append(errorsList, prepareHardware()...)
+	errorsList = append(errorsList, prepareFile()...)
+	errorsList = append(errorsList, prepareSwitch()...)
 
 	if len(errorsList) > 0 {
 		for _, i := range errorsList {
@@ -59,7 +61,6 @@ func Connection(config *settings.Setting) {
 		}
 	}
 
-	LoadEnums(enumsMap)
-	LoadRole(roleMap)
+	LoadAddressElementTypeMap(addressElementTypeMap)
 	LoadSession(sessionMap)
 }

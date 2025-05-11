@@ -34,7 +34,7 @@ const ImageTable = ({type}) => {
     useEffect(() => {
         setImages([])
 
-        FetchRequest("GET", `/get_${type}_images/${id}`, null)
+        FetchRequest("GET", `/${type}/${id}/images`, null)
             .then(response => {
                 if (response.success && response.data != null) {
                     let _archiveImages = []

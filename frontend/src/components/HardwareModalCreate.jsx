@@ -148,7 +148,7 @@ const HardwareModalCreate = ({action, setState, returnHardware, editHardware}) =
 
         if (action === "edit") {body = {...editHardware, ...body}}
 
-        FetchRequest("POST", `/${action}_hardware`, body)
+        FetchRequest(action === "create" ? "POST" : "PUT", `/hardware`, body)
             .then(response => {
                 if (response.success && response.data != null) {
                     returnHardware(response.data)

@@ -4,7 +4,6 @@ import (
 	"backend/database"
 	"backend/utils"
 	"database/sql"
-	"errors"
 	"github.com/gin-gonic/gin"
 	"strconv"
 	"time"
@@ -100,18 +99,15 @@ func handlerCreateHardware(c *gin.Context) {
 }
 
 func handlerGetSearchHardware(c *gin.Context) {
-	request := struct {
-		Text   string
-		Offset int
-	}{}
-
-	if err := c.BindJSON(&request); err != nil {
+	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
 	}
+	search := c.Query("search")
 
-	hardware, count, err := database.GetSearchHardware(request.Text, request.Offset)
+	hardware, count, err := database.GetSearchHardware(search, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -125,11 +121,8 @@ func handlerGetSearchHardware(c *gin.Context) {
 }
 
 func handlerGetNodeHardware(c *gin.Context) {
-	request := struct {
-		Offset int
-	}{}
-
-	if err := c.BindJSON(&request); err != nil {
+	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -142,7 +135,7 @@ func handlerGetNodeHardware(c *gin.Context) {
 		return
 	}
 
-	hardware, count, err := database.GetNodeHardware(nodeID, request.Offset)
+	hardware, count, err := database.GetNodeHardware(nodeID, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -156,11 +149,8 @@ func handlerGetNodeHardware(c *gin.Context) {
 }
 
 func handlerGetHouseHardware(c *gin.Context) {
-	request := struct {
-		Offset int
-	}{}
-
-	if err := c.BindJSON(&request); err != nil {
+	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -173,7 +163,7 @@ func handlerGetHouseHardware(c *gin.Context) {
 		return
 	}
 
-	hardware, count, err := database.GetHouseHardware(houseID, request.Offset)
+	hardware, count, err := database.GetHouseHardware(houseID, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -187,17 +177,14 @@ func handlerGetHouseHardware(c *gin.Context) {
 }
 
 func handlerGetHardware(c *gin.Context) {
-	request := struct {
-		Offset int
-	}{}
-
-	if err := c.BindJSON(&request); err != nil {
+	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
 	}
 
-	hardware, count, err := database.GetHardware(request.Offset)
+	hardware, count, err := database.GetHardware(offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -208,130 +195,4 @@ func handlerGetHardware(c *gin.Context) {
 		"Hardware": hardware,
 		"Count":    count,
 	})
-}
-
-func handlerGetSwitches(c *gin.Context) {
-	switches, err := database.GetSwitches()
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, switches)
-}
-
-func handlerEditSwitch(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
-
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
-		c.JSON(403, nil)
-		return
-	}
-
-	var _switch database.Switch
-
-	if err := c.BindJSON(&_switch); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	if len(_switch.Name) == 0 || _switch.PortAmount == 0 {
-		c.JSON(400, nil)
-		return
-	}
-
-	if err := _switch.EditSwitch(); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, _switch)
-}
-
-func handlerCreateSwitch(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
-
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
-		c.JSON(403, nil)
-		return
-	}
-
-	var _switch database.Switch
-
-	if err := c.BindJSON(&_switch); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	if len(_switch.Name) == 0 || _switch.PortAmount == 0 {
-		c.JSON(400, nil)
-		return
-	}
-
-	_switch.CreatedAt = time.Now().Unix()
-
-	if err := _switch.CreateSwitch(); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, _switch)
-}
-
-func handlerGetHardwareTypes(c *gin.Context) {
-	hardwareTypes, err := database.GetHardwareTypes()
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, hardwareTypes)
-}
-
-func handlerGetOperationModes(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
-
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
-		c.JSON(403, nil)
-		return
-	}
-
-	operationModes, err := database.GetOperationModes()
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, operationModes)
 }

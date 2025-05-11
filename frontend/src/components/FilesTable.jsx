@@ -25,7 +25,7 @@ const FilesTable = ({type}) => {
     useEffect(() => {
         setFiles([])
 
-        FetchRequest("GET", `/get_${type}_files/${id}`, null)
+        FetchRequest("GET", `/${type}/${id}/files`, null)
             .then(response => {
                 if (response.success && response.data != null) {
                     let _archiveFiles = []
@@ -62,7 +62,7 @@ const FilesTable = ({type}) => {
     }
 
     const handlerArchiveFile = (file) => {
-        FetchRequest("POST", "/archive_file", file)
+        FetchRequest("POST", "/files/archive", file)
             .then(response => {
                 if (response.success && response.data != null) {
                     if (response.data.InArchive) {
@@ -87,7 +87,7 @@ const FilesTable = ({type}) => {
     }
 
     const handlerDeleteFile = (file) => {
-        FetchRequest("POST", "/delete_file", file)
+        FetchRequest("POST", "/files/delete", file)
             .then(response => {
                 if (response.success && response.data != null) {
                     if (response.data.InArchive) {

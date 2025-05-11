@@ -88,8 +88,8 @@ const NodeViewPage = () => {
                     <div className={activeTab === 3 ? "tab active" : "tab"} onClick={() => setActiveTab(3)}>Оборудование</div>
                 </div>
             </div>
-            {activeTab === 1 && <ImageTable type="node"/>}
-            {activeTab === 2 && <FilesTable type="node"/>}
+            {activeTab === 1 && <ImageTable type="nodes"/>}
+            {activeTab === 2 && <FilesTable type="nodes"/>}
             {activeTab === 3 && <HardwareTable type="node" id={Number(id)} canCreate={true}/>}
         </section>
     )

@@ -129,25 +129,6 @@ func handlerCreateUser(c *gin.Context) {
 	c.JSON(200, user)
 }
 
-func handlerGetRoles(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
-
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
-		c.JSON(403, nil)
-		return
-	}
-
-	c.JSON(200, database.GetRoles())
-}
-
 func handlerChangeUserStatus(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {

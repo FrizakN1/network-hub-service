@@ -13,7 +13,7 @@ const HousePage = () => {
     const [activeTab, setActiveTab] = useState(1)
 
     useEffect(() => {
-        FetchRequest("GET", `/get_house/${id}`, null)
+        FetchRequest("GET", `/houses/${id}`, null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setAddress(response.data)
@@ -34,7 +34,7 @@ const HousePage = () => {
                             <div className={activeTab === 3 ? "tab active" : "tab"} onClick={() => setActiveTab(3)}>Оборудование</div>
                         </div>
                     </div>
-                    {activeTab === 1 && <FilesTable type="house"/>}
+                    {activeTab === 1 && <FilesTable type="houses"/>}
                     {activeTab === 2 &&
                         <div>
                             <NodesTable id={Number(id)} canCreate={true} defaultAddress={address}/>

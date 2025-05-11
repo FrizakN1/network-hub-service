@@ -18,7 +18,7 @@ const UsersPage = () => {
     })
 
     useEffect(() => {
-        FetchRequest("GET", "/get_users", null)
+        FetchRequest("GET", "/users", null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setUsers(response.data)
@@ -29,7 +29,7 @@ const UsersPage = () => {
     }, []);
 
     const changeUserStatus = (userID) => {
-        FetchRequest("POST", "/change_user_status", {ID: Number(userID)})
+        FetchRequest("PATCH", "/users/status", {ID: Number(userID)})
             .then(response => {
                 if (response.success && response.data != null) {
                     setUsers(prevState => prevState.map(user =>

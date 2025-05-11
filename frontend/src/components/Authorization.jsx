@@ -30,7 +30,7 @@ const Authorization = () => {
     }
 
     const handlerSendData = () => {
-        FetchRequest("POST", "/login", loginData)
+        FetchRequest("POST", "/auth/login", loginData)
             .then(response => {
                 if (response.success) {
                     if ("failure" in response.data) {

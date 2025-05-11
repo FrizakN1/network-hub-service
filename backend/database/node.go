@@ -12,8 +12,8 @@ type Node struct {
 	ID          int
 	Parent      *Node
 	Address     Address
-	Type        Enum
-	Owner       Enum
+	Type        Reference
+	Owner       Reference
 	Name        string
 	Zone        sql.NullString
 	Placement   sql.NullString
@@ -93,80 +93,6 @@ func prepareNodes() []string {
 		JOIN "Node_type" AS nt ON n.type_id = nt.id
 		JOIN "Node_owner" AS no ON n.owner_id = no.id
 		WHERE n.id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_NODE_TYPES"], e = Link.Prepare(`
-		SELECT * FROM "Node_type"
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_OWNERS"], e = Link.Prepare(`
-		SELECT * FROM "Node_owner"
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["CREATE_OWNER"], e = Link.Prepare(`
-		INSERT INTO "Node_owner"(name, created_at) VALUES ($1, $2)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["EDIT_OWNER"], e = Link.Prepare(`
-		UPDATE "Node_owner" SET name = $2 WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["CREATE_NODE_TYPE"], e = Link.Prepare(`
-		INSERT INTO "Node_type"(name, created_at) VALUES ($1, $2)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["EDIT_NODE_TYPE"], e = Link.Prepare(`
-		UPDATE "Node_type" SET name = $2 WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["CREATE_HARDWARE_TYPE"], e = Link.Prepare(`
-		INSERT INTO "Hardware_type"(value, translate_value, created_at) VALUES ($1, $2, $3)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["EDIT_HARDWARE_TYPE"], e = Link.Prepare(`
-		UPDATE "Hardware_type" SET value = $2, translate_value = $3 WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["CREATE_OPERATION_MODE"], e = Link.Prepare(`
-		INSERT INTO "Operation_mode"(value, translate_value, created_at) VALUES ($1, $2, $3)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["EDIT_OPERATION_MODE"], e = Link.Prepare(`
-		UPDATE "Operation_mode" SET value = $2, translate_value = $3 WHERE id = $1
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
@@ -434,101 +360,6 @@ func (node *Node) CreateNode() error {
 	}
 
 	return nil
-}
-
-func (referenceRecord *Enum) EditReferenceRecord(reference string) error {
-	stmt, ok := query["EDIT_"+reference]
-	if !ok {
-		err := errors.New("запрос EDIT_" + reference + " не подготовлен")
-		utils.Logger.Println(err)
-		return err
-	}
-
-	switch reference {
-	case "NODE_TYPE":
-	case "OWNER":
-		_, err := stmt.Exec(referenceRecord.ID, referenceRecord.Name)
-		if err != nil {
-			utils.Logger.Println(err)
-			return err
-		}
-		break
-	case "HARDWARE_TYPE":
-	case "OPERATION_MODE":
-		_, err := stmt.Exec(referenceRecord.ID, referenceRecord.Value, referenceRecord.TranslateValue)
-		if err != nil {
-			utils.Logger.Println(err)
-			return err
-		}
-		break
-	}
-
-	return nil
-}
-
-func (referenceRecord *Enum) CreateReferenceRecord(reference string) error {
-	stmt, ok := query["CREATE_"+reference]
-	if !ok {
-		err := errors.New("запрос CREATE_" + reference + " не подготовлен")
-		utils.Logger.Println(err)
-		return err
-	}
-
-	if reference == "NODE_TYPE" || reference == "OWNER" {
-		if err := stmt.QueryRow(
-			referenceRecord.Name,
-			referenceRecord.CreatedAt,
-		).Scan(&referenceRecord.ID); err != nil {
-			utils.Logger.Println(err)
-			return err
-		}
-	} else {
-		if err := stmt.QueryRow(
-			referenceRecord.Value,
-			referenceRecord.TranslateValue,
-			referenceRecord.CreatedAt,
-		).Scan(&referenceRecord.ID); err != nil {
-			utils.Logger.Println(err)
-			return err
-		}
-	}
-
-	return nil
-}
-
-func GetNodeEnums(key string) ([]Enum, error) {
-	stmt, ok := query["GET_"+key]
-	if !ok {
-		err := errors.New("запрос GET_" + key + " не подготовлен")
-		utils.Logger.Println(err)
-		return nil, err
-	}
-
-	rows, err := stmt.Query()
-	if err != nil {
-		utils.Logger.Println(err)
-		return nil, err
-	}
-	defer rows.Close()
-
-	var enums []Enum
-
-	for rows.Next() {
-		var enum Enum
-
-		if err = rows.Scan(
-			&enum.ID,
-			&enum.Name,
-			&enum.CreatedAt,
-		); err != nil {
-			utils.Logger.Println(err)
-			return nil, err
-		}
-
-		enums = append(enums, enum)
-	}
-
-	return enums, nil
 }
 
 func (node *Node) GetNode() error {

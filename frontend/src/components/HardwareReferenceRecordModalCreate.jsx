@@ -76,7 +76,7 @@ const HardwareReferenceRecordModalCreate = ({setState, action, reference, return
 
         if (action === "edit") {body = {...editRecord, ...body}}
 
-        FetchRequest("POST", `/${action}_${reference.slice(0, reference.length-1)}`, body)
+        FetchRequest("POST", `/references/${reference}`, body)
             .then(response => {
                 if (response.success && response.data != null) {
                     returnRecord(response.data)

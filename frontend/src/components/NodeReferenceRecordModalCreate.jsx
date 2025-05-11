@@ -43,7 +43,7 @@ const NodeReferenceRecordModalCreate = ({action, setState, returnRecord, editRec
 
         if (action === "edit") {body = {...editRecord, Name: name.Value}}
 
-        FetchRequest("POST", `/${action}_${reference.slice(0, reference.length-1)}`, body)
+        FetchRequest(action === "create" ? "POST" : "PUT", `/references/${reference}`, body)
             .then(response => {
                 if (response.success && response.data != null) {
                     returnRecord(response.data)

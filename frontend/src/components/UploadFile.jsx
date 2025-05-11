@@ -34,7 +34,7 @@ const UploadFile = ({returnFile, type, onlyImage = false}) => {
                 formData.append("type", type);
                 formData.append("onlyImage", onlyImage);
 
-                fetch(`${API_DOMAIN}/upload_file`, {
+                fetch(`${API_DOMAIN}/files/upload`, {
                     method: "POST",
                     body: formData,
                     headers: {"Authorization": `Bearer ${localStorage.getItem("token")}`}

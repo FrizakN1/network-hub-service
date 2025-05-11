@@ -185,7 +185,7 @@ const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress
 
         if (action === "edit") {body = {...editNode, ...body}}
 
-        FetchRequest("POST", `/${action}_node`, body)
+        FetchRequest(action === "create" ? "POST" : "PUT", `/nodes`, body)
             .then(response => {
                 if (response.success && response.data != null) {
                     returnNode(response.data)

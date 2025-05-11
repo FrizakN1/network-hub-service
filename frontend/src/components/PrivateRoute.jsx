@@ -29,7 +29,7 @@ const PrivateRoute = ({requiredAdmin}) => {
             setActiveTab(6)
         }
 
-        FetchRequest("GET", "/get_auth", null)
+        FetchRequest("GET", "/auth/me", null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setToken(localStorage.getItem("token"))
@@ -41,7 +41,7 @@ const PrivateRoute = ({requiredAdmin}) => {
     }, []);
 
     const handlerExit = () => {
-        FetchRequest("GET", "/logout", null)
+        FetchRequest("GET", "/auth/logout", null)
             .then(response => {
                 if (response.success) {
                     setToken("")

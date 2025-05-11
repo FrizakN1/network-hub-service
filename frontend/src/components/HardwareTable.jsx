@@ -14,7 +14,7 @@ import {useNavigate} from "react-router-dom";
 import FetchRequest from "../fetchRequest";
 import HardwareModalCreate from "./HardwareModalCreate";
 
-const HardwareTable = ({id = 0, type, canCreate = false}) => {
+const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
     const [modalCreate, setModalCreate] = useState(false)
     const [modalEdit, setModalEdit] = useState({
         State: false,
@@ -35,19 +35,25 @@ const HardwareTable = ({id = 0, type, canCreate = false}) => {
     }, []);
 
     const handlerGetHardware = (value = "") => {
-        let body = {
-            Offset: Number((currentPage-1)*20)
+        // let body = {
+        //     Offset: Number((currentPage-1)*20)
+        // }
+        //
+        // if (value.length > 0) body = {...body, Text: value}
+
+        let uri = "/hardware"
+        let params = new URLSearchParams({
+            offset: String((currentPage-1)*20),
+        })
+
+        if (value.length > 0) {
+            params.set("search", value)
+            uri = "/hardware/search"
         }
 
-        if (value.length > 0) body = {...body, Text: value}
+        if (type !== "") uri =  `/${type}/${id}/hardware`
 
-        let uri = "/get_hardware"
-
-        if (type === "house") uri =  `/get_house_hardware/${id}`
-
-        if (type === "node") uri =  `/get_node_hardware/${id}`
-
-        FetchRequest("POST", value.length > 0 ? `/get_search_hardware` : uri, body)
+        FetchRequest("GET", `${uri}?${params.toString()}`, null)
             .then(response => {
                 if (response.success) {
                     setHardware(response.data.Hardware != null ? response.data.Hardware : [])

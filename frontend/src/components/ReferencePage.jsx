@@ -26,7 +26,7 @@ const ReferencePage = ({reference}) => {
     const [isLoaded, setIsLoaded] = useState(true)
 
     useEffect(() => {
-        FetchRequest("GET", `/get_${reference}`, null)
+        FetchRequest("GET", `/references/${reference}`, null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setRecords(response.data)

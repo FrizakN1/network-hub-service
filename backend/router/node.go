@@ -4,26 +4,16 @@ import (
 	"backend/database"
 	"backend/utils"
 	"database/sql"
-	"errors"
 	"github.com/gin-gonic/gin"
 	"strconv"
-	"strings"
 	"time"
 )
 
 func handlerGetSearchNodes(c *gin.Context) {
-	request := struct {
-		Text   string
-		Offset int
-	}{}
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	search := c.Query("search")
 
-	if err := c.BindJSON(&request); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	nodes, count, err := database.GetSearchNodes(request.Text, request.Offset)
+	nodes, count, err := database.GetSearchNodes(search, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -123,119 +113,6 @@ func handlerCreateNode(c *gin.Context) {
 	c.JSON(200, node)
 }
 
-func handlerEditReferenceRecord(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
-
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
-		c.JSON(403, nil)
-		return
-	}
-
-	var owner database.Enum
-
-	if err := c.BindJSON(&owner); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	if len(owner.Name) == 0 {
-		c.JSON(400, nil)
-		return
-	}
-
-	if err := owner.EditReferenceRecord(strings.ToUpper(c.Param("reference"))); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, owner)
-}
-
-func handlerCreateReferenceRecord(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
-
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
-		c.JSON(403, nil)
-		return
-	}
-
-	var referenceRecord database.Enum
-	reference := strings.ToUpper(c.Param("reference"))
-
-	if err := c.BindJSON(&referenceRecord); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	switch reference {
-	case "NODE_TYPE":
-	case "OWNER":
-		if len(referenceRecord.Name) == 0 {
-			c.JSON(400, nil)
-			return
-		}
-		break
-	case "HARDWARE_TYPE":
-	case "OPERATION_MODE":
-		if len(referenceRecord.Value) == 0 || len(referenceRecord.TranslateValue) == 0 {
-			c.JSON(400, nil)
-			return
-		}
-		break
-	}
-
-	referenceRecord.CreatedAt = time.Now().Unix()
-
-	if err := referenceRecord.CreateReferenceRecord(reference); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, referenceRecord)
-}
-
-func handlerGetNodeTypes(c *gin.Context) {
-	nodeTypes, err := database.GetNodeEnums("NODE_TYPES")
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, nodeTypes)
-}
-
-func handlerGetOwners(c *gin.Context) {
-	owners, err := database.GetNodeEnums("OWNERS")
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, owners)
-}
-
 func handlerGetNode(c *gin.Context) {
 	var (
 		err  error
@@ -259,11 +136,8 @@ func handlerGetNode(c *gin.Context) {
 }
 
 func handlerGetHouseNodes(c *gin.Context) {
-	request := struct {
-		Offset int
-	}{}
-
-	if err := c.BindJSON(&request); err != nil {
+	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -276,7 +150,7 @@ func handlerGetHouseNodes(c *gin.Context) {
 		return
 	}
 
-	nodes, count, err := database.GetHouseNodes(houseID, request.Offset)
+	nodes, count, err := database.GetHouseNodes(houseID, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -290,17 +164,14 @@ func handlerGetHouseNodes(c *gin.Context) {
 }
 
 func handlerGetNodes(c *gin.Context) {
-	request := struct {
-		Offset int
-	}{}
-
-	if err := c.BindJSON(&request); err != nil {
+	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
 	}
 
-	nodes, count, err := database.GetNodes(request.Offset)
+	nodes, count, err := database.GetNodes(offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)

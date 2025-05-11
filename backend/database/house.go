@@ -3,9 +3,8 @@ package database
 import (
 	"backend/utils"
 	"database/sql"
-	"encoding/base64"
 	"errors"
-	"io/ioutil"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -31,31 +30,31 @@ type Address struct {
 	HardwareAmount int
 }
 
-type File struct {
-	ID             int
-	House          AddressElement
-	Node           Node
-	Hardware       Hardware
-	Path           string
-	Name           string
-	UploadAt       int64
-	Data           string
-	InArchive      bool
-	IsPreviewImage bool
-}
-
 type Search struct {
 	Text   string
 	Limit  int
 	Offset int
 }
 
-func prepareRequests() []string {
+var addressElementTypeMap map[string]map[string]bool
+
+func prepareHouse() []string {
 	var e error
 	errorsList := make([]string, 0)
+	addressElementTypeMap = make(map[string]map[string]bool)
 
 	if query == nil {
 		query = make(map[string]*sql.Stmt)
+	}
+
+	query["STREET_TYPE"], e = Link.Prepare(`SELECT * FROM "Street_type" ORDER BY id`)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
+	}
+
+	query["HOUSE_TYPE"], e = Link.Prepare(`SELECT * FROM "House_type" ORDER BY id`)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
 	}
 
 	query["GET_SUGGESTIONS"], e = Link.Prepare(`
@@ -112,84 +111,7 @@ func prepareRequests() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["CREATE_FILE_HOUSE"], e = Link.Prepare(`
-		INSERT INTO "House_files"(house_id, file_path, file_name, upload_at, in_archive) 
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["CREATE_FILE_HARDWARE"], e = Link.Prepare(`
-		INSERT INTO "Hardware_files"(hardware_id, file_path, file_name, upload_at, in_archive) 
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["CREATE_FILE_NODE"], e = Link.Prepare(`
-		INSERT INTO "Node_files"(node_id, file_path, file_name, upload_at, in_archive, is_preview_image) 
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_HOUSE_FILES"], e = Link.Prepare(`
-		SELECT * FROM "House_files" WHERE house_id = $1
-		ORDER BY upload_at DESC 
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["ARCHIVE_FILE_HOUSE"], e = Link.Prepare(`
-		UPDATE "House_files" SET in_archive = $2 WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["ARCHIVE_FILE_NODE"], e = Link.Prepare(`
-		UPDATE "Node_files" SET in_archive = $2 WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["ARCHIVE_FILE_HARDWARE"], e = Link.Prepare(`
-		UPDATE "Hardware_files" SET in_archive = $2 WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["DELETE_FILE_HOUSE"], e = Link.Prepare(`
-		DELETE FROM "House_files" WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["DELETE_FILE_NODE"], e = Link.Prepare(`
-		DELETE FROM "Node_files" WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["DELETE_FILE_HARDWARE"], e = Link.Prepare(`
-		DELETE FROM "Hardware_files" WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_LIST"], e = Link.Prepare(`
+	query["GET_HOUSES"], e = Link.Prepare(`
 		SELECT s.name, s.type_id, st.short_name, h.id, h.name, h.type_id, ht.short_name, 
 		        (SELECT COUNT(*) FROM "House_files" AS f
 			                        	WHERE f.house_id = h.id ),
@@ -223,7 +145,7 @@ func prepareRequests() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["GET_LIST_COUNT"], e = Link.Prepare(`
+	query["GET_HOUSES_COUNT"], e = Link.Prepare(`
 		SELECT COUNT(*)
         FROM "Street" AS s
         JOIN "House" AS h ON s.id = h.street_id
@@ -249,15 +171,15 @@ func prepareRequests() []string {
 	return errorsList
 }
 
-func GetList(offset int) ([]Address, int, error) {
-	stmt, ok := query["GET_LIST"]
+func GetHouses(offset int) ([]Address, int, error) {
+	stmt, ok := query["GET_HOUSES"]
 	if !ok {
 		err := "запрос не подготовлен"
 		utils.Logger.Println(err)
 		return nil, 0, errors.New(err)
 	}
 
-	count, err := countRecord("GET_LIST_COUNT", nil)
+	count, err := countRecord("GET_HOUSES_COUNT", nil)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -295,159 +217,6 @@ func GetList(offset int) ([]Address, int, error) {
 	}
 
 	return addresses, count, nil
-}
-
-func (file *File) Delete(key string) error {
-	stmt, ok := query["DELETE_FILE_"+key]
-	if !ok {
-		err := "запрос DELETE_FILE_" + key + " не подготовлен"
-		utils.Logger.Println(err)
-		return errors.New(err)
-	}
-
-	_, err := stmt.Exec(file.ID)
-	if err != nil {
-		utils.Logger.Println(err)
-		return err
-	}
-
-	return nil
-}
-
-func (file *File) Archive(key string) error {
-	stmt, ok := query["ARCHIVE_FILE_"+key]
-	if !ok {
-		err := "запрос ARCHIVE_FILE_" + key + " не подготовлен"
-		utils.Logger.Println(err)
-		return errors.New(err)
-	}
-
-	file.InArchive = !file.InArchive
-
-	_, err := stmt.Exec(file.ID, file.InArchive)
-	if err != nil {
-		utils.Logger.Println(err)
-		return err
-	}
-
-	var fileData []byte
-
-	fileData, err = ioutil.ReadFile(file.Path)
-	if err != nil {
-		utils.Logger.Println(err)
-		return err
-	}
-
-	file.Data = base64.StdEncoding.EncodeToString(fileData)
-
-	return nil
-}
-
-func GetHouseFiles(houseID int) ([]File, error) {
-	stmt, ok := query["GET_HOUSE_FILES"]
-	if !ok {
-		err := errors.New("запрос GET_HOUSE_FILES не подготовлен")
-		utils.Logger.Println(err)
-		return nil, err
-	}
-
-	rows, err := stmt.Query(houseID)
-	if err != nil {
-		utils.Logger.Println(err)
-		return nil, err
-	}
-	defer rows.Close()
-
-	var files []File
-	for rows.Next() {
-		var file File
-
-		err = rows.Scan(
-			&file.ID,
-			&file.House.ID,
-			&file.Path,
-			&file.Name,
-			&file.UploadAt,
-			&file.InArchive,
-		)
-		if err != nil {
-			utils.Logger.Println(err)
-			return nil, err
-		}
-
-		var fileData []byte
-
-		fileData, err = ioutil.ReadFile(file.Path)
-		if err != nil {
-			utils.Logger.Println(err)
-			return nil, err
-		}
-
-		file.Data = base64.StdEncoding.EncodeToString(fileData)
-
-		files = append(files, file)
-	}
-
-	return files, nil
-}
-
-func (file *File) CreateFile(fileFor string) error {
-	stmt, ok := query["CREATE_FILE_"+fileFor]
-	if !ok {
-		err := "запрос CREATE_FILE_" + fileFor + " не подготовлен"
-		utils.Logger.Println(err)
-		return errors.New(err)
-	}
-
-	var err error
-
-	switch fileFor {
-	case "NODE":
-		err = stmt.QueryRow(
-			file.Node.ID,
-			file.Path,
-			file.Name,
-			file.UploadAt,
-			file.InArchive,
-			file.IsPreviewImage,
-		).Scan(&file.ID)
-		break
-	case "HOUSE":
-		err = stmt.QueryRow(
-			file.House.ID,
-			file.Path,
-			file.Name,
-			file.UploadAt,
-			file.InArchive,
-		).Scan(&file.ID)
-		break
-	case "HARDWARE":
-		err = stmt.QueryRow(
-			file.Hardware.ID,
-			file.Path,
-			file.Name,
-			file.UploadAt,
-			file.InArchive,
-		).Scan(&file.ID)
-		break
-	}
-
-	if err != nil {
-		utils.Logger.Println(err)
-		return err
-	}
-
-	var fileData []byte
-
-	fileData, err = ioutil.ReadFile(file.Path)
-	if err != nil {
-		utils.Logger.Println(err)
-		return err
-	}
-
-	file.Data = base64.StdEncoding.EncodeToString(fileData)
-
-	return nil
 }
 
 func (address *Address) GetHouse() error {
@@ -496,12 +265,12 @@ func countSuggestions(streetPart, housePart string) (int, error) {
 	return count, nil
 }
 
-func GetSuggestions(search Search) ([]Address, int, error) {
-	streetPart, housePart := parseAddress(search.Text)
+func GetSuggestions(search string, offset int, limit int) ([]Address, int, error) {
+	streetPart, housePart := parseAddress(search)
 
 	stmt, ok := query["GET_SUGGESTIONS"]
 	if !ok {
-		err := "запрос не подготовлен"
+		err := "запрос GET_SUGGESTIONS не подготовлен"
 		utils.Logger.Println(err)
 		return nil, 0, errors.New(err)
 	}
@@ -509,14 +278,14 @@ func GetSuggestions(search Search) ([]Address, int, error) {
 	var count int
 	var err error
 
-	if search.Limit > 10 {
+	if limit > 10 {
 		count, err = countSuggestions(streetPart, housePart)
 		if err != nil {
 			return nil, 0, err
 		}
 	}
 
-	rows, err := stmt.Query(streetPart, housePart, search.Offset, search.Limit)
+	rows, err := stmt.Query(streetPart, housePart, offset, limit)
 	if err != nil {
 		utils.Logger.Println(err)
 		return nil, 0, err
@@ -568,7 +337,7 @@ func parseAddress(input string) (streetPart string, housePart string) {
 		}
 
 		// Если слово относится к типам улиц или домов, пропускаем его
-		if enumsMap["STREET_TYPE"][lowerWord] || enumsMap["HOUSE_TYPE"][lowerWord] {
+		if addressElementTypeMap["STREET_TYPE"][lowerWord] || addressElementTypeMap["HOUSE_TYPE"][lowerWord] {
 			continue
 		}
 
@@ -609,4 +378,52 @@ func countRecord(key string, param interface{}) (int, error) {
 	}
 
 	return count, nil
+}
+
+func LoadAddressElementTypeMap(m map[string]map[string]bool) {
+	keys := [2]string{
+		"STREET_TYPE",
+		"HOUSE_TYPE",
+	}
+
+	for _, key := range keys {
+		stmt, ok := query[key]
+		if !ok {
+			fmt.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
+			utils.Logger.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
+			return
+		}
+
+		rows, e := stmt.Query()
+		if e != nil {
+			fmt.Println(e)
+			utils.Logger.Println(e)
+			fmt.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
+			utils.Logger.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
+			return
+		}
+
+		if m[key] == nil {
+			m[key] = make(map[string]bool)
+		}
+
+		for rows.Next() {
+			var addressElementType AddressElementType
+			e = rows.Scan(
+				&addressElementType.ID,
+				&addressElementType.Name,
+				&addressElementType.ShortName,
+			)
+			if e != nil {
+				utils.Logger.Println(e)
+				fmt.Println(e)
+				return
+			}
+
+			m[key][addressElementType.Name] = true
+			m[key][addressElementType.ShortName] = true
+		}
+
+		_ = rows.Close()
+	}
 }

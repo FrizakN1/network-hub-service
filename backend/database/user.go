@@ -9,14 +9,9 @@ import (
 	"time"
 )
 
-type Role struct {
-	ID             int
-	Value          string
-	TranslateValue string
-}
 type User struct {
 	ID        int
-	Role      Role
+	Role      Reference
 	Login     string
 	Name      string
 	Password  string
@@ -32,34 +27,31 @@ type Session struct {
 }
 
 var sessionMap map[string]Session
-var roleMap map[int]Role
 
 func prepareUsers() []string {
 	var e error
 	errorsList := make([]string, 0)
 	sessionMap = make(map[string]Session)
-	roleMap = make(map[int]Role)
 
 	if query == nil {
 		query = make(map[string]*sql.Stmt)
 	}
 
-	query["GET_ROLES"], e = Link.Prepare(`
-		SELECT * FROM "Role"
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
 	query["GET_USERS"], e = Link.Prepare(`
-		SELECT id, role_id, login, name, baned, created_at, updated_at FROM "User" ORDER BY id
+		SELECT u.id, u.role_id, u.login, u.name, u.baned, u.created_at, u.updated_at, r.value, r.translate_value
+		FROM "User" AS u
+		JOIN "Role" AS r ON r.id = u.role_id
+		ORDER BY u.id
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
 	}
 
 	query["GET_USER"], e = Link.Prepare(`
-		SELECT role_id, login, name, baned, created_at, updated_at FROM "User" WHERE id = $1
+		SELECT u.role_id, u.login, u.name, u.baned, u.created_at, u.updated_at, r.value, r.translate_value
+		FROM "User" AS u
+		JOIN "Role" AS r ON r.id = u.role_id
+		WHERE u.id = $1
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
@@ -83,16 +75,20 @@ func prepareUsers() []string {
 	}
 
 	query["GET_AUTHORIZED_USER"], e = Link.Prepare(`
-		SELECT id, role_id, name, baned, created_at, updated_at FROM "User" WHERE login = $1 AND password = $2
+		SELECT u.id, u.role_id, u.name, u.baned, u.created_at, u.updated_at, r.value, r.translate_value
+		FROM "User" AS u
+		JOIN "Role" AS r ON r.id = u.role_id
+		WHERE login = $1 AND password = $2
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
 	}
 
 	query["GET_SESSIONS"], e = Link.Prepare(`
-		SELECT s.*, u.role_id, u.login, u.name, u.baned, u.created_at, u.updated_at 
+		SELECT s.*, u.role_id, u.login, u.name, u.baned, u.created_at, u.updated_at, r.value, r.translate_value
 		FROM "Session" AS s
 		JOIN "User" AS u ON u.id = s.user_id
+		JOIN "Role" AS r ON r.id = u.role_id
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
@@ -144,16 +140,6 @@ func prepareUsers() []string {
 	return errorsList
 }
 
-func GetRoles() []Role {
-	var roles []Role
-
-	for _, role := range roleMap {
-		roles = append(roles, role)
-	}
-
-	return roles
-}
-
 func (user *User) ChangeStatus() error {
 	stmt, ok := query["CHANGE_USER_STATUS"]
 	if !ok {
@@ -185,12 +171,12 @@ func (user *User) GetUser() error {
 		&user.Baned,
 		&user.CreatedAt,
 		&user.UpdatedAt,
+		&user.Role.Value,
+		&user.Role.TranslateValue,
 	); err != nil {
 		utils.Logger.Println(err)
 		return err
 	}
-
-	user.Role = roleMap[user.Role.ID]
 
 	return nil
 }
@@ -224,12 +210,12 @@ func GetUsers() ([]User, error) {
 			&user.Baned,
 			&user.CreatedAt,
 			&user.UpdatedAt,
+			&user.Role.Value,
+			&user.Role.TranslateValue,
 		); err != nil {
 			utils.Logger.Println(err)
 			return nil, err
 		}
-
-		user.Role = roleMap[user.Role.ID]
 
 		users = append(users, user)
 	}
@@ -281,8 +267,6 @@ func (user *User) CreateUser() error {
 		return err
 	}
 
-	user.Role = roleMap[user.Role.ID]
-
 	return nil
 }
 
@@ -301,6 +285,8 @@ func (user *User) GetAuthorize() error {
 		&user.Baned,
 		&user.CreatedAt,
 		&user.UpdatedAt,
+		&user.Role.Value,
+		&user.Role.TranslateValue,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			user.ID = 0
@@ -310,8 +296,6 @@ func (user *User) GetAuthorize() error {
 		utils.Logger.Println(err)
 		return err
 	}
-
-	user.Role = roleMap[user.Role.ID]
 
 	return nil
 }
@@ -361,11 +345,13 @@ func CreateSession(user User) (string, error) {
 	}
 
 	if sessionMap != nil {
-		sessionMap[hash] = Session{
-			Hash:      hash,
-			User:      user,
-			CreatedAt: time.Now().Unix(),
-		}
+		sessionMap = make(map[string]Session)
+	}
+
+	sessionMap[hash] = Session{
+		Hash:      hash,
+		User:      user,
+		CreatedAt: time.Now().Unix(),
 	}
 
 	return hash, nil
@@ -399,49 +385,16 @@ func LoadSession(m map[string]Session) {
 			&session.User.Baned,
 			&session.User.CreatedAt,
 			&session.User.UpdatedAt,
+			&session.User.Role.Value,
+			&session.User.Role.TranslateValue,
 		)
 		if e != nil {
 			fmt.Println(e)
 			utils.Logger.Println(e)
 			return
 		}
-
-		session.User.Role = roleMap[session.User.Role.ID]
 
 		m[session.Hash] = session
-	}
-}
-
-func LoadRole(m map[int]Role) {
-	stmt, ok := query["GET_ROLES"]
-	if !ok {
-		return
-	}
-
-	rows, e := stmt.Query()
-	if e != nil {
-		fmt.Println(e)
-		utils.Logger.Println(e)
-		return
-	}
-
-	defer rows.Close()
-
-	for rows.Next() {
-		var role Role
-
-		e = rows.Scan(
-			&role.ID,
-			&role.Value,
-			&role.TranslateValue,
-		)
-		if e != nil {
-			fmt.Println(e)
-			utils.Logger.Println(e)
-			return
-		}
-
-		m[role.ID] = role
 	}
 }
 
@@ -514,7 +467,13 @@ func CreateAdmin(config *settings.Setting) error {
 		return e
 	}
 
-	for _, role := range roleMap {
+	roles, err := GetReferenceRecords("ROLES")
+	if err != nil {
+		utils.Logger.Println(err)
+		return err
+	}
+
+	for _, role := range roles {
 		if role.Value == "admin" {
 			admin = User{
 				Login:     "SuperAdmin",
@@ -569,8 +528,21 @@ func (user *User) ValidateUser(action string) bool {
 		return false
 	}
 
-	_, ok := roleMap[user.Role.ID]
-	if !ok {
+	roles, err := GetReferenceRecords("ROLES")
+	if err != nil {
+		utils.Logger.Println(err)
+		return false
+	}
+
+	validRole := false
+	for _, role := range roles {
+		if role.ID == user.Role.ID {
+			validRole = true
+			break
+		}
+	}
+
+	if !validRole {
 		return false
 	}
 
