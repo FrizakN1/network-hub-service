@@ -14,6 +14,8 @@ import NodesPage from "./components/NodesPage";
 import HardwarePage from "./components/HardwarePage";
 import HardwareViewPage from "./components/HardwareViewPage";
 import SwitchesPage from "./components/SwitchesPage";
+import EventsTable from "./components/EventsTable";
+import EventsPage from "./components/EventsPage";
 
 function App() {
     return (
@@ -46,6 +48,9 @@ function App() {
                 <Route path="/hardware/" element={<PrivateRoute requiredAdmin={true} />}>
                     <Route path="" element={<HardwarePage />} />
                     <Route path="view/:id" element={<HardwareViewPage />} />
+                </Route>
+                <Route path="/events/" element={<PrivateRoute requiredAdmin={true} />}>
+                    <Route path="" element={<EventsPage />} />
                 </Route>
             </Routes>
         </Router>
