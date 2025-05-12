@@ -22,12 +22,6 @@ const HardwareViewPage = () => {
 
     return (
         <section className="hardware-view">
-            <div className="tabs-contain">
-                <div className="tabs">
-                    <div className={activeTab === 1 ? "tab active" : "tab"} onClick={() => setActiveTab(1)}>Файлы</div>
-                    <div className={activeTab === 2 ? "tab active" : "tab"} onClick={() => setActiveTab(2)}>События</div>
-                </div>
-            </div>
             <div className="contain">
                 {isLoaded &&
                     <div className="info">
@@ -73,6 +67,12 @@ const HardwareViewPage = () => {
                         </div>
                     </div>
                 }
+            </div>
+            <div className="tabs-contain">
+                <div className="tabs">
+                    <div className={activeTab === 1 ? "tab active" : "tab"} onClick={() => setActiveTab(1)}>Файлы</div>
+                    <div className={activeTab === 2 ? "tab active" : "tab"} onClick={() => setActiveTab(2)}>События</div>
+                </div>
             </div>
             {activeTab === 1 && <FilesTable type="hardware"/>}
             {activeTab === 2 && <EventsTable type="hardware"/>}
