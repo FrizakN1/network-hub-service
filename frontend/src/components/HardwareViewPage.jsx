@@ -22,6 +22,7 @@ const HardwareViewPage = () => {
 
     return (
         <section className="hardware-view">
+            <h2>Оборудование</h2>
             <div className="contain">
                 {isLoaded &&
                     <div className="info">

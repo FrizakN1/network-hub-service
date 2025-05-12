@@ -24,6 +24,7 @@ const NodeViewPage = () => {
 
     return (
         <section className="node-view">
+            <h2>Узел</h2>
             <div className="contain">
                 {isLoaded &&
                     <div className="info">

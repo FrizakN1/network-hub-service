@@ -1204,3 +1204,10 @@ label.checkbox input[type="checkbox"]:checked + span:after {
   background-color: rgba(37,147,184);
   color: #ffffff;
 }
+
+section.node-view h2, section.hardware-view h2 {
+  color: #ffffff;
+  text-align: center;
+  font-size: 32px;
+  margin-bottom: 40px;
+}
