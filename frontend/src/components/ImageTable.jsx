@@ -90,7 +90,7 @@ const ImageTable = ({type}) => {
                     if (response.data.InArchive) {
                         setArchiveImages(prevState => prevState.filter(file => file.ID !== response.data.ID))
                     } else {
-                        setImages(prevState => prevState.filter(file => file.ID !== file.ID))
+                        setImages(prevState => prevState.filter(file => file.ID !== response.data.ID))
                     }
                 }
             })
