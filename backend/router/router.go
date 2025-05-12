@@ -25,6 +25,8 @@ var config settings.Setting
 func Initialization(_config *settings.Setting) *gin.Engine {
 	config = *_config
 
+	userHandler := NewUserHandler()
+
 	router := gin.Default()
 
 	// Middleware, проверяющий домен у отправителя запроса, если домену разрешены запросы, то выполняется запрос дальше,
@@ -53,20 +55,20 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 	// Групировка запросов содержащих в запросе /api в отдельный роутер routerAPI
 	routerAPI := router.Group("/api")
 
-	routerAPI.POST("/auth/login", handlerLogin)
+	routerAPI.POST("/auth/login", userHandler.handlerLogin)
 
 	routerAPI.Use(authMiddleware())
 
-	routerAPI.GET("/auth/logout", handlerLogout)
-	routerAPI.GET("/auth/me", handlerGetAuth)
+	routerAPI.GET("/auth/logout", userHandler.handlerLogout)
+	routerAPI.GET("/auth/me", userHandler.handlerGetAuth)
 	//routerAPI.GET("/auth/users", handlerGetUsers)
 
 	users := routerAPI.Group("/users")
 	{
-		users.GET("", handlerGetUsers)
-		users.POST("", handlerCreateUser)
-		users.PUT("", handlerEditUser)
-		users.PATCH("/status", handlerChangeUserStatus)
+		users.GET("", userHandler.handlerGetUsers)
+		users.POST("", userHandler.handlerCreateUser)
+		users.PUT("", userHandler.handlerEditUser)
+		users.PATCH("/status", userHandler.handlerChangeUserStatus)
 	}
 
 	nodes := routerAPI.Group("/nodes")

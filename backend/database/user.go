@@ -26,6 +26,26 @@ type Session struct {
 	CreatedAt int64
 }
 
+type UserService interface {
+	ChangeStatus(user *User) error
+	GetUser(user *User) error
+	GetUsers() ([]User, error)
+	EditUser(user *User) error
+	CreateUser(user *User) error
+	GetAuthorize(user *User) error
+	DeleteSession(s *Session) error
+	CreateSession(user User) (string, error)
+	ChangeUserPassword(user *User) error
+	CreateAdmin(config *settings.Setting) error
+	DeleteUserSessions(userID int) error
+	ValidateUser(user User, action string) bool
+	CheckAdmin(config *settings.Setting) error
+}
+
+type DefaultUserService struct {
+	Encrypt utils.Encrypt
+}
+
 var sessionMap map[string]Session
 
 func prepareUsers() []string {
@@ -140,7 +160,7 @@ func prepareUsers() []string {
 	return errorsList
 }
 
-func (user *User) ChangeStatus() error {
+func (us *DefaultUserService) ChangeStatus(user *User) error {
 	stmt, ok := query["CHANGE_USER_STATUS"]
 	if !ok {
 		err := errors.New("запрос CHANGE_USER_STATUS не подготовлен")
@@ -156,7 +176,7 @@ func (user *User) ChangeStatus() error {
 	return nil
 }
 
-func (user *User) GetUser() error {
+func (us *DefaultUserService) GetUser(user *User) error {
 	stmt, ok := query["GET_USER"]
 	if !ok {
 		err := errors.New("запрос GET_USER не подготовлен")
@@ -181,7 +201,7 @@ func (user *User) GetUser() error {
 	return nil
 }
 
-func GetUsers() ([]User, error) {
+func (us *DefaultUserService) GetUsers() ([]User, error) {
 	stmt, ok := query["GET_USERS"]
 	if !ok {
 		err := errors.New("запрос GET_USERS не подготовлен")
@@ -223,7 +243,7 @@ func GetUsers() ([]User, error) {
 	return users, nil
 }
 
-func (user *User) EditUser() error {
+func (us *DefaultUserService) EditUser(user *User) error {
 	stmt, ok := query["EDIT_USER"]
 	if !ok {
 		err := errors.New("запрос EDIT_USER не подготовлен")
@@ -246,10 +266,18 @@ func (user *User) EditUser() error {
 	return nil
 }
 
-func (user *User) CreateUser() error {
+func (us *DefaultUserService) CreateUser(user *User) error {
 	stmt, ok := query["CREATE_USER"]
 	if !ok {
 		err := errors.New("запрос CREATE_USER не подготовлен")
+		utils.Logger.Println(err)
+		return err
+	}
+
+	var err error
+
+	user.Password, err = us.Encrypt.Encrypt(user.Password)
+	if err != nil {
 		utils.Logger.Println(err)
 		return err
 	}
@@ -270,10 +298,18 @@ func (user *User) CreateUser() error {
 	return nil
 }
 
-func (user *User) GetAuthorize() error {
+func (us *DefaultUserService) GetAuthorize(user *User) error {
 	stmt, ok := query["GET_AUTHORIZED_USER"]
 	if !ok {
 		err := errors.New("запрос GET_AUTHORIZED_USER не подготовлен")
+		utils.Logger.Println(err)
+		return err
+	}
+
+	var err error
+
+	user.Password, err = us.Encrypt.Encrypt(user.Password)
+	if err != nil {
 		utils.Logger.Println(err)
 		return err
 	}
@@ -300,7 +336,7 @@ func (user *User) GetAuthorize() error {
 	return nil
 }
 
-func DeleteSession(s *Session) error {
+func (us *DefaultUserService) DeleteSession(s *Session) error {
 	stmt, ok := query["DELETE_SESSION"]
 	if !ok {
 		return errors.New("запрос DELETE_SESSION не подготовлен")
@@ -325,7 +361,7 @@ func GetSession(hash string) *Session {
 	return nil
 }
 
-func CreateSession(user User) (string, error) {
+func (us *DefaultUserService) CreateSession(user User) (string, error) {
 	stmt, ok := query["CREATE_SESSION"]
 	if !ok {
 		err := errors.New("запрос CREATE_SESSION не подготовлен")
@@ -333,7 +369,7 @@ func CreateSession(user User) (string, error) {
 		return "", err
 	}
 
-	hash, err := utils.GenerateHash(fmt.Sprintf("%s-%d", user.Login, time.Now().Unix()))
+	hash, err := us.Encrypt.GenerateHash(fmt.Sprintf("%s-%d", user.Login, time.Now().Unix()))
 	if err != nil {
 		utils.Logger.Println(err)
 		return "", err
@@ -398,7 +434,7 @@ func LoadSession(m map[string]Session) {
 	}
 }
 
-func CheckAdmin(config *settings.Setting) error {
+func (us *DefaultUserService) CheckAdmin(config *settings.Setting) error {
 	stmt, ok := query["GET_SUPER_ADMIN"]
 	if !ok {
 		err := errors.New("запрос GET_SUPER_ADMIN не подготовлен")
@@ -411,7 +447,7 @@ func CheckAdmin(config *settings.Setting) error {
 	e := stmt.QueryRow().Scan(&admin.ID, &admin.Password)
 	if e != nil {
 		if errors.Is(e, sql.ErrNoRows) {
-			if e = CreateAdmin(config); e != nil {
+			if e = us.CreateAdmin(config); e != nil {
 				utils.Logger.Println(e)
 				return e
 			}
@@ -421,7 +457,7 @@ func CheckAdmin(config *settings.Setting) error {
 		}
 	}
 
-	encryptPass, e := utils.Encrypt(config.SuperAdminPassword)
+	encryptPass, e := us.Encrypt.Encrypt(config.SuperAdminPassword)
 	if e != nil {
 		utils.Logger.Println(e)
 		return e
@@ -430,12 +466,12 @@ func CheckAdmin(config *settings.Setting) error {
 	if encryptPass != admin.Password {
 		admin.Password = encryptPass
 
-		if e = admin.ChangeUserPassword(); e != nil {
+		if e = us.ChangeUserPassword(&admin); e != nil {
 			utils.Logger.Println(e)
 			return e
 		}
 
-		if e = DeleteUserSessions(admin.ID); e != nil {
+		if e = us.DeleteUserSessions(admin.ID); e != nil {
 			utils.Logger.Println(e)
 			return e
 		}
@@ -444,10 +480,18 @@ func CheckAdmin(config *settings.Setting) error {
 	return nil
 }
 
-func (user *User) ChangeUserPassword() error {
+func (us *DefaultUserService) ChangeUserPassword(user *User) error {
 	stmt, ok := query["CHANGE_USER_PASSWORD"]
 	if !ok {
 		return errors.New("запрос CHANGE_USER_PASSWORD не подготовлен")
+	}
+
+	var err error
+
+	user.Password, err = us.Encrypt.Encrypt(user.Password)
+	if err != nil {
+		utils.Logger.Println(err)
+		return err
 	}
 
 	_, e := stmt.Exec(user.ID, user.Password)
@@ -458,10 +502,10 @@ func (user *User) ChangeUserPassword() error {
 	return nil
 }
 
-func CreateAdmin(config *settings.Setting) error {
+func (us *DefaultUserService) CreateAdmin(config *settings.Setting) error {
 	var admin User
 
-	encryptPass, e := utils.Encrypt(config.SuperAdminPassword)
+	encryptPass, e := us.Encrypt.Encrypt(config.SuperAdminPassword)
 	if e != nil {
 		utils.Logger.Println(e)
 		return e
@@ -487,14 +531,14 @@ func CreateAdmin(config *settings.Setting) error {
 		}
 	}
 
-	if e = admin.CreateUser(); e != nil {
+	if e = us.CreateUser(&admin); e != nil {
 		utils.Logger.Println(e)
 		return e
 	}
 	return nil
 }
 
-func DeleteUserSessions(userID int) error {
+func (us *DefaultUserService) DeleteUserSessions(userID int) error {
 	stmt, ok := query["GET_USER_SESSIONS"]
 	if !ok {
 		return errors.New("запрос GET_USER_SESSIONS не подготовлен")
@@ -514,7 +558,7 @@ func DeleteUserSessions(userID int) error {
 			return e
 		}
 
-		if e = DeleteSession(&session); e != nil {
+		if e = us.DeleteSession(&session); e != nil {
 			utils.Logger.Println(e)
 			return e
 		}
@@ -523,7 +567,7 @@ func DeleteUserSessions(userID int) error {
 	return nil
 }
 
-func (user *User) ValidateUser(action string) bool {
+func (us *DefaultUserService) ValidateUser(user User, action string) bool {
 	if len(user.Name) == 0 || len(user.Login) == 0 {
 		return false
 	}
@@ -557,4 +601,10 @@ func (user *User) ValidateUser(action string) bool {
 	}
 
 	return true
+}
+
+func NewUserService() UserService {
+	return &DefaultUserService{
+		Encrypt: &utils.DefaultEncrypt{},
+	}
 }

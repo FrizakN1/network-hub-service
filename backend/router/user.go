@@ -9,7 +9,21 @@ import (
 	"time"
 )
 
-func handlerEditUser(c *gin.Context) {
+type UserHandler interface {
+	handlerEditUser(c *gin.Context)
+	handlerCreateUser(c *gin.Context)
+	handlerChangeUserStatus(c *gin.Context)
+	handlerGetUsers(c *gin.Context)
+	handlerGetAuth(c *gin.Context)
+	handlerLogout(c *gin.Context)
+	handlerLogin(c *gin.Context)
+}
+
+type DefaultUserHandler struct {
+	UserService database.UserService
+}
+
+func (uh *DefaultUserHandler) handlerEditUser(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -36,7 +50,7 @@ func handlerEditUser(c *gin.Context) {
 		return
 	}
 
-	if !user.ValidateUser("edit") {
+	if !uh.UserService.ValidateUser(user, "edit") {
 		c.JSON(400, nil)
 		return
 	}
@@ -46,21 +60,14 @@ func handlerEditUser(c *gin.Context) {
 		Valid: true,
 	}
 
-	if err = user.EditUser(); err != nil {
+	if err = uh.UserService.EditUser(&user); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
 	}
 
 	if len(user.Password) != 0 {
-		user.Password, err = utils.Encrypt(user.Password)
-		if err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
-			return
-		}
-
-		if err = user.ChangeUserPassword(); err != nil {
+		if err = uh.UserService.ChangeUserPassword(&user); err != nil {
 			utils.Logger.Println(err)
 			handlerError(c, err, 400)
 			return
@@ -69,7 +76,7 @@ func handlerEditUser(c *gin.Context) {
 		user.Password = ""
 	}
 
-	if err = database.DeleteUserSessions(user.ID); err != nil {
+	if err = uh.UserService.DeleteUserSessions(user.ID); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -78,7 +85,7 @@ func handlerEditUser(c *gin.Context) {
 	c.JSON(200, user)
 }
 
-func handlerCreateUser(c *gin.Context) {
+func (uh *DefaultUserHandler) handlerCreateUser(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -105,20 +112,14 @@ func handlerCreateUser(c *gin.Context) {
 		return
 	}
 
-	if !user.ValidateUser("create") {
+	if !uh.UserService.ValidateUser(user, "create") {
 		c.JSON(400, nil)
 		return
 	}
 
 	user.CreatedAt = time.Now().Unix()
-	user.Password, err = utils.Encrypt(user.Password)
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
 
-	if err = user.CreateUser(); err != nil {
+	if err = uh.UserService.CreateUser(&user); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -129,7 +130,7 @@ func handlerCreateUser(c *gin.Context) {
 	c.JSON(200, user)
 }
 
-func handlerChangeUserStatus(c *gin.Context) {
+func (uh *DefaultUserHandler) handlerChangeUserStatus(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -153,19 +154,19 @@ func handlerChangeUserStatus(c *gin.Context) {
 		return
 	}
 
-	if err := user.GetUser(); err != nil {
+	if err := uh.UserService.GetUser(&user); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
 	}
 
-	if err := user.ChangeStatus(); err != nil {
+	if err := uh.UserService.ChangeStatus(&user); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
 	}
 
-	if err := database.DeleteUserSessions(user.ID); err != nil {
+	if err := uh.UserService.DeleteUserSessions(user.ID); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -174,7 +175,7 @@ func handlerChangeUserStatus(c *gin.Context) {
 	c.JSON(200, user)
 }
 
-func handlerGetUsers(c *gin.Context) {
+func (uh *DefaultUserHandler) handlerGetUsers(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -190,7 +191,7 @@ func handlerGetUsers(c *gin.Context) {
 		return
 	}
 
-	users, err := database.GetUsers()
+	users, err := uh.UserService.GetUsers()
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -200,7 +201,7 @@ func handlerGetUsers(c *gin.Context) {
 	c.JSON(200, users)
 }
 
-func handlerGetAuth(c *gin.Context) {
+func (uh *DefaultUserHandler) handlerGetAuth(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -214,7 +215,7 @@ func handlerGetAuth(c *gin.Context) {
 	c.JSON(200, session.User)
 }
 
-func handlerLogout(c *gin.Context) {
+func (uh *DefaultUserHandler) handlerLogout(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -225,7 +226,7 @@ func handlerLogout(c *gin.Context) {
 
 	session := database.GetSession(sessionHash.(string))
 
-	if err := database.DeleteUserSessions(session.User.ID); err != nil {
+	if err := uh.UserService.DeleteUserSessions(session.User.ID); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -234,7 +235,7 @@ func handlerLogout(c *gin.Context) {
 	c.JSON(200, nil)
 }
 
-func handlerLogin(c *gin.Context) {
+func (uh *DefaultUserHandler) handlerLogin(c *gin.Context) {
 	var (
 		user database.User
 		err  error
@@ -246,14 +247,7 @@ func handlerLogin(c *gin.Context) {
 		return
 	}
 
-	user.Password, err = utils.Encrypt(user.Password)
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	if err = user.GetAuthorize(); err != nil {
+	if err = uh.UserService.GetAuthorize(&user); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -275,7 +269,7 @@ func handlerLogin(c *gin.Context) {
 
 	user.Password = ""
 
-	hash, err := database.CreateSession(user)
+	hash, err := uh.UserService.CreateSession(user)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -292,4 +286,10 @@ func handlerLogin(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"token": token,
 	})
+}
+
+func NewUserHandler() UserHandler {
+	return &DefaultUserHandler{
+		UserService: database.NewUserService(),
+	}
 }

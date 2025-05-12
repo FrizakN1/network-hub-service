@@ -14,7 +14,9 @@ func main() {
 
 	database.Connection(config)
 
-	if err := database.CheckAdmin(config); err != nil {
+	userService := database.NewUserService()
+
+	if err := userService.CheckAdmin(config); err != nil {
 		return
 	}
 

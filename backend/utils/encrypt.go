@@ -8,9 +8,18 @@ import (
 	"time"
 )
 
+type Encrypt interface {
+	Encrypt(value string) (string, error)
+	GenerateBytes(n int) ([]byte, error)
+	GenerateString(n int) (string, error)
+	GenerateHash(value string) (string, error)
+}
+
+type DefaultEncrypt struct{}
+
 const encryptKey = "!S@perS!kr3TKe!eY"
 
-func Encrypt(value string) (string, error) {
+func (e *DefaultEncrypt) Encrypt(value string) (string, error) {
 	hash := sha256.New()
 	_, err := hash.Write([]byte(value + encryptKey))
 	if err != nil {
@@ -20,7 +29,7 @@ func Encrypt(value string) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
-func GenerateBytes(n int) ([]byte, error) {
+func (e *DefaultEncrypt) GenerateBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -30,13 +39,13 @@ func GenerateBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-func GenerateString(n int) (string, error) {
-	b, err := GenerateBytes(n)
+func (e *DefaultEncrypt) GenerateString(n int) (string, error) {
+	b, err := e.GenerateBytes(n)
 	return base64.URLEncoding.EncodeToString(b), err
 }
 
-func GenerateHash(value string) (string, error) {
-	str, err := GenerateString(16)
+func (e *DefaultEncrypt) GenerateHash(value string) (string, error) {
+	str, err := e.GenerateString(16)
 
 	if err != nil {
 		return "", err
