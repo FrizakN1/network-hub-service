@@ -42,7 +42,7 @@ const HousePage = () => {
                     }
                     {activeTab === 3 &&
                         <div>
-                            <HardwareTable type={"house"} id={Number(id)} canCreate={true}/>
+                            <HardwareTable type={"houses"} id={Number(id)} canCreate={true}/>
                         </div>
                     }
                 </div>

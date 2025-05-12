@@ -59,7 +59,7 @@ const ImageTable = ({type}) => {
     const handlerArchiveImage = (file) => {
         setPanelIndex(null)
 
-        FetchRequest("POST", "/archive_file", file)
+        FetchRequest("POST", "/files/archive", file)
             .then(response => {
                 if (response.success && response.data != null) {
                     response.data.Src = getImageSrc(response.data)
@@ -84,7 +84,7 @@ const ImageTable = ({type}) => {
     const handlerDeleteImage = (file) => {
         setPanelIndex(null)
 
-        FetchRequest("POST", "/delete_file", file)
+        FetchRequest("POST", "/files/delete", file)
             .then(response => {
                 if (response.success && response.data != null) {
                     if (response.data.InArchive) {
@@ -98,7 +98,7 @@ const ImageTable = ({type}) => {
 
     return (
         <div style={{paddingBottom: "20px"}}>
-            {openImage.State && <ImageOpen setState={(state) => setOpenImage(prevState => ({...prevState, State: state}))} images={images} currentIndex={openImage.Index}/>}
+            {openImage.State && <ImageOpen setState={(state) => setOpenImage(prevState => ({...prevState, State: state}))} images={openImage.ImagesType === "active" ? images : archiveImages} currentIndex={openImage.Index}/>}
             <UploadFile returnFile={handlerAddImage} type={type} onlyImage={true}/>
             <div className="contain tables">
                 <div className="tabs">
@@ -118,7 +118,7 @@ const ImageTable = ({type}) => {
                                             <div onClick={() => handlerDeleteImage(image)}><FontAwesomeIcon icon={faTrash} title="Удалить" /> Удалить</div>
                                         </div>
                                         :
-                                        <img src={image.Src} alt="" onClick={() => setOpenImage({State: true, Index: index})}/>
+                                        <img src={image.Src} alt="" onClick={() => setOpenImage({State: true, Index: index, ImagesType: "active"})}/>
                                     }
                                 </div>
                             ))}
@@ -137,7 +137,7 @@ const ImageTable = ({type}) => {
                                             <div onClick={() => handlerDeleteImage(image)}><FontAwesomeIcon icon={faTrash} title="Удалить" /> Удалить</div>
                                         </div>
                                         :
-                                        <img src={image.Src} alt="" onClick={() => setOpenImage({State: true, Index: index})}/>
+                                        <img src={image.Src} alt="" onClick={() => setOpenImage({State: true, Index: index, ImagesType: "archive"})}/>
                                     }
                                 </div>
                             ))}

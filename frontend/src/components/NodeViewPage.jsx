@@ -12,7 +12,7 @@ const NodeViewPage = () => {
     const [activeTab, setActiveTab] = useState(1)
 
     useEffect(() => {
-        FetchRequest("GET", `/get_node/${id}`, null)
+        FetchRequest("GET", `/nodes/${id}`, null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setNode(response.data)
@@ -90,7 +90,7 @@ const NodeViewPage = () => {
             </div>
             {activeTab === 1 && <ImageTable type="nodes"/>}
             {activeTab === 2 && <FilesTable type="nodes"/>}
-            {activeTab === 3 && <HardwareTable type="node" id={Number(id)} canCreate={true}/>}
+            {activeTab === 3 && <HardwareTable type="nodes" id={Number(id)} canCreate={true}/>}
         </section>
     )
 }

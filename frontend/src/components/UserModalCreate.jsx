@@ -134,7 +134,7 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
             Password: fields.Password,
         }
 
-        if (action === "edit") {body = {...editUser, ...fields}}
+        if (action === "edit") {body = {...editUser, ...body}}
 
         FetchRequest(action === "create" ? "POST" : "PUT", `/users`, body)
             .then(response => {

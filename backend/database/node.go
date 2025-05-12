@@ -41,7 +41,7 @@ func prepareNodes() []string {
         JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Node_type" AS nt ON n.type_id = nt.id
 		JOIN "Node_owner" AS no ON n.owner_id = no.id
-		ORDER BY id
+		ORDER BY id DESC
 		OFFSET $1
 		LIMIT 20
     `)
@@ -66,7 +66,7 @@ func prepareNodes() []string {
 		JOIN "Node_type" AS nt ON n.type_id = nt.id
 		JOIN "Node_owner" AS no ON n.owner_id = no.id
 		WHERE n.house_id = $1 
-		ORDER BY id
+		ORDER BY id DESC
 		OFFSET $2
 		LIMIT 20
     `)

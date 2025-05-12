@@ -44,14 +44,14 @@ const HardwareModalCreate = ({action, setState, returnHardware, editHardware}) =
     }, [action, editHardware]);
 
     useEffect(() => {
-        FetchRequest("GET", "/get_switches", null)
+        FetchRequest("GET", "/switches", null)
             .then(response => {
                 if (response.success) {
                     setSwitches(response.data != null ? response.data : [])
                 }
             })
 
-        FetchRequest("GET", "/get_hardware_types", null)
+        FetchRequest("GET", "/references/hardware_types", null)
             .then(response => {
                 if (response.success) {
                     setHardwareTypes(response.data != null ? response.data : [])

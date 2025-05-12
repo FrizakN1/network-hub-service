@@ -34,9 +34,8 @@ const PrivateRoute = ({requiredAdmin}) => {
                 if (response.success && response.data != null) {
                     setToken(localStorage.getItem("token"))
                     setUser(response.data)
+                    setIsLoaded(true)
                 }
-
-                setIsLoaded(true)
             })
     }, []);
 

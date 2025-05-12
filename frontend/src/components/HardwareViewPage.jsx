@@ -9,7 +9,7 @@ const HardwareViewPage = () => {
     const [isLoaded, setIsLoaded] = useState(false)
 
     useEffect(() => {
-        FetchRequest("GET", `/get_hardware/${id}`, null)
+        FetchRequest("GET", `/hardware/${id}`, null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setHardware(response.data)

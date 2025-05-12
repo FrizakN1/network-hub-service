@@ -33,8 +33,8 @@ func handleReferenceRecord(c *gin.Context, isEdit bool) {
 		return
 	}
 
-	if (reference == "node_types" || reference == "owners" && record.Name == "") ||
-		((reference == "hard_types" || reference == "operation_modes") && record.Value == "" && record.TranslateValue == "") {
+	if ((reference == "node_types" || reference == "owners") && record.Name == "") ||
+		((reference == "hardware_types" || reference == "operation_modes") && record.Value == "" && record.TranslateValue == "") {
 		c.JSON(400, nil)
 		return
 	}

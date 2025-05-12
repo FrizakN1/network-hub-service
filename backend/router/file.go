@@ -38,9 +38,9 @@ func handlerUploadFile(c *gin.Context) {
 	var fileFor = c.PostForm("type")
 
 	// Обработка ID (остается без изменений)
-	if fileFor == "house" {
+	if fileFor == "houses" {
 		uploadFile.House.ID, err = strconv.Atoi(c.PostForm("id"))
-	} else if fileFor == "node" {
+	} else if fileFor == "nodes" {
 		uploadFile.Node.ID, err = strconv.Atoi(c.PostForm("id"))
 	} else {
 		uploadFile.Hardware.ID, err = strconv.Atoi(c.PostForm("id"))
@@ -129,7 +129,7 @@ func handlerUploadFile(c *gin.Context) {
 	uploadFile.UploadAt = time.Now().Unix()
 
 	// Остальная логика (остается без изменений)
-	if fileFor == "node" {
+	if fileFor == "nodes" {
 		uploadFile.IsPreviewImage, err = strconv.ParseBool(c.PostForm("onlyImage"))
 		if err != nil {
 			utils.Logger.Println(err)
@@ -163,9 +163,9 @@ func handlerFile(c *gin.Context) {
 	var key string
 
 	if file.House.ID > 0 {
-		key = "HOUSE"
+		key = "HOUSES"
 	} else if file.Node.ID > 0 {
-		key = "NODE"
+		key = "NODES"
 	} else if file.Hardware.ID > 0 {
 		key = "HARDWARE"
 	}

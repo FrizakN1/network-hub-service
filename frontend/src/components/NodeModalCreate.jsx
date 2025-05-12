@@ -54,14 +54,14 @@ const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress
     }
 
     useEffect(() => {
-        FetchRequest("GET", "/get_node_types", null)
+        FetchRequest("GET", "/references/node_types", null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setNodeTypes(response.data)
                 }
             })
 
-        FetchRequest("GET", "/get_owners", null)
+        FetchRequest("GET", "/references/owners", null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setOwners(response.data)
