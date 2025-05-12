@@ -53,6 +53,7 @@ func Connection(config *settings.Setting) {
 	errorsList = append(errorsList, prepareHardware()...)
 	errorsList = append(errorsList, prepareFile()...)
 	errorsList = append(errorsList, prepareSwitch()...)
+	errorsList = append(errorsList, prepareEvent()...)
 
 	if len(errorsList) > 0 {
 		for _, i := range errorsList {

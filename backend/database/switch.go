@@ -6,6 +6,29 @@ import (
 	"errors"
 )
 
+type Switch struct {
+	ID               int
+	Name             string
+	OperationMode    Reference
+	PortAmount       int
+	CommunityRead    sql.NullString
+	CommunityWrite   sql.NullString
+	FirmwareOID      sql.NullString
+	SystemNameOID    sql.NullString
+	SerialNumberOID  sql.NullString
+	SaveConfigOID    sql.NullString
+	PortDescOID      sql.NullString
+	VlanOID          sql.NullString
+	PortUntaggedOID  sql.NullString
+	SpeedOID         sql.NullString
+	BatteryStatusOID sql.NullString
+	BatteryChargeOID sql.NullString
+	PortModeOID      sql.NullString
+	UptimeOID        sql.NullString
+	CreatedAt        int64
+	MacOID           sql.NullString
+}
+
 func prepareSwitch() []string {
 	var e error
 	errorsList := make([]string, 0)
@@ -17,8 +40,8 @@ func prepareSwitch() []string {
 	query["CREATE_SWITCH"], e = Link.Prepare(`
 		INSERT INTO "Switch"(name, operation_mode_id, community_read, community_write, port_amount, firmware_oid, 
 		                     system_name_oid, sn_oid, save_config_oid, port_desc_oid, vlan_oid, port_untagged_oid, 
-		                     speed_oid, battery_status_oid, battery_charge_oid, port_mode_oid, uptime_oid, created_at) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+		                     speed_oid, battery_status_oid, battery_charge_oid, port_mode_oid, uptime_oid, created_at, mac_oid) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 		RETURNING id
     `)
 	if e != nil {
@@ -29,7 +52,7 @@ func prepareSwitch() []string {
 		UPDATE "Switch" SET name = $2, operation_mode_id = $3, community_read = $4, community_write = $5, port_amount = $6,
 		                    firmware_oid = $7, system_name_oid = $8, sn_oid = $9, save_config_oid = $10, port_desc_oid = $11,
 		                    vlan_oid = $12, port_untagged_oid = $13, speed_oid = $14, battery_status_oid = $15, battery_charge_oid = $16,
-		                    port_mode_oid = $17, uptime_oid = $18
+		                    port_mode_oid = $17, uptime_oid = $18, mac_oid = $19
 		WHERE id = $1
     `)
 	if e != nil {
@@ -93,6 +116,7 @@ func GetSwitches() ([]Switch, error) {
 			&_switch.PortModeOID,
 			&_switch.UptimeOID,
 			&_switch.CreatedAt,
+			&_switch.MacOID,
 			&operationModeValue,
 			&operationModeTranslateValue,
 		); err != nil {
@@ -147,6 +171,7 @@ func (_switch *Switch) EditSwitch() error {
 		_switch.BatteryChargeOID,
 		_switch.PortModeOID,
 		_switch.UptimeOID,
+		_switch.MacOID,
 	)
 	if err != nil {
 		utils.Logger.Println(err)
@@ -189,6 +214,7 @@ func (_switch *Switch) CreateSwitch() error {
 		_switch.PortModeOID,
 		_switch.UptimeOID,
 		_switch.CreatedAt,
+		_switch.MacOID,
 	).Scan(&_switch.ID); err != nil {
 		utils.Logger.Println(err)
 		return err

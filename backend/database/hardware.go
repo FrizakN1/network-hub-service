@@ -9,28 +9,6 @@ import (
 	"io/ioutil"
 )
 
-type Switch struct {
-	ID               int
-	Name             string
-	OperationMode    Reference
-	PortAmount       int
-	CommunityRead    sql.NullString
-	CommunityWrite   sql.NullString
-	FirmwareOID      sql.NullString
-	SystemNameOID    sql.NullString
-	SerialNumberOID  sql.NullString
-	SaveConfigOID    sql.NullString
-	PortDescOID      sql.NullString
-	VlanOID          sql.NullString
-	PortUntaggedOID  sql.NullString
-	SpeedOID         sql.NullString
-	BatteryStatusOID sql.NullString
-	BatteryChargeOID sql.NullString
-	PortModeOID      sql.NullString
-	UptimeOID        sql.NullString
-	CreatedAt        int64
-}
-
 type Hardware struct {
 	ID          int
 	Node        Node
@@ -203,7 +181,7 @@ func prepareHardware() []string {
 	}
 
 	query["GET_HARDWARE_BY_ID"], e = Link.Prepare(`
-		SELECT hd.*, s.name, st.short_name, h.name, ht.short_name, hdt.value, hdt.translate_value, sw.name, n.name
+		SELECT hd.*, s.name, st.short_name, h.id, h.name, ht.short_name, hdt.value, hdt.translate_value, sw.name, n.name
 		FROM "Hardware" AS hd
 		JOIN "Node" AS n ON hd.node_id = n.id
 		JOIN "House" AS h ON n.house_id = h.id
@@ -302,6 +280,7 @@ func (hardware *Hardware) GetHardwareByID() error {
 		&hardware.UpdatedAt,
 		&hardware.Node.Address.Street.Name,
 		&hardware.Node.Address.Street.Type.ShortName,
+		&hardware.Node.Address.House.ID,
 		&hardware.Node.Address.House.Name,
 		&hardware.Node.Address.House.Type.ShortName,
 		&hardware.Type.Value,

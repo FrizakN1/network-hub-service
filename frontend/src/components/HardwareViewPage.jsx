@@ -2,10 +2,12 @@ import React, {useEffect, useState} from "react";
 import {Link, useParams} from "react-router-dom";
 import FetchRequest from "../fetchRequest";
 import FilesTable from "./FilesTable";
+import EventsTable from "./EventsTable";
 
 const HardwareViewPage = () => {
     const { id } = useParams()
     const [hardware, setHardware] = useState(null)
+    const [activeTab, setActiveTab] = useState(1)
     const [isLoaded, setIsLoaded] = useState(false)
 
     useEffect(() => {
@@ -20,6 +22,12 @@ const HardwareViewPage = () => {
 
     return (
         <section className="hardware-view">
+            <div className="tabs-contain">
+                <div className="tabs">
+                    <div className={activeTab === 1 ? "tab active" : "tab"} onClick={() => setActiveTab(1)}>Файлы</div>
+                    <div className={activeTab === 2 ? "tab active" : "tab"} onClick={() => setActiveTab(2)}>События</div>
+                </div>
+            </div>
             <div className="contain">
                 {isLoaded &&
                     <div className="info">
@@ -66,7 +74,8 @@ const HardwareViewPage = () => {
                     </div>
                 }
             </div>
-            <FilesTable type="hardware"/>
+            {activeTab === 1 && <FilesTable type="hardware"/>}
+            {activeTab === 2 && <EventsTable type="hardware"/>}
         </section>
     )
 }

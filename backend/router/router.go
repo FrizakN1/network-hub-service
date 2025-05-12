@@ -79,6 +79,9 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 		nodes.GET("/:id/hardware", handlerGetNodeHardware)
 		nodes.POST("", handlerCreateNode)
 		nodes.PUT("", handlerEditNode)
+		nodes.GET("/:id/events/:type", func(c *gin.Context) {
+			handlerGetEventsFrom(c, "NODE")
+		})
 	}
 
 	houses := routerAPI.Group("/houses")
@@ -89,6 +92,9 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 		houses.GET("/:id/files", handlerGetHouseFiles)
 		houses.GET("/:id/nodes", handlerGetHouseNodes)
 		houses.GET("/:id/hardware", handlerGetHouseHardware)
+		houses.GET("/:id/events/:type", func(c *gin.Context) {
+			handlerGetEventsFrom(c, "HOUSE")
+		})
 	}
 
 	hardware := routerAPI.Group("/hardware")
@@ -99,6 +105,9 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 		hardware.GET("/:id/files", handlerGetHardwareFiles)
 		hardware.POST("", handlerCreateHardware)
 		hardware.PUT("", handlerEditHardware)
+		hardware.GET("/:id/events/:type", func(c *gin.Context) {
+			handlerGetEventsFrom(c, "HARDWARE")
+		})
 	}
 
 	switches := routerAPI.Group("/switches")
@@ -129,6 +138,8 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 			handleReferenceRecord(c, true)
 		})
 	}
+
+	routerAPI.GET("/events", handlerGetEvents)
 
 	return router
 }

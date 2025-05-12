@@ -353,7 +353,7 @@ section.login {
   justify-content: center;
 }
 
-.contain.nodes, .contain.hardware {
+.contain.nodes, .contain.hardware, .contain.events {
   flex-direction: column;
   align-items: center;
   gap: 20px;
@@ -372,6 +372,10 @@ section.login {
   flex-direction: column;
   align-items: center;
   justify-content: unset;
+}
+
+.contain.tables .pagination {
+  margin-top: 20px;
 }
 
 .tabs {
@@ -453,6 +457,10 @@ table .row-type-1 {
 
 table .row-type-2 {
   background-color: rgb(30, 30, 30);
+}
+
+table.events .col2 {
+  width: 30%;
 }
 
 /*.contain table .col1 {*/
@@ -664,7 +672,7 @@ input[type="file"] {
   background-color: rgb(30,30,30);
 }
 
-.addresses-table .pagination, .nodes .pagination, .hardware .pagination {
+.addresses-table .pagination, .nodes .pagination, .hardware .pagination, .contain.tables .pagination {
   display: flex;
   user-select: none;
   align-items: center;

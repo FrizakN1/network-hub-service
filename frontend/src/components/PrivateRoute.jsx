@@ -27,6 +27,8 @@ const PrivateRoute = ({requiredAdmin}) => {
             setActiveTab(5)
         } else if (location.pathname.includes("references")) {
             setActiveTab(6)
+        } else if (location.pathname.includes("events")) {
+            setActiveTab(7)
         }
 
         FetchRequest("GET", "/auth/me", null)
@@ -85,6 +87,11 @@ const PrivateRoute = ({requiredAdmin}) => {
                                                                 setActiveTab(6)
                                                                 navigate("/references")
                                                             }}>Справочники</li>}
+                        <li className={activeTab === 7 ? "active" : ""}
+                            onClick={() => {
+                                setActiveTab(7)
+                                navigate("/events")
+                            }}>События</li>
                     </ul>
                     <div>
                         <span style={{color: "#fff"}}>{user.Login}</span>

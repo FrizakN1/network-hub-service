@@ -5,6 +5,7 @@ import FilesTable from "./FilesTable";
 import FetchRequest from "../fetchRequest";
 import NodesTable from "./NodesTable";
 import HardwareTable from "./HardwareTable";
+import EventsTable from "./EventsTable";
 
 const HousePage = () => {
     const { id } = useParams()
@@ -32,6 +33,7 @@ const HousePage = () => {
                             <div className={activeTab === 1 ? "tab active" : "tab"} onClick={() => setActiveTab(1)}>Файлы</div>
                             <div className={activeTab === 2 ? "tab active" : "tab"} onClick={() => setActiveTab(2)}>Узлы</div>
                             <div className={activeTab === 3 ? "tab active" : "tab"} onClick={() => setActiveTab(3)}>Оборудование</div>
+                            <div className={activeTab === 4 ? "tab active" : "tab"} onClick={() => setActiveTab(4)}>События</div>
                         </div>
                     </div>
                     {activeTab === 1 && <FilesTable type="houses"/>}
@@ -43,6 +45,11 @@ const HousePage = () => {
                     {activeTab === 3 &&
                         <div>
                             <HardwareTable type={"houses"} id={Number(id)} canCreate={true}/>
+                        </div>
+                    }
+                    {activeTab === 4 &&
+                        <div>
+                            <EventsTable from={"houses"}/>
                         </div>
                     }
                 </div>
