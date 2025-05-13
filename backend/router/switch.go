@@ -8,8 +8,18 @@ import (
 	"time"
 )
 
-func handlerGetSwitches(c *gin.Context) {
-	switches, err := database.GetSwitches()
+type SwitchHandler interface {
+	handlerGetSwitches(c *gin.Context)
+	handlerEditSwitch(c *gin.Context)
+	handlerCreateSwitch(c *gin.Context)
+}
+
+type DefaultSwitchHandler struct {
+	SwitchService database.SwitchService
+}
+
+func (sh *DefaultSwitchHandler) handlerGetSwitches(c *gin.Context) {
+	switches, err := sh.SwitchService.GetSwitches()
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -19,7 +29,7 @@ func handlerGetSwitches(c *gin.Context) {
 	c.JSON(200, switches)
 }
 
-func handlerEditSwitch(c *gin.Context) {
+func (sh *DefaultSwitchHandler) handlerEditSwitch(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -48,7 +58,7 @@ func handlerEditSwitch(c *gin.Context) {
 		return
 	}
 
-	if err := _switch.EditSwitch(); err != nil {
+	if err := sh.SwitchService.EditSwitch(&_switch); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -57,7 +67,7 @@ func handlerEditSwitch(c *gin.Context) {
 	c.JSON(200, _switch)
 }
 
-func handlerCreateSwitch(c *gin.Context) {
+func (sh *DefaultSwitchHandler) handlerCreateSwitch(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -88,11 +98,17 @@ func handlerCreateSwitch(c *gin.Context) {
 
 	_switch.CreatedAt = time.Now().Unix()
 
-	if err := _switch.CreateSwitch(); err != nil {
+	if err := sh.SwitchService.CreateSwitch(&_switch); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
 	}
 
 	c.JSON(200, _switch)
+}
+
+func NewSwitchHandler() SwitchHandler {
+	return &DefaultSwitchHandler{
+		SwitchService: database.NewSwitchService(),
+	}
 }

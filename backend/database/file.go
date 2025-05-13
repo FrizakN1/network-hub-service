@@ -21,6 +21,16 @@ type File struct {
 	IsPreviewImage bool
 }
 
+type FileService interface {
+	GetNodeFiles(nodeID int, onlyImage bool) ([]File, error)
+	GetHouseFiles(houseID int) ([]File, error)
+	CreateFile(file *File, fileFor string) error
+	Delete(file *File, key string) error
+	Archive(file *File, key string) error
+}
+
+type DefaultFileService struct{}
+
 func prepareFile() []string {
 	var e error
 	errorsList := make([]string, 0)
@@ -109,7 +119,56 @@ func prepareFile() []string {
 	return errorsList
 }
 
-func GetHouseFiles(houseID int) ([]File, error) {
+func (fs *DefaultFileService) GetNodeFiles(nodeID int, onlyImage bool) ([]File, error) {
+	stmt, ok := query["GET_NODE_FILES"]
+	if !ok {
+		err := errors.New("запрос GET_NODE_FILES не подготовлен")
+		utils.Logger.Println(err)
+		return nil, err
+	}
+
+	rows, err := stmt.Query(nodeID, onlyImage)
+	if err != nil {
+		utils.Logger.Println(err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var files []File
+	for rows.Next() {
+		var file File
+
+		err = rows.Scan(
+			&file.ID,
+			&file.Node.ID,
+			&file.Path,
+			&file.Name,
+			&file.UploadAt,
+			&file.InArchive,
+			&file.IsPreviewImage,
+		)
+		if err != nil {
+			utils.Logger.Println(err)
+			return nil, err
+		}
+
+		var fileData []byte
+
+		fileData, err = ioutil.ReadFile(file.Path)
+		if err != nil {
+			utils.Logger.Println(err)
+			return nil, err
+		}
+
+		file.Data = base64.StdEncoding.EncodeToString(fileData)
+
+		files = append(files, file)
+	}
+
+	return files, nil
+}
+
+func (fs *DefaultFileService) GetHouseFiles(houseID int) ([]File, error) {
 	stmt, ok := query["GET_HOUSE_FILES"]
 	if !ok {
 		err := errors.New("запрос GET_HOUSE_FILES не подготовлен")
@@ -157,7 +216,7 @@ func GetHouseFiles(houseID int) ([]File, error) {
 	return files, nil
 }
 
-func (file *File) CreateFile(fileFor string) error {
+func (fs *DefaultFileService) CreateFile(file *File, fileFor string) error {
 	stmt, ok := query["CREATE_FILE_"+fileFor]
 	if !ok {
 		err := "запрос CREATE_FILE_" + fileFor + " не подготовлен"
@@ -216,7 +275,7 @@ func (file *File) CreateFile(fileFor string) error {
 	return nil
 }
 
-func (file *File) Delete(key string) error {
+func (fs *DefaultFileService) Delete(file *File, key string) error {
 	stmt, ok := query["DELETE_FILE_"+key]
 	if !ok {
 		err := "запрос DELETE_FILE_" + key + " не подготовлен"
@@ -233,7 +292,7 @@ func (file *File) Delete(key string) error {
 	return nil
 }
 
-func (file *File) Archive(key string) error {
+func (fs *DefaultFileService) Archive(file *File, key string) error {
 	stmt, ok := query["ARCHIVE_FILE_"+key]
 	if !ok {
 		err := "запрос ARCHIVE_FILE_" + key + " не подготовлен"
@@ -260,4 +319,8 @@ func (file *File) Archive(key string) error {
 	file.Data = base64.StdEncoding.EncodeToString(fileData)
 
 	return nil
+}
+
+func NewFileService() FileService {
+	return &DefaultFileService{}
 }

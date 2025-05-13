@@ -6,6 +6,36 @@ import (
 	"errors"
 )
 
+type Switch struct {
+	ID               int
+	Name             string
+	OperationMode    Reference
+	PortAmount       int
+	CommunityRead    sql.NullString
+	CommunityWrite   sql.NullString
+	FirmwareOID      sql.NullString
+	SystemNameOID    sql.NullString
+	SerialNumberOID  sql.NullString
+	SaveConfigOID    sql.NullString
+	PortDescOID      sql.NullString
+	VlanOID          sql.NullString
+	PortUntaggedOID  sql.NullString
+	SpeedOID         sql.NullString
+	BatteryStatusOID sql.NullString
+	BatteryChargeOID sql.NullString
+	PortModeOID      sql.NullString
+	UptimeOID        sql.NullString
+	CreatedAt        int64
+}
+
+type SwitchService interface {
+	GetSwitches() ([]Switch, error)
+	EditSwitch(_switch *Switch) error
+	CreateSwitch(_switch *Switch) error
+}
+
+type DefaultSwitchService struct{}
+
 func prepareSwitch() []string {
 	var e error
 	errorsList := make([]string, 0)
@@ -49,7 +79,7 @@ func prepareSwitch() []string {
 	return errorsList
 }
 
-func GetSwitches() ([]Switch, error) {
+func (ss *DefaultSwitchService) GetSwitches() ([]Switch, error) {
 	stmt, ok := query["GET_SWITCHES"]
 	if !ok {
 		err := errors.New("запрос GET_SWITCHES не подготовлен")
@@ -114,7 +144,7 @@ func GetSwitches() ([]Switch, error) {
 	return switches, nil
 }
 
-func (_switch *Switch) EditSwitch() error {
+func (ss *DefaultSwitchService) EditSwitch(_switch *Switch) error {
 	stmt, ok := query["EDIT_SWITCH"]
 	if !ok {
 		err := errors.New("запрос EDIT_SWITCH не подготовлен")
@@ -156,7 +186,7 @@ func (_switch *Switch) EditSwitch() error {
 	return nil
 }
 
-func (_switch *Switch) CreateSwitch() error {
+func (ss *DefaultSwitchService) CreateSwitch(_switch *Switch) error {
 	stmt, ok := query["CREATE_SWITCH"]
 	if !ok {
 		err := errors.New("запрос CREATE_SWITCH не подготовлен")
@@ -195,4 +225,8 @@ func (_switch *Switch) CreateSwitch() error {
 	}
 
 	return nil
+}
+
+func NewSwitchService() SwitchService {
+	return &DefaultSwitchService{}
 }

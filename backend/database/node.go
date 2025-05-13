@@ -3,9 +3,7 @@ package database
 import (
 	"backend/utils"
 	"database/sql"
-	"encoding/base64"
 	"errors"
-	"io/ioutil"
 )
 
 type Node struct {
@@ -23,6 +21,18 @@ type Node struct {
 	CreatedAt   int64
 	UpdatedAt   sql.NullInt64
 }
+
+type NodeService interface {
+	GetSearchNodes(search string, offset int) ([]Node, int, error)
+	EditNode(node *Node) error
+	CreateNode(node *Node) error
+	GetNode(node *Node) error
+	GetHouseNodes(houseID int, offset int) ([]Node, int, error)
+	GetNodes(offset int) ([]Node, int, error)
+	ValidateNode(node *Node) bool
+}
+
+type DefaultNodeService struct{}
 
 func prepareNodes() []string {
 	var e error
@@ -176,7 +186,7 @@ func prepareNodes() []string {
 	return errorsList
 }
 
-func GetSearchNodes(search string, offset int) ([]Node, int, error) {
+func (ns *DefaultNodeService) GetSearchNodes(search string, offset int) ([]Node, int, error) {
 	stmt, ok := query["GET_SEARCH_NODES"]
 	if !ok {
 		err := errors.New("запрос GET_SEARCH_NODES не подготовлен")
@@ -242,56 +252,7 @@ func GetSearchNodes(search string, offset int) ([]Node, int, error) {
 	return nodes, count, nil
 }
 
-func GetNodeFiles(nodeID int, onlyImage bool) ([]File, error) {
-	stmt, ok := query["GET_NODE_FILES"]
-	if !ok {
-		err := errors.New("запрос GET_NODE_FILES не подготовлен")
-		utils.Logger.Println(err)
-		return nil, err
-	}
-
-	rows, err := stmt.Query(nodeID, onlyImage)
-	if err != nil {
-		utils.Logger.Println(err)
-		return nil, err
-	}
-	defer rows.Close()
-
-	var files []File
-	for rows.Next() {
-		var file File
-
-		err = rows.Scan(
-			&file.ID,
-			&file.Node.ID,
-			&file.Path,
-			&file.Name,
-			&file.UploadAt,
-			&file.InArchive,
-			&file.IsPreviewImage,
-		)
-		if err != nil {
-			utils.Logger.Println(err)
-			return nil, err
-		}
-
-		var fileData []byte
-
-		fileData, err = ioutil.ReadFile(file.Path)
-		if err != nil {
-			utils.Logger.Println(err)
-			return nil, err
-		}
-
-		file.Data = base64.StdEncoding.EncodeToString(fileData)
-
-		files = append(files, file)
-	}
-
-	return files, nil
-}
-
-func (node *Node) EditNode() error {
+func (ns *DefaultNodeService) EditNode(node *Node) error {
 	stmt, ok := query["EDIT_NODE"]
 	if !ok {
 		err := errors.New("запрос EDIT_NODE не подготовлен")
@@ -327,7 +288,7 @@ func (node *Node) EditNode() error {
 	return nil
 }
 
-func (node *Node) CreateNode() error {
+func (ns *DefaultNodeService) CreateNode(node *Node) error {
 	stmt, ok := query["CREATE_NODE"]
 	if !ok {
 		err := errors.New("запрос CREATE_NODE не подготовлен")
@@ -362,7 +323,7 @@ func (node *Node) CreateNode() error {
 	return nil
 }
 
-func (node *Node) GetNode() error {
+func (ns *DefaultNodeService) GetNode(node *Node) error {
 	stmt, ok := query["GET_NODE"]
 	if !ok {
 		err := errors.New("запрос GET_NODE не подготовлен")
@@ -408,7 +369,7 @@ func (node *Node) GetNode() error {
 	return nil
 }
 
-func GetHouseNodes(houseID int, offset int) ([]Node, int, error) {
+func (ns *DefaultNodeService) GetHouseNodes(houseID int, offset int) ([]Node, int, error) {
 	stmt, ok := query["GET_HOUSE_NODES"]
 	if !ok {
 		err := errors.New("запрос GET_HOUSE_NODES не подготовлен")
@@ -474,7 +435,7 @@ func GetHouseNodes(houseID int, offset int) ([]Node, int, error) {
 	return nodes, count, nil
 }
 
-func GetNodes(offset int) ([]Node, int, error) {
+func (ns *DefaultNodeService) GetNodes(offset int) ([]Node, int, error) {
 	stmt, ok := query["GET_NODES"]
 	if !ok {
 		err := errors.New("запрос GET_NODES не подготовлен")
@@ -540,10 +501,14 @@ func GetNodes(offset int) ([]Node, int, error) {
 	return nodes, count, nil
 }
 
-func (node *Node) ValidateNode() bool {
+func (ns *DefaultNodeService) ValidateNode(node Node) bool {
 	if len(node.Name) == 0 || node.Address.House.ID == 0 || node.Type.ID == 0 || node.Owner.ID == 0 {
 		return false
 	}
 
 	return true
+}
+
+func NewNodeService() NodeService {
+	return &DefaultNodeService{}
 }

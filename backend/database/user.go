@@ -43,7 +43,8 @@ type UserService interface {
 }
 
 type DefaultUserService struct {
-	Encrypt utils.Encrypt
+	Encrypt   utils.Encrypt
+	Reference ReferenceService
 }
 
 var sessionMap map[string]Session
@@ -511,7 +512,7 @@ func (us *DefaultUserService) CreateAdmin(config *settings.Setting) error {
 		return e
 	}
 
-	roles, err := GetReferenceRecords("ROLES")
+	roles, err := us.Reference.GetReferenceRecords("ROLES")
 	if err != nil {
 		utils.Logger.Println(err)
 		return err
@@ -572,7 +573,7 @@ func (us *DefaultUserService) ValidateUser(user User, action string) bool {
 		return false
 	}
 
-	roles, err := GetReferenceRecords("ROLES")
+	roles, err := us.Reference.GetReferenceRecords("ROLES")
 	if err != nil {
 		utils.Logger.Println(err)
 		return false
@@ -605,6 +606,7 @@ func (us *DefaultUserService) ValidateUser(user User, action string) bool {
 
 func NewUserService() UserService {
 	return &DefaultUserService{
-		Encrypt: &utils.DefaultEncrypt{},
+		Encrypt:   &utils.DefaultEncrypt{},
+		Reference: &DefaultReferenceService{},
 	}
 }

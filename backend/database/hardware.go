@@ -9,28 +9,6 @@ import (
 	"io/ioutil"
 )
 
-type Switch struct {
-	ID               int
-	Name             string
-	OperationMode    Reference
-	PortAmount       int
-	CommunityRead    sql.NullString
-	CommunityWrite   sql.NullString
-	FirmwareOID      sql.NullString
-	SystemNameOID    sql.NullString
-	SerialNumberOID  sql.NullString
-	SaveConfigOID    sql.NullString
-	PortDescOID      sql.NullString
-	VlanOID          sql.NullString
-	PortUntaggedOID  sql.NullString
-	SpeedOID         sql.NullString
-	BatteryStatusOID sql.NullString
-	BatteryChargeOID sql.NullString
-	PortModeOID      sql.NullString
-	UptimeOID        sql.NullString
-	CreatedAt        int64
-}
-
 type Hardware struct {
 	ID          int
 	Node        Node
@@ -42,6 +20,8 @@ type Hardware struct {
 	CreatedAt   int64
 	UpdatedAt   sql.NullInt64
 }
+
+type HardwareService interface{}
 
 func prepareHardware() []string {
 	var e error
@@ -635,7 +615,7 @@ func GetHardware(offset int) ([]Hardware, int, error) {
 	return hardware, count, nil
 }
 
-func (hardware *Hardware) ValidateHardware() bool {
+func ValidateHardware(hardware *Hardware) bool {
 	fmt.Println(hardware)
 
 	if hardware.Type.ID == 0 || hardware.Node.ID == 0 {

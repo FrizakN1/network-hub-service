@@ -30,11 +30,13 @@ type Address struct {
 	HardwareAmount int
 }
 
-type Search struct {
-	Text   string
-	Limit  int
-	Offset int
+type AddressService interface {
+	GetHouses(offset int) ([]Address, int, error)
+	GetHouse(address *Address) error
+	GetSuggestions(search string, offset int, limit int) ([]Address, int, error)
 }
+
+type DefaultAddressService struct{}
 
 var addressElementTypeMap map[string]map[string]bool
 
@@ -171,7 +173,7 @@ func prepareHouse() []string {
 	return errorsList
 }
 
-func GetHouses(offset int) ([]Address, int, error) {
+func (as *DefaultAddressService) GetHouses(offset int) ([]Address, int, error) {
 	stmt, ok := query["GET_HOUSES"]
 	if !ok {
 		err := "запрос не подготовлен"
@@ -219,7 +221,7 @@ func GetHouses(offset int) ([]Address, int, error) {
 	return addresses, count, nil
 }
 
-func (address *Address) GetHouse() error {
+func (as *DefaultAddressService) GetHouse(address *Address) error {
 	stmt, ok := query["GET_HOUSE"]
 	if !ok {
 		err := "запрос не подготовлен"
@@ -265,8 +267,8 @@ func countSuggestions(streetPart, housePart string) (int, error) {
 	return count, nil
 }
 
-func GetSuggestions(search string, offset int, limit int) ([]Address, int, error) {
-	streetPart, housePart := parseAddress(search)
+func (as *DefaultAddressService) GetSuggestions(search string, offset int, limit int) ([]Address, int, error) {
+	streetPart, housePart := as.parseAddress(search)
 
 	stmt, ok := query["GET_SUGGESTIONS"]
 	if !ok {
@@ -318,7 +320,7 @@ func GetSuggestions(search string, offset int, limit int) ([]Address, int, error
 	return addresses, count, nil
 }
 
-func parseAddress(input string) (streetPart string, housePart string) {
+func (as *DefaultAddressService) parseAddress(input string) (streetPart string, housePart string) {
 	// Убираем лишние пробелы и разделяем строку на слова
 	cleanedInput := strings.ReplaceAll(input, ",", "")
 	words := strings.Fields(cleanedInput)
@@ -426,4 +428,8 @@ func LoadAddressElementTypeMap(m map[string]map[string]bool) {
 
 		_ = rows.Close()
 	}
+}
+
+func NewAddressService() AddressService {
+	return &DefaultAddressService{}
 }

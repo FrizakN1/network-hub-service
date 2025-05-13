@@ -14,6 +14,14 @@ type Reference struct {
 	CreatedAt      int64
 }
 
+type ReferenceService interface {
+	EditReferenceRecord(referenceRecord *Reference, reference string) error
+	CreateReferenceRecord(referenceRecord *Reference, reference string) error
+	GetReferenceRecords(reference string) ([]Reference, error)
+}
+
+type DefaultReferenceService struct{}
+
 var query map[string]*sql.Stmt
 
 func prepareReferences() []string {
@@ -122,7 +130,7 @@ func prepareReferences() []string {
 	return errorsList
 }
 
-func (referenceRecord *Reference) EditReferenceRecord(reference string) error {
+func (rs *DefaultReferenceService) EditReferenceRecord(referenceRecord *Reference, reference string) error {
 	stmt, ok := query["EDIT_"+reference]
 	if !ok {
 		err := errors.New("запрос EDIT_" + reference + " не подготовлен")
@@ -151,7 +159,7 @@ func (referenceRecord *Reference) EditReferenceRecord(reference string) error {
 	return nil
 }
 
-func (referenceRecord *Reference) CreateReferenceRecord(reference string) error {
+func (rs *DefaultReferenceService) CreateReferenceRecord(referenceRecord *Reference, reference string) error {
 	stmt, ok := query["CREATE_"+reference]
 	if !ok {
 		err := errors.New("запрос CREATE_" + reference + " не подготовлен")
@@ -181,7 +189,7 @@ func (referenceRecord *Reference) CreateReferenceRecord(reference string) error 
 	return nil
 }
 
-func GetReferenceRecords(reference string) ([]Reference, error) {
+func (rs *DefaultReferenceService) GetReferenceRecords(reference string) ([]Reference, error) {
 	stmt, ok := query["GET_"+reference]
 	if !ok {
 		err := errors.New("запрос GET_" + reference + " не подготовлен")
@@ -217,4 +225,8 @@ func GetReferenceRecords(reference string) ([]Reference, error) {
 	}
 
 	return references, nil
+}
+
+func NewReferenceService() ReferenceService {
+	return &DefaultReferenceService{}
 }

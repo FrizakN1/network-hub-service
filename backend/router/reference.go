@@ -9,7 +9,16 @@ import (
 	"time"
 )
 
-func handleReferenceRecord(c *gin.Context, isEdit bool) {
+type ReferenceHandler interface {
+	handleReferenceRecord(c *gin.Context, isEdit bool)
+	handlerGetReference(c *gin.Context, onlyAdmin bool)
+}
+
+type DefaultReferenceHandler struct {
+	ReferenceService database.ReferenceService
+}
+
+func (rh *DefaultReferenceHandler) handleReferenceRecord(c *gin.Context, isEdit bool) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -41,14 +50,14 @@ func handleReferenceRecord(c *gin.Context, isEdit bool) {
 
 	if !isEdit {
 		record.CreatedAt = time.Now().Unix()
-		err := record.CreateReferenceRecord(strings.ToUpper(reference))
+		err := rh.ReferenceService.CreateReferenceRecord(&record, strings.ToUpper(reference))
 		if err != nil {
 			utils.Logger.Println(err)
 			handlerError(c, err, 400)
 			return
 		}
 	} else {
-		err := record.EditReferenceRecord(strings.ToUpper(reference))
+		err := rh.ReferenceService.EditReferenceRecord(&record, strings.ToUpper(reference))
 		if err != nil {
 			utils.Logger.Println(err)
 			handlerError(c, err, 400)
@@ -59,7 +68,7 @@ func handleReferenceRecord(c *gin.Context, isEdit bool) {
 	c.JSON(200, record)
 }
 
-func handlerGetReference(c *gin.Context, onlyAdmin bool) {
+func (rh *DefaultReferenceHandler) handlerGetReference(c *gin.Context, onlyAdmin bool) {
 	if onlyAdmin {
 		sessionHash, ok := c.Get("sessionHash")
 		if !ok {
@@ -79,7 +88,7 @@ func handlerGetReference(c *gin.Context, onlyAdmin bool) {
 
 	reference := c.Param("reference")
 
-	records, err := database.GetReferenceRecords(strings.ToUpper(reference))
+	records, err := rh.ReferenceService.GetReferenceRecords(strings.ToUpper(reference))
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -87,4 +96,10 @@ func handlerGetReference(c *gin.Context, onlyAdmin bool) {
 	}
 
 	c.JSON(200, records)
+}
+
+func NewReferenceHandler() ReferenceHandler {
+	return &DefaultReferenceHandler{
+		ReferenceService: database.NewReferenceService(),
+	}
 }

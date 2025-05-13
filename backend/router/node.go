@@ -9,11 +9,23 @@ import (
 	"time"
 )
 
-func handlerGetSearchNodes(c *gin.Context) {
+type NodeHandler interface {
+	handlerGetSearchNodes(c *gin.Context)
+	handlerGetNodeImages(c *gin.Context)
+	handlerGetNodeFiles(c *gin.Context)
+	handlerEditNode(c *gin.Context)
+}
+
+type DefaultNodeHandler struct {
+	NodeService database.NodeService
+	FileService database.FileService
+}
+
+func (nh *DefaultNodeHandler) handlerGetSearchNodes(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	search := c.Query("search")
 
-	nodes, count, err := database.GetSearchNodes(search, offset)
+	nodes, count, err := nh.NodeService.GetSearchNodes(search, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -26,7 +38,7 @@ func handlerGetSearchNodes(c *gin.Context) {
 	})
 }
 
-func handlerGetNodeImages(c *gin.Context) {
+func (nh *DefaultNodeHandler) handlerGetNodeImages(c *gin.Context) {
 	nodeID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -34,7 +46,7 @@ func handlerGetNodeImages(c *gin.Context) {
 		return
 	}
 
-	files, err := database.GetNodeFiles(nodeID, true)
+	files, err := nh.FileService.GetNodeFiles(nodeID, true)
 	if err != nil {
 		handlerError(c, err, 400)
 		return
@@ -43,7 +55,7 @@ func handlerGetNodeImages(c *gin.Context) {
 	c.JSON(200, files)
 }
 
-func handlerGetNodeFiles(c *gin.Context) {
+func (nh *DefaultNodeHandler) handlerGetNodeFiles(c *gin.Context) {
 	nodeID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -51,7 +63,7 @@ func handlerGetNodeFiles(c *gin.Context) {
 		return
 	}
 
-	files, err := database.GetNodeFiles(nodeID, false)
+	files, err := nh.FileService.GetNodeFiles(nodeID, false)
 	if err != nil {
 		handlerError(c, err, 400)
 		return
@@ -60,7 +72,7 @@ func handlerGetNodeFiles(c *gin.Context) {
 	c.JSON(200, files)
 }
 
-func handlerEditNode(c *gin.Context) {
+func (nh *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
 	var node database.Node
 
 	if err := c.BindJSON(&node); err != nil {
@@ -69,7 +81,7 @@ func handlerEditNode(c *gin.Context) {
 		return
 	}
 
-	if !node.ValidateNode() {
+	if !nh.NodeService.ValidateNode(node) {
 		c.JSON(400, nil)
 		return
 	}
