@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from "react";
+import React, {useContext, useEffect, useRef, useState} from "react";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {
     faAngleLeft,
@@ -9,10 +9,10 @@ import {
     faPlus,
     faTrash
 } from "@fortawesome/free-solid-svg-icons";
-import {faCircle, faCircleDot} from "@fortawesome/free-regular-svg-icons";
 import {useNavigate} from "react-router-dom";
 import FetchRequest from "../fetchRequest";
 import HardwareModalCreate from "./HardwareModalCreate";
+import AuthContext from "../context/AuthContext";
 
 const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
     const [modalCreate, setModalCreate] = useState(false)
@@ -29,18 +29,13 @@ const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
     const [search, setSearch] = useState("")
     const [count, setCount] = useState(0)
     const navigate = useNavigate()
+    const { user } = useContext(AuthContext)
 
     useEffect(() => {
         handlerGetHardware()
     }, []);
 
     const handlerGetHardware = (value = "") => {
-        // let body = {
-        //     Offset: Number((currentPage-1)*20)
-        // }
-        //
-        // if (value.length > 0) body = {...body, Text: value}
-
         let uri = "/hardware"
         let params = new URLSearchParams({
             offset: String((currentPage-1)*20),
@@ -132,16 +127,25 @@ const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
     }, [allPage, currentPage])
 
     const handlerAddHardware = (_hardware) => {
-        setHardware(prevState => prevState.length < 20 ? [...prevState, _hardware] : prevState)
+        setHardware(prevState => prevState.length < 20 ? [_hardware, ...prevState] : prevState)
     }
 
     const handlerEditHardware = (_hardware) => {
         setHardware(prevState => prevState.map(rec => rec.ID === _hardware.ID ? _hardware : rec))
     }
 
+    const handlerDeleteHardware = (hardwareID) => {
+        FetchRequest("DELETE", `/hardware/${hardwareID}`, null)
+            .then(response => {
+                if (response.success && response.data) {
+                    setHardware(prevState => prevState.filter(hardware => hardware.ID !== hardwareID))
+                }
+            })
+    }
+
     return (
         <div className="contain hardware">
-            {canCreate && <>
+            {user.Role.Value !== "user" && canCreate && <>
                 {modalCreate && <HardwareModalCreate action={"create"} setState={setModalCreate} returnHardware={handlerAddHardware}/>}
                 {modalEdit.State && <HardwareModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editHardware={modalEdit.EditHardware} returnHardware={handlerEditHardware}/>}
                 <div className="contain">
@@ -174,9 +178,9 @@ const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
                             <td>{_hardware.Type.Value === "switch" ? _hardware.Switch.Name : "-"}</td>
                             <td>{_hardware.Type.Value === "switch" && _hardware.IpAddress.Valid ? _hardware.IpAddress.String : "-"}</td>
                             <td>
-                                <FontAwesomeIcon icon={faEye} title="Просмотр" onClick={() => navigate(`/hardware/view/${_hardware.ID}`)}/>
-                                <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditHardware: _hardware})}/>
-                                <FontAwesomeIcon icon={faTrash} title="Удалить" />
+                                <FontAwesomeIcon icon={faEye} className="eye" title="Просмотр" onClick={() => navigate(`/hardware/view/${_hardware.ID}`)}/>
+                                {user.Role.Value !== "user" &&<FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditHardware: _hardware})}/>}
+                                {user.Role.Value === "admin" && <FontAwesomeIcon icon={faTrash} className="delete" title="Удалить" onClick={() => handlerDeleteHardware(_hardware.ID)}/>}
                             </td>
                         </tr>
                     ))}

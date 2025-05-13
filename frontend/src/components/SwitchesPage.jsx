@@ -1,8 +1,9 @@
-import React, {useEffect, useState} from "react";
+import React, {useContext, useEffect, useState} from "react";
 import FetchRequest from "../fetchRequest";
 import SwitchModalCreate from "./SwitchModalCreate";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faPen, faPlus} from "@fortawesome/free-solid-svg-icons";
+import AuthContext from "../context/AuthContext";
 
 const SwitchesPage = () => {
     const [switches, setSwitches] = useState([])
@@ -12,6 +13,7 @@ const SwitchesPage = () => {
         EditSwitch: null
     })
     const [isLoaded, setIsLoaded] = useState(true)
+    const { user } = useContext(AuthContext)
 
     useEffect(() => {
         FetchRequest("GET", `/switches`, null)
@@ -34,18 +36,20 @@ const SwitchesPage = () => {
 
     return (
         <section className="references">
-            {modalCreate && <SwitchModalCreate action="create" setState={setModalCreate} returnSwitch={handlerAddSwitch}/>}
-            {modalEdit.State && <SwitchModalCreate action="edit"
-                                                         setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))}
-                                                         returnSwitch={handlerEditSwitch}
-                                                         editSwitch={modalEdit.EditSwitch}
-            />}
+            {user.Role.Value !== "user" && <>
+                {modalCreate && <SwitchModalCreate action="create" setState={setModalCreate} returnSwitch={handlerAddSwitch}/>}
+                {modalEdit.State && <SwitchModalCreate action="edit"
+                                                       setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))}
+                                                       returnSwitch={handlerEditSwitch}
+                                                       editSwitch={modalEdit.EditSwitch}
+                />}
 
-            <div className="buttons">
-                <button onClick={() => setModalCreate(true)}><FontAwesomeIcon icon={faPlus}/>
-                    Создать модель коммутатора
-                </button>
-            </div>
+                <div className="buttons">
+                    <button onClick={() => setModalCreate(true)}><FontAwesomeIcon icon={faPlus}/>
+                        Создать модель коммутатора
+                    </button>
+                </div>
+            </>}
             {isLoaded && <>{switches.length > 0 ? (
                     <table>
                         <thead>
@@ -63,7 +67,7 @@ const SwitchesPage = () => {
                                 <td>{record.Name || record.TranslateValue}</td>
                                 <td>{new Date(record.CreatedAt * 1000).toLocaleString().slice(0, 17)}</td>
                                 <td>
-                                    <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditSwitch: record})}/>
+                                    {user.Role.Value !== "user" && <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditSwitch: record})}/>}
                                 </td>
                             </tr>
                         ))}

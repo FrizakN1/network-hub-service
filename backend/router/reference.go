@@ -19,7 +19,8 @@ func handleReferenceRecord(c *gin.Context, isEdit bool) {
 	}
 
 	session := database.GetSession(sessionHash.(string))
-	if session.User.Role.Value != "admin" {
+
+	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
 		c.JSON(403, nil)
 		return
 	}

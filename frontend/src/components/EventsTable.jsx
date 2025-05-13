@@ -15,7 +15,7 @@ const EventsTable = ({from = ""}) => {
     const [allPage, setAllPage] = useState([])
     const [showPages, setShowPages] = useState(null)
     const [count, setCount] = useState(0)
-    const [activeTab, setActiveTab] = useState("all")
+    const [activeTab, setActiveTab] = useState("only")
     const { id } = useParams()
 
     useEffect(() => {
@@ -105,10 +105,10 @@ const EventsTable = ({from = ""}) => {
         <div className="contain tables">
             {from !== "" &&
                 <div className="tabs">
-                    <div className={activeTab === "all" ? "tab active" : "tab"} onClick={() => setActiveTab("all")}>
+                    <div className={activeTab === "only" ? "tab active" : "tab"} onClick={() => setActiveTab("only")}>
                         События только {from === "houses" ? "дома" : from === "nodes" ? "узла" : "оборудования"}
                     </div>
-                    <div className={activeTab === "only" ? "tab active" : "tab"} onClick={() => setActiveTab("only")}>
+                    <div className={activeTab === "all" ? "tab active" : "tab"} onClick={() => setActiveTab("all")}>
                         События связанные с {from === "houses" ? "домом" : from === "nodes" ? "узлом" : "оборудованием"}
                     </div>
                 </div>
@@ -124,6 +124,7 @@ const EventsTable = ({from = ""}) => {
                         <th>Оборудование</th>
                         <th>Пользователь</th>
                         <th>Дата</th>
+                        <th></th>
                     </tr>
                     </thead>
                     <tbody>
@@ -136,6 +137,7 @@ const EventsTable = ({from = ""}) => {
                             <td>{event.Hardware != null ? event.Hardware.Type.TranslateValue : "-"}</td>
                             <td>{event.User.Name}</td>
                             <td>{new Date(event.CreatedAt * 1000).toLocaleString().slice(0, 17)}</td>
+                            <td></td>
                         </tr>
                     ))}
                     </tbody>

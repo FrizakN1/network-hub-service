@@ -82,6 +82,7 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 		nodes.GET("/:id/events/:type", func(c *gin.Context) {
 			handlerGetEventsFrom(c, "NODE")
 		})
+		nodes.DELETE("/:id", handlerDeleteNode)
 	}
 
 	houses := routerAPI.Group("/houses")
@@ -108,6 +109,7 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 		hardware.GET("/:id/events/:type", func(c *gin.Context) {
 			handlerGetEventsFrom(c, "HARDWARE")
 		})
+		hardware.DELETE("/:id", handlerDeleteHardware)
 	}
 
 	switches := routerAPI.Group("/switches")

@@ -84,9 +84,9 @@ const UsersPage = () => {
                                     {/*<FontAwesomeIcon icon={faEye} title="Просмотр" />*/}
                                     <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditUser: user})}/>
                                     {user.Baned ?
-                                        <FontAwesomeIcon icon={faCircleCheck} className="unban" title="Разаблокировать" onClick={() => changeUserStatus(user.ID)}/>
+                                        <FontAwesomeIcon icon={faCircleCheck} className="eye" title="Разаблокировать" onClick={() => changeUserStatus(user.ID)}/>
                                         :
-                                        <FontAwesomeIcon icon={faBan} className="ban" title="Заблокировать" onClick={() => changeUserStatus(user.ID)}/>
+                                        <FontAwesomeIcon icon={faBan} className="delete" title="Заблокировать" onClick={() => changeUserStatus(user.ID)}/>
                                     }
                                 </td>
                             </tr>

@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useContext, useEffect, useState} from "react";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {
     faBoxArchive,
@@ -15,8 +15,10 @@ import * as mime from 'react-native-mime-types';
 import UploadFile from "./UploadFile";
 import fetchRequest from "../fetchRequest";
 import FetchRequest from "../fetchRequest";
+import AuthContext from "../context/AuthContext";
 
 const FilesTable = ({type}) => {
+    const { user } = useContext(AuthContext)
     const [files, setFiles] = useState([])
     const [archiveFiles, setArchiveFiles] = useState([])
     const [activeTab, setActiveTab] = useState(1)
@@ -133,7 +135,7 @@ const FilesTable = ({type}) => {
 
     return (
         <div style={{paddingBottom: "20px"}}>
-            <UploadFile returnFile={handlerAddFile} type={type}/>
+            {user.Role.Value !== "user" && <UploadFile returnFile={handlerAddFile} type={type}/>}
             <div className="contain tables">
                 <div className="tabs">
                     <div className={activeTab === 1 ? "tab active" : "tab"} onClick={() => setActiveTab(1)}>Актуальные файлы</div>
@@ -156,7 +158,7 @@ const FilesTable = ({type}) => {
                                             <td className={"col2"}>{new Date(file.UploadAt * 1000).toLocaleString().slice(0, 17)}</td>
                                             <td className={"col3"}>
                                                 <FontAwesomeIcon icon={faDownload} title="Скачать" onClick={() => handlerDownloadFile(file)}/>
-                                                <FontAwesomeIcon icon={faFolderPlus} title="Переместить в архив" onClick={() => handlerArchiveFile(file)}/>
+                                                {user.Role.Value !== "user" && <FontAwesomeIcon icon={faFolderPlus} className="delete" title="Переместить в архив" onClick={() => handlerArchiveFile(file)}/>}
                                             </td>
                                         </tr>
                                     ))}
@@ -182,8 +184,8 @@ const FilesTable = ({type}) => {
                                         <td className={"col2"}>{new Date(file.UploadAt * 1000).toLocaleString().slice(0, 17)}</td>
                                         <td className={"col3"}>
                                             <FontAwesomeIcon icon={faDownload} title="Скачать" onClick={() => handlerDownloadFile(file)}/>
-                                            <FontAwesomeIcon icon={faFolderMinus} title="Восстановить" onClick={() => handlerArchiveFile(file)}/>
-                                            <FontAwesomeIcon icon={faTrash} title="Удалить" onClick={() => handlerDeleteFile(file)}/>
+                                            {user.Role.Value !== "user" && <FontAwesomeIcon icon={faFolderMinus} className="eye" title="Восстановить" onClick={() => handlerArchiveFile(file)}/>}
+                                            {user.Role.Value === "admin" && <FontAwesomeIcon icon={faTrash} className="delete" title="Удалить" onClick={() => handlerDeleteFile(file)}/>}
                                         </td>
                                     </tr>
                                 ))}

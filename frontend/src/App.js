@@ -14,7 +14,6 @@ import NodesPage from "./components/NodesPage";
 import HardwarePage from "./components/HardwarePage";
 import HardwareViewPage from "./components/HardwareViewPage";
 import SwitchesPage from "./components/SwitchesPage";
-import EventsTable from "./components/EventsTable";
 import EventsPage from "./components/EventsPage";
 
 function App() {
@@ -31,25 +30,25 @@ function App() {
                 <Route path="/" element={<PrivateRoute requiredAdmin={true} />}>
                     <Route path="/users" element={<UsersPage />} />
                 </Route>
-                <Route path="/references/" element={<PrivateRoute requiredAdmin={true} />}>
+                <Route path="/references/" element={<PrivateRoute />}>
                     <Route path="" element={<ReferencesPage />} />
                     <Route path="owners/" element={<ReferencePage reference={"owners"}/>} />
                     <Route path="node_types/" element={<ReferencePage reference={"node_types"} />} />
                     <Route path="hardware_types/" element={<ReferencePage reference={"hardware_types"} />} />
                     <Route path="operation_modes/" element={<ReferencePage reference={"operation_modes"} />} />
                 </Route>
-                <Route path="/switches/" element={<PrivateRoute requiredAdmin={true} />}>
+                <Route path="/switches/" element={<PrivateRoute />}>
                     <Route path="" element={<SwitchesPage />} />
                 </Route>
-                <Route path="/nodes/" element={<PrivateRoute requiredAdmin={true} />}>
+                <Route path="/nodes/" element={<PrivateRoute />}>
                     <Route path="" element={<NodesPage />} />
                     <Route path="view/:id" element={<NodeViewPage />} />
                 </Route>
-                <Route path="/hardware/" element={<PrivateRoute requiredAdmin={true} />}>
+                <Route path="/hardware/" element={<PrivateRoute />}>
                     <Route path="" element={<HardwarePage />} />
                     <Route path="view/:id" element={<HardwareViewPage />} />
                 </Route>
-                <Route path="/events/" element={<PrivateRoute requiredAdmin={true} />}>
+                <Route path="/events/" element={<PrivateRoute />}>
                     <Route path="" element={<EventsPage />} />
                 </Route>
             </Routes>

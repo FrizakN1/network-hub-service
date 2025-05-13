@@ -470,7 +470,7 @@ table.events .col2 {
 /*}*/
 table td:last-child, table th:last-child {
   padding: unset !important;
-  text-align: center;
+  text-align: right;
 }
 
 .contain table.files td:last-child, .contain table.files th:last-child {
@@ -521,27 +521,38 @@ table td:last-child svg {
   transition-duration: 200ms;
 }
 
-.contain table td:last-child svg:hover {
+/*.contain table td:last-child svg:hover {*/
+/*  background-color: #4ecb84;*/
+/*}*/
+/*.contain table td:last-child svg:first-child:hover {*/
+/*  background-color: rgba(37,147,184);*/
+/*}*/
+/*.contain table td:last-child svg:last-child:hover {*/
+/*  background-color: #ee5037;*/
+/*}*/
+
+/*.users table td:last-child svg:hover {*/
+/*  background-color: rgba(37,147,184);*/
+/*}*/
+/*.users table td:last-child svg.ban:hover {*/
+/*  background-color: #ee5037;*/
+/*}*/
+/*.users table td:last-child svg.unban:hover {*/
+/*  background-color: #4ecb84;*/
+/*}*/
+
+/*.references table td:last-child svg:hover {*/
+/*  background-color: rgba(37,147,184);*/
+/*}*/
+table td:last-child svg.eye:hover {
   background-color: #4ecb84;
 }
-.contain table td:last-child svg:first-child:hover {
-  background-color: rgba(37,147,184);
-}
-.contain table td:last-child svg:last-child:hover {
+
+table td:last-child svg.delete:hover {
   background-color: #ee5037;
 }
 
-.users table td:last-child svg:hover {
-  background-color: rgba(37,147,184);
-}
-.users table td:last-child svg.ban:hover {
-  background-color: #ee5037;
-}
-.users table td:last-child svg.unban:hover {
-  background-color: #4ecb84;
-}
-
-.references table td:last-child svg:hover {
+table td:last-child svg:hover {
   background-color: rgba(37,147,184);
 }
 

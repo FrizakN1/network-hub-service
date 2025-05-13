@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useContext, useEffect, useState} from "react";
 import ImageOpen from "./ImageOpen";
 import UploadFile from "./UploadFile";
 import {useParams} from "react-router-dom";
@@ -6,6 +6,7 @@ import FetchRequest from "../fetchRequest";
 import * as mime from 'react-native-mime-types';
 import {faEllipsisVertical, faFolderPlus, faTrash} from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import AuthContext from "../context/AuthContext";
 
 const ImageTable = ({type}) => {
     const [activeTab, setActiveTab] = useState(1)
@@ -18,6 +19,7 @@ const ImageTable = ({type}) => {
     })
     const { id } = useParams()
     const [panelIndex, setPanelIndex] = useState(null)
+    const { user } = useContext(AuthContext)
 
     const getImageSrc = (image) => {
         const fileMimeType = mime.lookup(image.Name)
@@ -99,7 +101,7 @@ const ImageTable = ({type}) => {
     return (
         <div style={{paddingBottom: "20px"}}>
             {openImage.State && <ImageOpen setState={(state) => setOpenImage(prevState => ({...prevState, State: state}))} images={openImage.ImagesType === "active" ? images : archiveImages} currentIndex={openImage.Index}/>}
-            <UploadFile returnFile={handlerAddImage} type={type} onlyImage={true}/>
+            {user.Role.Value !== "user" && <UploadFile returnFile={handlerAddImage} type={type} onlyImage={true}/>}
             <div className="contain tables">
                 <div className="tabs">
                     <div className={activeTab === 1 ? "tab active" : "tab"} onClick={() => {setActiveTab(1); setPanelIndex(null)}}>Актуальные изображения</div>
@@ -107,15 +109,14 @@ const ImageTable = ({type}) => {
                 </div>
                 {activeTab === 1 ?
                     images.length > 0 ?
-
                         <div className="images">
                             {images.map((image, index) => (
                                 <div key={"image"+index} className="image">
-                                    <FontAwesomeIcon icon={faEllipsisVertical} style={panelIndex === index && {color: "#ffffff"}} className="menu" onClick={() => setPanelIndex(prevState => prevState === index ? null : index)}/>
-                                    {panelIndex === index ?
+                                    {user.Role.Value !== "user" && <FontAwesomeIcon icon={faEllipsisVertical} style={panelIndex === index && {color: "#ffffff"}} className="menu" onClick={() => setPanelIndex(prevState => prevState === index ? null : index)}/>}
+                                    {user.Role.Value !== "user" && panelIndex === index ?
                                         <div className="menu-block">
-                                            <div onClick={() => handlerArchiveImage(image)}><FontAwesomeIcon icon={faFolderPlus} title="Переместить в архив"/> Переметить в архив</div>
-                                            <div onClick={() => handlerDeleteImage(image)}><FontAwesomeIcon icon={faTrash} title="Удалить" /> Удалить</div>
+                                            {user.Role.Value !== "user" && <div onClick={() => handlerArchiveImage(image)}><FontAwesomeIcon icon={faFolderPlus} title="Переместить в архив"/> Переметить в архив</div>}
+                                            {user.Role.Value === "admin" && <div onClick={() => handlerDeleteImage(image)}><FontAwesomeIcon icon={faTrash} title="Удалить" /> Удалить</div>}
                                         </div>
                                         :
                                         <img src={image.Src} alt="" onClick={() => setOpenImage({State: true, Index: index, ImagesType: "active"})}/>

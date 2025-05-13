@@ -45,6 +45,11 @@ func handlerUploadFile(c *gin.Context) {
 
 	session := database.GetSession(sessionHash.(string))
 
+	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+		c.JSON(403, nil)
+		return
+	}
+
 	var (
 		uploadFile database.File
 		err        error
@@ -201,6 +206,18 @@ func handlerFile(c *gin.Context) {
 
 	session := database.GetSession(sessionHash.(string))
 
+	action := c.Param("action")
+
+	if action == "delete" && session.User.Role.Value != "admin" {
+		c.JSON(403, nil)
+		return
+	}
+
+	if action == "archive" && session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+		c.JSON(403, nil)
+		return
+	}
+
 	var (
 		key   string
 		file  database.File
@@ -213,8 +230,6 @@ func handlerFile(c *gin.Context) {
 		handlerError(c, err, 400)
 		return
 	}
-
-	action := c.Param("action")
 
 	if file.House.ID > 0 {
 		key = "HOUSES"

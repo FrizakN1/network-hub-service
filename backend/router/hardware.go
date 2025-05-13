@@ -11,6 +11,38 @@ import (
 	"time"
 )
 
+func handlerDeleteHardware(c *gin.Context) {
+	sessionHash, ok := c.Get("sessionHash")
+	if !ok {
+		err := errors.New("сессия не найдена")
+		utils.Logger.Println(err)
+		handlerError(c, err, 401)
+		return
+	}
+
+	session := database.GetSession(sessionHash.(string))
+
+	if session.User.Role.Value != "admin" {
+		c.JSON(403, nil)
+		return
+	}
+
+	hardwareID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.Logger.Println(err)
+		handlerError(c, err, 400)
+		return
+	}
+
+	if err = database.DeleteHardware(hardwareID); err != nil {
+		utils.Logger.Println(err)
+		handlerError(c, err, 400)
+		return
+	}
+
+	c.JSON(200, true)
+}
+
 func handlerGetHardwareFiles(c *gin.Context) {
 	hardwareID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -21,6 +53,7 @@ func handlerGetHardwareFiles(c *gin.Context) {
 
 	files, err := database.GetHardwareFiles(hardwareID)
 	if err != nil {
+		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
 	}
@@ -60,6 +93,11 @@ func handlerEditHardware(c *gin.Context) {
 	}
 
 	session := database.GetSession(sessionHash.(string))
+
+	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+		c.JSON(403, nil)
+		return
+	}
 
 	var hardware database.Hardware
 
@@ -108,6 +146,11 @@ func handlerCreateHardware(c *gin.Context) {
 	}
 
 	session := database.GetSession(sessionHash.(string))
+
+	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+		c.JSON(403, nil)
+		return
+	}
 
 	var hardware database.Hardware
 

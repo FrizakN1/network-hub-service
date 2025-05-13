@@ -19,6 +19,7 @@ type Hardware struct {
 	Description sql.NullString
 	CreatedAt   int64
 	UpdatedAt   sql.NullInt64
+	IsDelete    bool
 }
 
 func prepareHardware() []string {
@@ -39,7 +40,8 @@ func prepareHardware() []string {
         JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Hardware_type" AS hdt ON hd.type_id = hdt.id
 		LEFT JOIN "Switch" AS sw ON hd.switch_id = sw.id
-		ORDER BY hd.id
+		WHERE hd.is_delete = false
+		ORDER BY hd.id DESC
 		OFFSET $1
 		LIMIT 20
     `)
@@ -64,8 +66,8 @@ func prepareHardware() []string {
         JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Hardware_type" AS hdt ON hd.type_id = hdt.id
 		LEFT JOIN "Switch" AS sw ON hd.switch_id = sw.id
-		WHERE n.house_id = $1
-		ORDER BY hd.id
+		WHERE n.house_id = $1 AND hd.is_delete = false
+		ORDER BY hd.id DESC
 		OFFSET $2
 		LIMIT 20
     `)
@@ -77,7 +79,7 @@ func prepareHardware() []string {
 		SELECT COUNT(hd.*) 
 		FROM "Hardware" AS hd 
 		JOIN "Node" AS n ON hd.node_id = n.id
-		WHERE n.house_id = $1
+		WHERE n.house_id = $1 AND hd.is_delete = false
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
@@ -93,8 +95,8 @@ func prepareHardware() []string {
         JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Hardware_type" AS hdt ON hd.type_id = hdt.id
 		LEFT JOIN "Switch" AS sw ON hd.switch_id = sw.id
-		WHERE hd.node_id = $1
-		ORDER BY hd.id
+		WHERE hd.node_id = $1 AND hd.is_delete = false
+		ORDER BY hd.id DESC
 		OFFSET $2
 		LIMIT 20
     `)
@@ -105,7 +107,7 @@ func prepareHardware() []string {
 	query["GET_NODE_HARDWARE_COUNT"], e = Link.Prepare(`
 		SELECT COUNT(*) 
 		FROM "Hardware"
-		WHERE node_id = $1
+		WHERE node_id = $1 AND is_delete = false
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
@@ -121,7 +123,7 @@ func prepareHardware() []string {
         JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Hardware_type" AS hdt ON hd.type_id = hdt.id
 		LEFT JOIN "Switch" AS sw ON hd.switch_id = sw.id
-		WHERE n.name ILIKE '%' || $1 || '%'
+		WHERE (n.name ILIKE '%' || $1 || '%'
 			OR hdt.translate_value ILIKE '%' || $1 || '%'
 			OR sw.name ILIKE '%' || $1 || '%'
 			OR hd.ip_address ILIKE '%' || $1 || '%'
@@ -129,8 +131,9 @@ func prepareHardware() []string {
 			OR st.short_name ILIKE '%' || $1 || '%'
 			OR h.name ILIKE '%' || $1 || '%'
 			OR ht.short_name ILIKE '%' || $1 || '%'
-			OR (st.short_name || ' ' || s.name || ', ' || ht.short_name || ' ' || h.name) ILIKE '%' || $1 || '%'
-		ORDER BY hd.id
+			OR (st.short_name || ' ' || s.name || ', ' || ht.short_name || ' ' || h.name) ILIKE '%' || $1 || '%')
+			AND hd.is_delete = false
+		ORDER BY hd.id DESC
 		OFFSET $2
 		LIMIT 20
     `)
@@ -148,7 +151,7 @@ func prepareHardware() []string {
         JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Hardware_type" AS hdt ON hd.type_id = hdt.id
 		LEFT JOIN "Switch" AS sw ON hd.switch_id = sw.id
-		WHERE n.name ILIKE '%' || $1 || '%'
+		WHERE (n.name ILIKE '%' || $1 || '%'
 			OR hdt.translate_value ILIKE '%' || $1 || '%'
 			OR sw.name ILIKE '%' || $1 || '%'
 			OR hd.ip_address ILIKE '%' || $1 || '%'
@@ -156,7 +159,8 @@ func prepareHardware() []string {
 			OR st.short_name ILIKE '%' || $1 || '%'
 			OR h.name ILIKE '%' || $1 || '%'
 			OR ht.short_name ILIKE '%' || $1 || '%'
-			OR (st.short_name || ' ' || s.name || ', ' || ht.short_name || ' ' || h.name) ILIKE '%' || $1 || '%'
+			OR (st.short_name || ' ' || s.name || ', ' || ht.short_name || ' ' || h.name) ILIKE '%' || $1 || '%')
+			AND hd.is_delete = false
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
@@ -204,7 +208,31 @@ func prepareHardware() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
+	query["DELETE_HARDWARE"], e = Link.Prepare(`
+		UPDATE "Hardware" SET is_delete = true WHERE id = $1
+    `)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
+	}
+
 	return errorsList
+}
+
+func DeleteHardware(hardwareID int) error {
+	stmt, ok := query["DELETE_HARDWARE"]
+	if !ok {
+		err := errors.New("запрос DELETE_HARDWARE не подготовлен")
+		utils.Logger.Println(err)
+		return err
+	}
+
+	_, err := stmt.Exec(hardwareID)
+	if err != nil {
+		utils.Logger.Println(err)
+		return err
+	}
+
+	return nil
 }
 
 func GetHardwareFiles(hardwareID int) ([]File, error) {
@@ -278,6 +306,7 @@ func (hardware *Hardware) GetHardwareByID() error {
 		&hardware.Description,
 		&hardware.CreatedAt,
 		&hardware.UpdatedAt,
+		&hardware.IsDelete,
 		&hardware.Node.Address.Street.Name,
 		&hardware.Node.Address.Street.Type.ShortName,
 		&hardware.Node.Address.House.ID,
@@ -402,6 +431,7 @@ func GetSearchHardware(search string, offset int) ([]Hardware, int, error) {
 			&_hardware.Description,
 			&_hardware.CreatedAt,
 			&_hardware.UpdatedAt,
+			&_hardware.IsDelete,
 			&_hardware.Node.Address.Street.Name,
 			&_hardware.Node.Address.Street.Type.ShortName,
 			&_hardware.Node.Address.House.Name,
@@ -465,6 +495,7 @@ func GetNodeHardware(nodeID int, offset int) ([]Hardware, int, error) {
 			&_hardware.Description,
 			&_hardware.CreatedAt,
 			&_hardware.UpdatedAt,
+			&_hardware.IsDelete,
 			&_hardware.Node.Address.Street.Name,
 			&_hardware.Node.Address.Street.Type.ShortName,
 			&_hardware.Node.Address.House.Name,
@@ -528,6 +559,7 @@ func GetHouseHardware(houseID int, offset int) ([]Hardware, int, error) {
 			&_hardware.Description,
 			&_hardware.CreatedAt,
 			&_hardware.UpdatedAt,
+			&_hardware.IsDelete,
 			&_hardware.Node.Address.Street.Name,
 			&_hardware.Node.Address.Street.Type.ShortName,
 			&_hardware.Node.Address.House.Name,
@@ -591,6 +623,7 @@ func GetHardware(offset int) ([]Hardware, int, error) {
 			&_hardware.Description,
 			&_hardware.CreatedAt,
 			&_hardware.UpdatedAt,
+			&_hardware.IsDelete,
 			&_hardware.Node.Address.Street.Name,
 			&_hardware.Node.Address.Street.Type.ShortName,
 			&_hardware.Node.Address.House.Name,
