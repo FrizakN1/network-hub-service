@@ -4,6 +4,8 @@ import (
 	"backend/database"
 	"backend/utils"
 	"database/sql"
+	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"strconv"
 	"time"
@@ -19,6 +21,38 @@ type NodeHandler interface {
 type DefaultNodeHandler struct {
 	NodeService database.NodeService
 	FileService database.FileService
+}
+
+func handlerDeleteNode(c *gin.Context) {
+	sessionHash, ok := c.Get("sessionHash")
+	if !ok {
+		err := errors.New("сессия не найдена")
+		utils.Logger.Println(err)
+		handlerError(c, err, 401)
+		return
+	}
+
+	session := database.GetSession(sessionHash.(string))
+
+	if session.User.Role.Value != "admin" {
+		c.JSON(403, nil)
+		return
+	}
+
+	nodeID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.Logger.Println(err)
+		handlerError(c, err, 400)
+		return
+	}
+
+	if err = database.DeleteNode(nodeID); err != nil {
+		utils.Logger.Println(err)
+		handlerError(c, err, 400)
+		return
+	}
+
+	c.JSON(200, true)
 }
 
 func (nh *DefaultNodeHandler) handlerGetSearchNodes(c *gin.Context) {
@@ -73,6 +107,21 @@ func (nh *DefaultNodeHandler) handlerGetNodeFiles(c *gin.Context) {
 }
 
 func (nh *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
+	sessionHash, ok := c.Get("sessionHash")
+	if !ok {
+		err := errors.New("сессия не найдена")
+		utils.Logger.Println(err)
+		handlerError(c, err, 401)
+		return
+	}
+
+	session := database.GetSession(sessionHash.(string))
+
+	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+		c.JSON(403, nil)
+		return
+	}
+
 	var node database.Node
 
 	if err := c.BindJSON(&node); err != nil {
@@ -97,10 +146,38 @@ func (nh *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
 		return
 	}
 
+	event := database.Event{
+		Address:     database.Address{House: database.AddressElement{ID: node.Address.House.ID}},
+		Node:        &database.Node{ID: node.ID},
+		Hardware:    nil,
+		User:        database.User{ID: session.User.ID},
+		Description: fmt.Sprintf("Изменение узла: %s", node.Name),
+		CreatedAt:   time.Now().Unix(),
+	}
+
+	if err := event.CreateEvent(); err != nil {
+		utils.Logger.Println(err)
+	}
+
 	c.JSON(200, node)
 }
 
 func handlerCreateNode(c *gin.Context) {
+	sessionHash, ok := c.Get("sessionHash")
+	if !ok {
+		err := errors.New("сессия не найдена")
+		utils.Logger.Println(err)
+		handlerError(c, err, 401)
+		return
+	}
+
+	session := database.GetSession(sessionHash.(string))
+
+	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+		c.JSON(403, nil)
+		return
+	}
+
 	var node database.Node
 
 	if err := c.BindJSON(&node); err != nil {
@@ -120,6 +197,19 @@ func handlerCreateNode(c *gin.Context) {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
+	}
+
+	event := database.Event{
+		Address:     database.Address{House: database.AddressElement{ID: node.Address.House.ID}},
+		Node:        nil,
+		Hardware:    nil,
+		User:        database.User{ID: session.User.ID},
+		Description: fmt.Sprintf("Создание нового узла: %s", node.Name),
+		CreatedAt:   time.Now().Unix(),
+	}
+
+	if err := event.CreateEvent(); err != nil {
+		utils.Logger.Println(err)
 	}
 
 	c.JSON(200, node)

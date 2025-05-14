@@ -140,15 +140,10 @@ func (rs *DefaultReferenceService) EditReferenceRecord(referenceRecord *Referenc
 
 	var err error
 
-	switch reference {
-	case "NODE_TYPES":
-	case "OWNERS":
+	if reference == "NODE_TYPES" || reference == "OWNERS" {
 		_, err = stmt.Exec(referenceRecord.ID, referenceRecord.Name)
-		break
-	case "HARDWARE_TYPES":
-	case "OPERATION_MODES":
+	} else if reference == "HARDWARE_TYPES" || reference == "OPERATION_MODES" {
 		_, err = stmt.Exec(referenceRecord.ID, referenceRecord.Value, referenceRecord.TranslateValue)
-		break
 	}
 
 	if err != nil {

@@ -39,7 +39,7 @@ func prepareFile() []string {
 		query = make(map[string]*sql.Stmt)
 	}
 
-	query["CREATE_FILE_HOUSE"], e = Link.Prepare(`
+	query["CREATE_FILE_HOUSES"], e = Link.Prepare(`
 		INSERT INTO "House_files"(house_id, file_path, file_name, upload_at, in_archive) 
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
@@ -57,7 +57,7 @@ func prepareFile() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["CREATE_FILE_NODE"], e = Link.Prepare(`
+	query["CREATE_FILE_NODES"], e = Link.Prepare(`
 		INSERT INTO "Node_files"(node_id, file_path, file_name, upload_at, in_archive, is_preview_image) 
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id
@@ -74,14 +74,14 @@ func prepareFile() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["ARCHIVE_FILE_HOUSE"], e = Link.Prepare(`
+	query["ARCHIVE_FILE_HOUSES"], e = Link.Prepare(`
 		UPDATE "House_files" SET in_archive = $2 WHERE id = $1
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["ARCHIVE_FILE_NODE"], e = Link.Prepare(`
+	query["ARCHIVE_FILE_NODES"], e = Link.Prepare(`
 		UPDATE "Node_files" SET in_archive = $2 WHERE id = $1
     `)
 	if e != nil {
@@ -95,14 +95,14 @@ func prepareFile() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["DELETE_FILE_HOUSE"], e = Link.Prepare(`
+	query["DELETE_FILE_HOUSES"], e = Link.Prepare(`
 		DELETE FROM "House_files" WHERE id = $1
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["DELETE_FILE_NODE"], e = Link.Prepare(`
+	query["DELETE_FILE_NODES"], e = Link.Prepare(`
 		DELETE FROM "Node_files" WHERE id = $1
     `)
 	if e != nil {
@@ -227,7 +227,7 @@ func (fs *DefaultFileService) CreateFile(file *File, fileFor string) error {
 	var err error
 
 	switch fileFor {
-	case "NODE":
+	case "NODES":
 		err = stmt.QueryRow(
 			file.Node.ID,
 			file.Path,
@@ -237,7 +237,7 @@ func (fs *DefaultFileService) CreateFile(file *File, fileFor string) error {
 			file.IsPreviewImage,
 		).Scan(&file.ID)
 		break
-	case "HOUSE":
+	case "HOUSES":
 		err = stmt.QueryRow(
 			file.House.ID,
 			file.Path,

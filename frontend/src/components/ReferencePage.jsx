@@ -1,10 +1,11 @@
-import React, {useEffect, useState} from "react";
+import React, {useContext, useEffect, useState} from "react";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faPen, faPlus} from "@fortawesome/free-solid-svg-icons";
 import FetchRequest from "../fetchRequest";
 import NodeReferenceRecordModalCreate from "./NodeReferenceRecordModalCreate";
 import HardwareReferenceRecordModalCreate from "./HardwareReferenceRecordModalCreate";
 import SwitchModalCreate from "./SwitchModalCreate";
+import AuthContext from "../context/AuthContext";
 
 const ReferencePage = ({reference}) => {
     const [records, setRecords] = useState([])
@@ -24,6 +25,7 @@ const ReferencePage = ({reference}) => {
         EditRecord: null
     })
     const [isLoaded, setIsLoaded] = useState(true)
+    const { user } = useContext(AuthContext)
 
     useEffect(() => {
         FetchRequest("GET", `/references/${reference}`, null)
@@ -78,36 +80,38 @@ const ReferencePage = ({reference}) => {
 
     return (
         <section className="references">
-            {switchModalCreate && <SwitchModalCreate action="create" setState={setSwitchModalCreate} returnSwitch={handlerAddRecord}/>}
-            {nodeReferenceModalCreate && <NodeReferenceRecordModalCreate action="create" setState={setNodeReferenceModalCreate} returnRecord={handlerAddRecord} reference={reference}/>}
-            {hardwareReferenceModalCreate && <HardwareReferenceRecordModalCreate action="create" setState={setHardwareReferenceModalCreate} returnRecord={handlerAddRecord} reference={reference}/>}
-            {nodeReferenceModalEdit.State && <NodeReferenceRecordModalCreate action="edit"
-                                                 setState={(state) => setNodeReferenceModalEdit(prevState => ({...prevState, State: state}))}
-                                                 returnRecord={handlerEditRecord}
-                                                 editRecord={nodeReferenceModalEdit.EditRecord}
-                                                 reference={reference}
-            />}
-            {hardwareReferenceModalEdit.State && <HardwareReferenceRecordModalCreate action="edit"
-                                                 setState={(state) => setHardwareReferenceModalEdit(prevState => ({...prevState, State: state}))}
-                                                 returnRecord={handlerEditRecord}
-                                                 editRecord={hardwareReferenceModalEdit.EditRecord}
-                                                 reference={reference}
-            />}
-            {switchModalEdit.State && <SwitchModalCreate action="edit"
-                                                 setState={(state) => setSwitchModalEdit(prevState => ({...prevState, State: state}))}
-                                                 returnRecord={handlerEditRecord}
-                                                 editSwitch={switchModalEdit.EditRecord}
-            />}
+            {user.Role.Value !== "user" && <>
+                {switchModalCreate && <SwitchModalCreate action="create" setState={setSwitchModalCreate} returnSwitch={handlerAddRecord}/>}
+                {nodeReferenceModalCreate && <NodeReferenceRecordModalCreate action="create" setState={setNodeReferenceModalCreate} returnRecord={handlerAddRecord} reference={reference}/>}
+                {hardwareReferenceModalCreate && <HardwareReferenceRecordModalCreate action="create" setState={setHardwareReferenceModalCreate} returnRecord={handlerAddRecord} reference={reference}/>}
+                {nodeReferenceModalEdit.State && <NodeReferenceRecordModalCreate action="edit"
+                                                                                 setState={(state) => setNodeReferenceModalEdit(prevState => ({...prevState, State: state}))}
+                                                                                 returnRecord={handlerEditRecord}
+                                                                                 editRecord={nodeReferenceModalEdit.EditRecord}
+                                                                                 reference={reference}
+                />}
+                {hardwareReferenceModalEdit.State && <HardwareReferenceRecordModalCreate action="edit"
+                                                                                         setState={(state) => setHardwareReferenceModalEdit(prevState => ({...prevState, State: state}))}
+                                                                                         returnRecord={handlerEditRecord}
+                                                                                         editRecord={hardwareReferenceModalEdit.EditRecord}
+                                                                                         reference={reference}
+                />}
+                {switchModalEdit.State && <SwitchModalCreate action="edit"
+                                                             setState={(state) => setSwitchModalEdit(prevState => ({...prevState, State: state}))}
+                                                             returnRecord={handlerEditRecord}
+                                                             editSwitch={switchModalEdit.EditRecord}
+                />}
 
-            <div className="buttons">
-                <button onClick={handlerOpenModalCreate}><FontAwesomeIcon icon={faPlus}/>
-                    {reference === "node_types" && "Создать тип узла"}
-                    {reference === "owners" && "Создать владельца"}
-                    {reference === "hardware_types" && "Создать тип оборудования"}
-                    {reference === "operation_modes" && "Создать режим работы"}
-                    {reference === "switches" && "Создать модель коммутатора"}
-                </button>
-            </div>
+                <div className="buttons">
+                    <button onClick={handlerOpenModalCreate}><FontAwesomeIcon icon={faPlus}/>
+                        {reference === "node_types" && "Создать тип узла"}
+                        {reference === "owners" && "Создать владельца"}
+                        {reference === "hardware_types" && "Создать тип оборудования"}
+                        {reference === "operation_modes" && "Создать режим работы"}
+                        {reference === "switches" && "Создать модель коммутатора"}
+                    </button>
+                </div>
+            </>}
             {isLoaded && <>{records.length > 0 ? (
                     <table>
                         <thead>
@@ -125,7 +129,7 @@ const ReferencePage = ({reference}) => {
                                 <td>{record.Name || record.TranslateValue}</td>
                                 <td>{new Date(record.CreatedAt * 1000).toLocaleString().slice(0, 17)}</td>
                                 <td>
-                                    <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => handlerOpenModalEdit(record)}/>
+                                    {user.Role.Value !== "user" && <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => handlerOpenModalEdit(record)}/>}
                                 </td>
                             </tr>
                         ))}

@@ -4,10 +4,44 @@ import (
 	"backend/database"
 	"backend/utils"
 	"database/sql"
+	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"strconv"
 	"time"
 )
+
+func handlerDeleteHardware(c *gin.Context) {
+	sessionHash, ok := c.Get("sessionHash")
+	if !ok {
+		err := errors.New("сессия не найдена")
+		utils.Logger.Println(err)
+		handlerError(c, err, 401)
+		return
+	}
+
+	session := database.GetSession(sessionHash.(string))
+
+	if session.User.Role.Value != "admin" {
+		c.JSON(403, nil)
+		return
+	}
+
+	hardwareID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.Logger.Println(err)
+		handlerError(c, err, 400)
+		return
+	}
+
+	if err = database.DeleteHardware(hardwareID); err != nil {
+		utils.Logger.Println(err)
+		handlerError(c, err, 400)
+		return
+	}
+
+	c.JSON(200, true)
+}
 
 func handlerGetHardwareFiles(c *gin.Context) {
 	hardwareID, err := strconv.Atoi(c.Param("id"))
@@ -19,6 +53,7 @@ func handlerGetHardwareFiles(c *gin.Context) {
 
 	files, err := database.GetHardwareFiles(hardwareID)
 	if err != nil {
+		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
 	}
@@ -49,6 +84,21 @@ func handlerGetHardwareByID(c *gin.Context) {
 }
 
 func handlerEditHardware(c *gin.Context) {
+	sessionHash, ok := c.Get("sessionHash")
+	if !ok {
+		err := errors.New("сессия не найдена")
+		utils.Logger.Println(err)
+		handlerError(c, err, 401)
+		return
+	}
+
+	session := database.GetSession(sessionHash.(string))
+
+	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+		c.JSON(403, nil)
+		return
+	}
+
 	var hardware database.Hardware
 
 	if err := c.BindJSON(&hardware); err != nil {
@@ -70,10 +120,38 @@ func handlerEditHardware(c *gin.Context) {
 		return
 	}
 
+	event := database.Event{
+		Address:     database.Address{House: database.AddressElement{ID: hardware.Node.Address.House.ID}},
+		Node:        &database.Node{ID: hardware.Node.ID},
+		Hardware:    &database.Hardware{ID: hardware.ID},
+		User:        database.User{ID: session.User.ID},
+		Description: fmt.Sprintf("Изменение оборудования: %s", hardware.Type.TranslateValue),
+		CreatedAt:   time.Now().Unix(),
+	}
+
+	if err := event.CreateEvent(); err != nil {
+		utils.Logger.Println(err)
+	}
+
 	c.JSON(200, hardware)
 }
 
 func handlerCreateHardware(c *gin.Context) {
+	sessionHash, ok := c.Get("sessionHash")
+	if !ok {
+		err := errors.New("сессия не найдена")
+		utils.Logger.Println(err)
+		handlerError(c, err, 401)
+		return
+	}
+
+	session := database.GetSession(sessionHash.(string))
+
+	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+		c.JSON(403, nil)
+		return
+	}
+
 	var hardware database.Hardware
 
 	if err := c.BindJSON(&hardware); err != nil {
@@ -93,6 +171,19 @@ func handlerCreateHardware(c *gin.Context) {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
+	}
+
+	event := database.Event{
+		Address:     database.Address{House: database.AddressElement{ID: hardware.Node.Address.House.ID}},
+		Node:        &database.Node{ID: hardware.Node.ID},
+		Hardware:    nil,
+		User:        database.User{ID: session.User.ID},
+		Description: fmt.Sprintf("Создание оборудования: %s", hardware.Type.TranslateValue),
+		CreatedAt:   time.Now().Unix(),
+	}
+
+	if err := event.CreateEvent(); err != nil {
+		utils.Logger.Println(err)
 	}
 
 	c.JSON(200, hardware)

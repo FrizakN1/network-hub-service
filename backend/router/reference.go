@@ -28,7 +28,8 @@ func (rh *DefaultReferenceHandler) handleReferenceRecord(c *gin.Context, isEdit 
 	}
 
 	session := database.GetSession(sessionHash.(string))
-	if session.User.Role.Value != "admin" {
+
+	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
 		c.JSON(403, nil)
 		return
 	}
@@ -42,8 +43,8 @@ func (rh *DefaultReferenceHandler) handleReferenceRecord(c *gin.Context, isEdit 
 		return
 	}
 
-	if (reference == "node_types" || reference == "owners" && record.Name == "") ||
-		((reference == "hard_types" || reference == "operation_modes") && record.Value == "" && record.TranslateValue == "") {
+	if ((reference == "node_types" || reference == "owners") && record.Name == "") ||
+		((reference == "hardware_types" || reference == "operation_modes") && record.Value == "" && record.TranslateValue == "") {
 		c.JSON(400, nil)
 		return
 	}

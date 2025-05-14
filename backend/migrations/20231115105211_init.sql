@@ -120,7 +120,8 @@ CREATE TABLE IF NOT EXISTS "Node_files" (
 INSERT INTO "Role" (value, translate_value)
 VALUES
     ('admin', 'Админ'),
-    ('user', 'Пользователь');
+    ('user', 'Пользователь'),
+    ('operator', 'Оператор');
 
 INSERT INTO "Street_type" (name, short_name)
 VALUES

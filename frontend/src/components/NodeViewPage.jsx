@@ -4,6 +4,7 @@ import FetchRequest from "../fetchRequest";
 import FilesTable from "./FilesTable";
 import ImageTable from "./ImageTable";
 import HardwareTable from "./HardwareTable";
+import EventsTable from "./EventsTable";
 
 const NodeViewPage = () => {
     const { id } = useParams()
@@ -12,7 +13,7 @@ const NodeViewPage = () => {
     const [activeTab, setActiveTab] = useState(1)
 
     useEffect(() => {
-        FetchRequest("GET", `/get_node/${id}`, null)
+        FetchRequest("GET", `/nodes/${id}`, null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setNode(response.data)
@@ -23,6 +24,7 @@ const NodeViewPage = () => {
 
     return (
         <section className="node-view">
+            <h2>Узел</h2>
             <div className="contain">
                 {isLoaded &&
                     <div className="info">
@@ -86,11 +88,13 @@ const NodeViewPage = () => {
                     <div className={activeTab === 1 ? "tab active" : "tab"} onClick={() => setActiveTab(1)}>Изображения</div>
                     <div className={activeTab === 2 ? "tab active" : "tab"} onClick={() => setActiveTab(2)}>Файлы</div>
                     <div className={activeTab === 3 ? "tab active" : "tab"} onClick={() => setActiveTab(3)}>Оборудование</div>
+                    <div className={activeTab === 4 ? "tab active" : "tab"} onClick={() => setActiveTab(4)}>События</div>
                 </div>
             </div>
             {activeTab === 1 && <ImageTable type="nodes"/>}
             {activeTab === 2 && <FilesTable type="nodes"/>}
-            {activeTab === 3 && <HardwareTable type="node" id={Number(id)} canCreate={true}/>}
+            {activeTab === 3 && <HardwareTable type="nodes" id={Number(id)} canCreate={true}/>}
+            {activeTab === 4 && <EventsTable from={"nodes"}/>}
         </section>
     )
 }

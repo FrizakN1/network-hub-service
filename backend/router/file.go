@@ -3,6 +3,8 @@ package router
 import (
 	"backend/database"
 	"backend/utils"
+	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"image"
 	"image/jpeg"
@@ -33,17 +35,62 @@ func handlerGetHouseFiles(c *gin.Context) {
 }
 
 func handlerUploadFile(c *gin.Context) {
-	var uploadFile database.File
-	var err error
-	var fileFor = c.PostForm("type")
+	sessionHash, ok := c.Get("sessionHash")
+	if !ok {
+		err := errors.New("сессия не найдена")
+		utils.Logger.Println(err)
+		handlerError(c, err, 401)
+		return
+	}
 
-	// Обработка ID (остается без изменений)
-	if fileFor == "house" {
+	session := database.GetSession(sessionHash.(string))
+
+	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+		c.JSON(403, nil)
+		return
+	}
+
+	var (
+		uploadFile database.File
+		err        error
+		fileFor    = c.PostForm("type")
+		event      database.Event
+	)
+
+	if fileFor == "houses" {
 		uploadFile.House.ID, err = strconv.Atoi(c.PostForm("id"))
-	} else if fileFor == "node" {
+
+		event = database.Event{
+			Address:  database.Address{House: database.AddressElement{ID: uploadFile.House.ID}},
+			Node:     nil,
+			Hardware: nil,
+		}
+	} else if fileFor == "nodes" {
 		uploadFile.Node.ID, err = strconv.Atoi(c.PostForm("id"))
+
+		if err = uploadFile.Node.GetNode(); err != nil {
+			utils.Logger.Println(err)
+			handlerError(c, err, 400)
+		}
+
+		event = database.Event{
+			Address:  database.Address{House: database.AddressElement{ID: uploadFile.Node.Address.House.ID}},
+			Node:     &database.Node{ID: uploadFile.Node.ID},
+			Hardware: nil,
+		}
 	} else {
 		uploadFile.Hardware.ID, err = strconv.Atoi(c.PostForm("id"))
+
+		if err = uploadFile.Hardware.GetHardwareByID(); err != nil {
+			utils.Logger.Println(err)
+			handlerError(c, err, 400)
+		}
+
+		event = database.Event{
+			Address:  database.Address{House: database.AddressElement{ID: uploadFile.Hardware.Node.Address.House.ID}},
+			Node:     &database.Node{ID: uploadFile.Hardware.Node.ID},
+			Hardware: &database.Hardware{ID: uploadFile.Hardware.ID},
+		}
 	}
 	if err != nil {
 		utils.Logger.Println(err)
@@ -51,7 +98,6 @@ func handlerUploadFile(c *gin.Context) {
 		return
 	}
 
-	// Получаем файл
 	file, err := c.FormFile("file")
 	if err != nil {
 		utils.Logger.Println(err)
@@ -63,7 +109,6 @@ func handlerUploadFile(c *gin.Context) {
 	uploadFile.Name = file.Filename
 	uploadFile.Path = filepath.Join("./upload", timeNow+"_"+uploadFile.Name)
 
-	// Открываем файл для обработки
 	srcFile, err := file.Open()
 	if err != nil {
 		utils.Logger.Println(err)
@@ -72,13 +117,11 @@ func handlerUploadFile(c *gin.Context) {
 	}
 	defer srcFile.Close()
 
-	// Определяем тип файла по расширению
 	ext := strings.ToLower(filepath.Ext(uploadFile.Name))
 	isImage := false
 	var img image.Image
 	var format string
 
-	// Проверяем, является ли файл изображением (jpeg/png)
 	if ext == ".jpg" || ext == ".jpeg" || ext == ".png" {
 		isImage = true
 
@@ -91,7 +134,6 @@ func handlerUploadFile(c *gin.Context) {
 		}
 	}
 
-	// Создаем файл для сохранения
 	dstFile, err := os.Create(uploadFile.Path)
 	if err != nil {
 		utils.Logger.Println(err)
@@ -101,7 +143,6 @@ func handlerUploadFile(c *gin.Context) {
 	defer dstFile.Close()
 
 	if isImage {
-		// Оптимизируем изображение в зависимости от формата
 		switch format {
 		case "jpeg":
 			// JPEG: качество 50%
@@ -117,7 +158,6 @@ func handlerUploadFile(c *gin.Context) {
 			return
 		}
 	} else {
-		// Для не-изображений просто копируем файл как есть
 		_, err = io.Copy(dstFile, srcFile)
 		if err != nil {
 			utils.Logger.Println(err)
@@ -128,8 +168,7 @@ func handlerUploadFile(c *gin.Context) {
 
 	uploadFile.UploadAt = time.Now().Unix()
 
-	// Остальная логика (остается без изменений)
-	if fileFor == "node" {
+	if fileFor == "nodes" {
 		uploadFile.IsPreviewImage, err = strconv.ParseBool(c.PostForm("onlyImage"))
 		if err != nil {
 			utils.Logger.Println(err)
@@ -145,11 +184,45 @@ func handlerUploadFile(c *gin.Context) {
 		return
 	}
 
+	event.User.ID = session.User.ID
+	event.Description = fmt.Sprintf("Загрузка файла: %s", uploadFile.Name)
+	event.CreatedAt = time.Now().Unix()
+
+	if err = event.CreateEvent(); err != nil {
+		utils.Logger.Println(err)
+	}
+
 	c.JSON(200, uploadFile)
 }
 
 func handlerFile(c *gin.Context) {
-	var file database.File
+	sessionHash, ok := c.Get("sessionHash")
+	if !ok {
+		err := errors.New("сессия не найдена")
+		utils.Logger.Println(err)
+		handlerError(c, err, 401)
+		return
+	}
+
+	session := database.GetSession(sessionHash.(string))
+
+	action := c.Param("action")
+
+	if action == "delete" && session.User.Role.Value != "admin" {
+		c.JSON(403, nil)
+		return
+	}
+
+	if action == "archive" && session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+		c.JSON(403, nil)
+		return
+	}
+
+	var (
+		key   string
+		file  database.File
+		event database.Event
+	)
 
 	err := c.BindJSON(&file)
 	if err != nil {
@@ -158,21 +231,55 @@ func handlerFile(c *gin.Context) {
 		return
 	}
 
-	action := c.Param("action")
-
-	var key string
-
 	if file.House.ID > 0 {
-		key = "HOUSE"
+		key = "HOUSES"
+
+		event = database.Event{
+			Address:  database.Address{House: database.AddressElement{ID: file.House.ID}},
+			Node:     nil,
+			Hardware: nil,
+		}
 	} else if file.Node.ID > 0 {
-		key = "NODE"
+		key = "NODES"
+
+		if err = file.Node.GetNode(); err != nil {
+			utils.Logger.Println(err)
+			handlerError(c, err, 400)
+			return
+		}
+
+		event = database.Event{
+			Address:  database.Address{House: database.AddressElement{ID: file.Node.Address.House.ID}},
+			Node:     &database.Node{ID: file.Node.ID},
+			Hardware: nil,
+		}
 	} else if file.Hardware.ID > 0 {
 		key = "HARDWARE"
+
+		if err = file.Hardware.GetHardwareByID(); err != nil {
+			utils.Logger.Println(err)
+			handlerError(c, err, 400)
+			return
+		}
+
+		event = database.Event{
+			Address:  database.Address{House: database.AddressElement{ID: file.Hardware.Node.Address.House.ID}},
+			Node:     &database.Node{ID: file.Hardware.Node.ID},
+			Hardware: &database.Hardware{ID: file.Hardware.ID},
+		}
 	}
 
 	if action == "archive" {
 		err = file.Archive(key)
+
+		if file.InArchive {
+			event.Description = fmt.Sprintf("Перемещение файла %s в архив", file.Name)
+		} else {
+			event.Description = fmt.Sprintf("Перемещение файла %s из архива", file.Name)
+		}
 	} else if action == "delete" {
+		event.Description = fmt.Sprintf("Удаление файла: %s", file.Name)
+
 		err = os.Remove(file.Path)
 		if err != nil {
 			utils.Logger.Println(err)
@@ -187,6 +294,13 @@ func handlerFile(c *gin.Context) {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
+	}
+
+	event.User.ID = session.User.ID
+	event.CreatedAt = time.Now().Unix()
+
+	if err = event.CreateEvent(); err != nil {
+		utils.Logger.Println(err)
 	}
 
 	c.JSON(200, file)

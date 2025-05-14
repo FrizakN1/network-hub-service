@@ -18,7 +18,7 @@ const ReferencesPage = () => {
                     <Link to="/references/operation_modes">
                         Режимы работы коммутаторов
                     </Link>
-                    <Link to="/references/switches">
+                    <Link to="/switches">
                         Модели коммутаторов
                     </Link>
                 </div>

@@ -1,13 +1,16 @@
 import API_DOMAIN from "./config";
 
-const FetchRequest = async (method, url, body) => {
+const FetchRequest = async (method, url, body = null) => {
     try {
         let options = {
             method: method,
-            headers: {"Authorization": `Bearer ${localStorage.getItem("token")}`}
+            headers: {
+                "Authorization": `Bearer ${localStorage.getItem("token")}`,
+                "Content-Type": "application/json",
+            }
         }
 
-        if (method === "POST") {
+        if (body != null) {
             options = {
                 ...options,
                 body: JSON.stringify(body)

@@ -23,6 +23,7 @@ const SwitchModalCreate = ({action, setState, returnSwitch, editSwitch}) => {
         BatteryChargeOID: "",
         PortModeOID: "",
         UptimeOID: "",
+        MacOID: "",
     })
     const [validation, setValidation] = useState({
         Name: true,
@@ -65,6 +66,7 @@ const SwitchModalCreate = ({action, setState, returnSwitch, editSwitch}) => {
                 BatteryChargeOID: editSwitch.BatteryChargeOID.String,
                 PortModeOID: editSwitch.PortDescOID.String,
                 UptimeOID: editSwitch.UptimeOID.String,
+                MacOID: editSwitch.MacOID.String,
             })
         }
     }, [action, editSwitch]);
@@ -151,6 +153,7 @@ const SwitchModalCreate = ({action, setState, returnSwitch, editSwitch}) => {
             BatteryChargeOID: {String: fields.BatteryChargeOID, Valid: fields.BatteryChargeOID !== ""},
             PortModeOID: {String: fields.PortModeOID, Valid: fields.PortModeOID !== ""},
             UptimeOID: {String: fields.UptimeOID, Valid: fields.UptimeOID !== ""},
+            MacOID: {String: fields.MacOID, Valid: fields.MacOID !== ""},
         }
 
         if (action === "edit") {body = {...editSwitch, ...body}}
@@ -231,6 +234,10 @@ const SwitchModalCreate = ({action, setState, returnSwitch, editSwitch}) => {
                         </div>
 
                         <div className="column">
+                            <label>
+                                <span>Mac OID</span>
+                                <input type="text" name="MacOID" value={fields.MacOID} onChange={handlerChange}/>
+                            </label>
                             <label>
                                 <span>VLAN OID</span>
                                 <input type="text" name="VlanOID" value={fields.VlanOID} onChange={handlerChange}/>

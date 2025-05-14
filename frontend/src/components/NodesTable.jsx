@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from "react";
+import React, {useContext, useEffect, useRef, useState} from "react";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {
     faAngleLeft,
@@ -14,6 +14,7 @@ import {
 import FetchRequest from "../fetchRequest";
 import NodeModalCreate from "./NodeModalCreate";
 import {useNavigate} from "react-router-dom";
+import AuthContext from "../context/AuthContext";
 
 const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNode, defaultAddress}) => {
     const searchDebounceTimer = useRef(0)
@@ -30,17 +31,13 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
         EditNode: {}
     })
     const navigate = useNavigate()
+    const { user } = useContext(AuthContext)
 
     useEffect(() => {
         handlerGetNodes()
     }, []);
 
     const handlerGetNodes = (value = "") => {
-        // let body = {
-        //     Offset: Number((currentPage-1)*20)
-        // }
-        //
-        // if (value.length > 0) body = {...body, Text: value}
         let uri = "/nodes"
         let params = new URLSearchParams({
             offset: String((currentPage-1)*20),
@@ -134,16 +131,25 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
     }, [allPage, currentPage])
 
     const handlerAddNode = (node) => {
-        setNodes(prevState => prevState.length < 20 ? [...prevState, node] : prevState)
+        setNodes(prevState => prevState.length < 20 ? [node, ...prevState] : prevState)
     }
 
     const handlerEditNode = (node) => {
         setNodes(prevState => prevState.map(_node => _node.ID === node.ID ? node : _node))
     }
 
+    const handlerDeleteNode = (nodeID) => {
+        FetchRequest("DELETE", `/nodes/${nodeID}`, null)
+            .then(response => {
+                if (response.success && response.data) {
+                    setNodes(prevState => prevState.filter(node => node.ID !== nodeID))
+                }
+            })
+    }
+
     return (
         <div className="contain nodes">
-            {canCreate && <>
+            {user.Role.Value !== "user" && canCreate && <>
                 {modalCreate && <NodeModalCreate action={"create"} setState={setModalCreate} returnNode={handlerAddNode} defaultAddress={defaultAddress}/>}
                 {modalEdit.State && <NodeModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editNode={modalEdit.EditNode} returnNode={handlerEditNode}/>}
                 <div className="contain">
@@ -181,9 +187,9 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
                                 </td>
                             :
                                 <td>
-                                    <FontAwesomeIcon icon={faEye} title="Просмотр" onClick={() => navigate(`/nodes/view/${node.ID}`)}/>
-                                    <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditNode: node})}/>
-                                    <FontAwesomeIcon icon={faTrash} title="Удалить" />
+                                    <FontAwesomeIcon icon={faEye} className="eye" title="Просмотр" onClick={() => navigate(`/nodes/view/${node.ID}`)}/>
+                                    {user.Role.Value !== "user" && <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditNode: node})}/>}
+                                    {user.Role.Value === "admin" && <FontAwesomeIcon icon={faTrash} className="delete" title="Удалить" onClick={() => handlerDeleteNode(node.ID)}/>}
                                 </td>
                             }
                         </tr>

@@ -2,14 +2,16 @@ import React, {useEffect, useState} from "react";
 import {Link, useParams} from "react-router-dom";
 import FetchRequest from "../fetchRequest";
 import FilesTable from "./FilesTable";
+import EventsTable from "./EventsTable";
 
 const HardwareViewPage = () => {
     const { id } = useParams()
     const [hardware, setHardware] = useState(null)
+    const [activeTab, setActiveTab] = useState(1)
     const [isLoaded, setIsLoaded] = useState(false)
 
     useEffect(() => {
-        FetchRequest("GET", `/get_hardware/${id}`, null)
+        FetchRequest("GET", `/hardware/${id}`, null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setHardware(response.data)
@@ -20,6 +22,7 @@ const HardwareViewPage = () => {
 
     return (
         <section className="hardware-view">
+            <h2>Оборудование</h2>
             <div className="contain">
                 {isLoaded &&
                     <div className="info">
@@ -66,7 +69,14 @@ const HardwareViewPage = () => {
                     </div>
                 }
             </div>
-            <FilesTable type="hardware"/>
+            <div className="tabs-contain">
+                <div className="tabs">
+                    <div className={activeTab === 1 ? "tab active" : "tab"} onClick={() => setActiveTab(1)}>Файлы</div>
+                    <div className={activeTab === 2 ? "tab active" : "tab"} onClick={() => setActiveTab(2)}>События</div>
+                </div>
+            </div>
+            {activeTab === 1 && <FilesTable type="hardware"/>}
+            {activeTab === 2 && <EventsTable type="hardware"/>}
         </section>
     )
 }

@@ -15,20 +15,15 @@ const ResultPage = () => {
 
     useEffect(() => {
         if (query.length > 0 && typeof query === "string") {
-            let body = {
-                Text: query,
-                Limit: 20,
-                Offset: (offset-1)*20,
-            }
-
             let params = new URLSearchParams({
                 search: query,
                 limit: String(20),
                 offset: String((offset-1)*20)
             })
 
-            FetchRequest("GET", `/houses/search?${params.toString()}`, body)
+            FetchRequest("GET", `/houses/search?${params.toString()}`, null)
                 .then(response => {
+                    console.log(response)
                     if (response.success) {
                         if (response.data != null) {
                             setAddresses(response.data?.Addresses || [])

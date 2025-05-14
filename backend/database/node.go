@@ -3,7 +3,9 @@ package database
 import (
 	"backend/utils"
 	"database/sql"
+	"encoding/base64"
 	"errors"
+	"io/ioutil"
 )
 
 type Node struct {
@@ -20,6 +22,7 @@ type Node struct {
 	Description sql.NullString
 	CreatedAt   int64
 	UpdatedAt   sql.NullInt64
+	IsDelete    bool
 }
 
 type NodeService interface {
@@ -51,7 +54,8 @@ func prepareNodes() []string {
         JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Node_type" AS nt ON n.type_id = nt.id
 		JOIN "Node_owner" AS no ON n.owner_id = no.id
-		ORDER BY id
+		WHERE n.is_delete = false
+		ORDER BY id DESC
 		OFFSET $1
 		LIMIT 20
     `)
@@ -60,7 +64,7 @@ func prepareNodes() []string {
 	}
 
 	query["GET_NODES_COUNT"], e = Link.Prepare(`
-		SELECT COUNT(*) FROM "Node"
+		SELECT COUNT(*) FROM "Node" WHERE is_delete = false
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
@@ -75,8 +79,8 @@ func prepareNodes() []string {
         JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Node_type" AS nt ON n.type_id = nt.id
 		JOIN "Node_owner" AS no ON n.owner_id = no.id
-		WHERE n.house_id = $1 
-		ORDER BY id
+		WHERE n.house_id = $1 AND n.is_delete = false
+		ORDER BY id DESC
 		OFFSET $2
 		LIMIT 20
     `)
@@ -87,7 +91,7 @@ func prepareNodes() []string {
 	query["GET_HOUSE_NODES_COUNT"], e = Link.Prepare(`
 		SELECT COUNT(*)
 		FROM "Node"
-		WHERE house_id = $1 
+		WHERE house_id = $1 AND is_delete = false
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
@@ -143,7 +147,7 @@ func prepareNodes() []string {
         JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Node_type" AS nt ON n.type_id = nt.id
 		JOIN "Node_owner" AS no ON n.owner_id = no.id
-		WHERE n.name ILIKE '%' || $1 || '%'
+		WHERE (n.name ILIKE '%' || $1 || '%'
 			OR nt.name ILIKE '%' || $1 || '%'
 			OR no.name ILIKE '%' || $1 || '%'
 			OR n.zone ILIKE '%' || $1 || '%'
@@ -151,7 +155,8 @@ func prepareNodes() []string {
 			OR st.short_name ILIKE '%' || $1 || '%'
 			OR h.name ILIKE '%' || $1 || '%'
 			OR ht.short_name ILIKE '%' || $1 || '%'
-			OR (st.short_name || ' ' || s.name || ', ' || ht.short_name || ' ' || h.name) ILIKE '%' || $1 || '%'
+			OR (st.short_name || ' ' || s.name || ', ' || ht.short_name || ' ' || h.name) ILIKE '%' || $1 || '%')
+			AND n.is_delete = false
 		ORDER BY id
 		OFFSET $2
 		LIMIT 20
@@ -169,7 +174,7 @@ func prepareNodes() []string {
         JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Node_type" AS nt ON n.type_id = nt.id
 		JOIN "Node_owner" AS no ON n.owner_id = no.id
-		WHERE n.name ILIKE '%' || $1 || '%'
+		WHERE (n.name ILIKE '%' || $1 || '%'
 			OR nt.name ILIKE '%' || $1 || '%'
 			OR no.name ILIKE '%' || $1 || '%'
 			OR n.zone ILIKE '%' || $1 || '%'
@@ -177,13 +182,38 @@ func prepareNodes() []string {
 			OR st.short_name ILIKE '%' || $1 || '%'
 			OR h.name ILIKE '%' || $1 || '%'
 			OR ht.short_name ILIKE '%' || $1 || '%'
-			OR (st.short_name || ' ' || s.name || ', ' || ht.short_name || ' ' || h.name) ILIKE '%' || $1 || '%'
+			OR (st.short_name || ' ' || s.name || ', ' || ht.short_name || ' ' || h.name) ILIKE '%' || $1 || '%')
+			AND n.is_delete = false 
+    `)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
+	}
+
+	query["DELETE_NODE"], e = Link.Prepare(`
+		UPDATE "Node" SET is_delete = true WHERE id = $1
     `)
 	if e != nil {
 		errorsList = append(errorsList, e.Error())
 	}
 
 	return errorsList
+}
+
+func DeleteNode(nodeID int) error {
+	stmt, ok := query["DELETE_NODE"]
+	if !ok {
+		err := errors.New("запрос DELETE_NODE не подготовлен")
+		utils.Logger.Println(err)
+		return err
+	}
+
+	_, err := stmt.Exec(nodeID)
+	if err != nil {
+		utils.Logger.Println(err)
+		return err
+	}
+
+	return nil
 }
 
 func (ns *DefaultNodeService) GetSearchNodes(search string, offset int) ([]Node, int, error) {
@@ -230,6 +260,7 @@ func (ns *DefaultNodeService) GetSearchNodes(search string, offset int) ([]Node,
 			&node.Description,
 			&node.CreatedAt,
 			&node.UpdatedAt,
+			&node.IsDelete,
 			&node.Address.Street.Name,
 			&node.Address.Street.Type.ShortName,
 			&node.Address.House.Name,
@@ -350,6 +381,7 @@ func (ns *DefaultNodeService) GetNode(node *Node) error {
 		&node.Description,
 		&node.CreatedAt,
 		&node.UpdatedAt,
+		&node.IsDelete,
 		&node.Address.Street.Name,
 		&node.Address.Street.Type.ShortName,
 		&node.Address.House.Name,
@@ -413,6 +445,7 @@ func (ns *DefaultNodeService) GetHouseNodes(houseID int, offset int) ([]Node, in
 			&node.Description,
 			&node.CreatedAt,
 			&node.UpdatedAt,
+			&node.IsDelete,
 			&node.Address.Street.Name,
 			&node.Address.Street.Type.ShortName,
 			&node.Address.House.Name,
@@ -479,6 +512,7 @@ func (ns *DefaultNodeService) GetNodes(offset int) ([]Node, int, error) {
 			&node.Description,
 			&node.CreatedAt,
 			&node.UpdatedAt,
+			&node.IsDelete,
 			&node.Address.Street.Name,
 			&node.Address.Street.Type.ShortName,
 			&node.Address.House.Name,
