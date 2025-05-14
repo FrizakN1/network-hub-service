@@ -3,9 +3,7 @@ package database
 import (
 	"backend/utils"
 	"database/sql"
-	"encoding/base64"
 	"errors"
-	"io/ioutil"
 )
 
 type Node struct {
@@ -32,7 +30,8 @@ type NodeService interface {
 	GetNode(node *Node) error
 	GetHouseNodes(houseID int, offset int) ([]Node, int, error)
 	GetNodes(offset int) ([]Node, int, error)
-	ValidateNode(node *Node) bool
+	ValidateNode(node Node) bool
+	DeleteNode(nodeID int) error
 }
 
 type DefaultNodeService struct{}
@@ -130,14 +129,6 @@ func prepareNodes() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["GET_NODE_FILES"], e = Link.Prepare(`
-		SELECT * FROM "Node_files" WHERE node_id = $1 AND is_preview_image = $2
-		ORDER BY upload_at DESC 
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
 	query["GET_SEARCH_NODES"], e = Link.Prepare(`
 		SELECT n.*, s.name, st.short_name, h.name, ht.short_name, nt.name, no.name, (SELECT p.name FROM "Node" AS p WHERE p.id = n.parent_id) AS parent_name
 		FROM "Node" AS n 
@@ -199,7 +190,7 @@ func prepareNodes() []string {
 	return errorsList
 }
 
-func DeleteNode(nodeID int) error {
+func (ns *DefaultNodeService) DeleteNode(nodeID int) error {
 	stmt, ok := query["DELETE_NODE"]
 	if !ok {
 		err := errors.New("запрос DELETE_NODE не подготовлен")

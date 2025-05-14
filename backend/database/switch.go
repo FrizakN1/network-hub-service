@@ -230,7 +230,3 @@ func (ss *DefaultSwitchService) CreateSwitch(_switch *Switch) error {
 
 	return nil
 }
-
-func NewSwitchService() SwitchService {
-	return &DefaultSwitchService{}
-}

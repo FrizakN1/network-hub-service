@@ -20,6 +20,7 @@ const UsersPage = () => {
     useEffect(() => {
         FetchRequest("GET", "/users", null)
             .then(response => {
+                console.log(response)
                 if (response.success && response.data != null) {
                     setUsers(response.data)
                 }
@@ -74,19 +75,19 @@ const UsersPage = () => {
                         <tbody>
                         {users.map((user, index) => (
                             <tr key={index} className={index % 2 === 0 ? 'row-type-1' : 'row-type-2'}>
-                                <td>{user.ID}</td>
-                                <td>{user.Login}</td>
-                                <td>{user.Name}</td>
-                                <td>{user.Role.TranslateValue}</td>
-                                <td>{user.Baned ? <span className={"bg-red"}>Заблокирован</span> : <span className={"bg-green"}>Активен</span>}</td>
-                                <td>{new Date(user.CreatedAt * 1000).toLocaleString().slice(0, 17)}</td>
+                                <td>{user.id}</td>
+                                <td>{user.login}</td>
+                                <td>{user.name}</td>
+                                <td>{user.role.value}</td>
+                                <td>{!user.is_active ? <span className={"bg-red"}>Заблокирован</span> : <span className={"bg-green"}>Активен</span>}</td>
+                                <td>{new Date(user.created_at * 1000).toLocaleString().slice(0, 17)}</td>
                                 <td>
                                     {/*<FontAwesomeIcon icon={faEye} title="Просмотр" />*/}
                                     <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditUser: user})}/>
-                                    {user.Baned ?
-                                        <FontAwesomeIcon icon={faCircleCheck} className="eye" title="Разаблокировать" onClick={() => changeUserStatus(user.ID)}/>
+                                    {!user.IsActive ?
+                                        <FontAwesomeIcon icon={faCircleCheck} className="eye" title="Разаблокировать" onClick={() => changeUserStatus(user.id)}/>
                                         :
-                                        <FontAwesomeIcon icon={faBan} className="delete" title="Заблокировать" onClick={() => changeUserStatus(user.ID)}/>
+                                        <FontAwesomeIcon icon={faBan} className="delete" title="Заблокировать" onClick={() => changeUserStatus(user.id)}/>
                                     }
                                 </td>
                             </tr>

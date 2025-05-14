@@ -22,6 +22,7 @@ type File struct {
 }
 
 type FileService interface {
+	GetHardwareFiles(hardwareID int) ([]File, error)
 	GetNodeFiles(nodeID int, onlyImage bool) ([]File, error)
 	GetHouseFiles(houseID int) ([]File, error)
 	CreateFile(file *File, fileFor string) error
@@ -109,6 +110,22 @@ func prepareFile() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
+	query["GET_NODE_FILES"], e = Link.Prepare(`
+		SELECT * FROM "Node_files" WHERE node_id = $1 AND is_preview_image = $2
+		ORDER BY upload_at DESC 
+    `)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
+	}
+
+	query["GET_HARDWARE_FILES"], e = Link.Prepare(`
+		SELECT * FROM "Hardware_files" WHERE hardware_id = $1
+		ORDER BY upload_at DESC
+    `)
+	if e != nil {
+		errorsList = append(errorsList, e.Error())
+	}
+
 	query["DELETE_FILE_HARDWARE"], e = Link.Prepare(`
 		DELETE FROM "Hardware_files" WHERE id = $1
     `)
@@ -117,6 +134,54 @@ func prepareFile() []string {
 	}
 
 	return errorsList
+}
+
+func (fs *DefaultFileService) GetHardwareFiles(hardwareID int) ([]File, error) {
+	stmt, ok := query["GET_HARDWARE_FILES"]
+	if !ok {
+		err := errors.New("запрос GET_HARDWARE_FILES не подготовлен")
+		utils.Logger.Println(err)
+		return nil, err
+	}
+
+	rows, err := stmt.Query(hardwareID)
+	if err != nil {
+		utils.Logger.Println(err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var files []File
+	for rows.Next() {
+		var file File
+
+		err = rows.Scan(
+			&file.ID,
+			&file.Hardware.ID,
+			&file.Path,
+			&file.Name,
+			&file.UploadAt,
+			&file.InArchive,
+		)
+		if err != nil {
+			utils.Logger.Println(err)
+			return nil, err
+		}
+
+		var fileData []byte
+
+		fileData, err = ioutil.ReadFile(file.Path)
+		if err != nil {
+			utils.Logger.Println(err)
+			return nil, err
+		}
+
+		file.Data = base64.StdEncoding.EncodeToString(fileData)
+
+		files = append(files, file)
+	}
+
+	return files, nil
 }
 
 func (fs *DefaultFileService) GetNodeFiles(nodeID int, onlyImage bool) ([]File, error) {

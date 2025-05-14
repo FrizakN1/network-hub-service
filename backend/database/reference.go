@@ -221,7 +221,3 @@ func (rs *DefaultReferenceService) GetReferenceRecords(reference string) ([]Refe
 
 	return references, nil
 }
-
-func NewReferenceService() ReferenceService {
-	return &DefaultReferenceService{}
-}

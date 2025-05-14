@@ -26,6 +26,14 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 	config = *_config
 
 	userHandler := NewUserHandler()
+	switchHandler := NewSwitchHandler()
+	referenceHandler := NewReferenceHandler()
+	nodeHandler := NewNodeHandler()
+	addressHandler := NewAddressHandler()
+	hardwareHandler := NewHardwareHandler()
+	fileHandler := NewFileHandler()
+
+	InitUserClient()
 
 	router := gin.Default()
 
@@ -65,7 +73,8 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 
 	users := routerAPI.Group("/users")
 	{
-		users.GET("", userHandler.handlerGetUsers)
+		//users.GET("", userHandler.handlerGetUsers)
+		users.GET("", handlerGetUsers)
 		users.POST("", userHandler.handlerCreateUser)
 		users.PUT("", userHandler.handlerEditUser)
 		users.PATCH("/status", userHandler.handlerChangeUserStatus)
@@ -73,28 +82,28 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 
 	nodes := routerAPI.Group("/nodes")
 	{
-		nodes.GET("", handlerGetNodes)
-		nodes.GET("/:id", handlerGetNode)
-		nodes.GET("/search", handlerGetSearchNodes)
-		nodes.GET("/:id/files", handlerGetNodeFiles)
-		nodes.GET("/:id/images", handlerGetNodeImages)
-		nodes.GET("/:id/hardware", handlerGetNodeHardware)
-		nodes.POST("", handlerCreateNode)
-		nodes.PUT("", handlerEditNode)
+		nodes.GET("", nodeHandler.handlerGetNodes)
+		nodes.GET("/:id", nodeHandler.handlerGetNode)
+		nodes.GET("/search", nodeHandler.handlerGetSearchNodes)
+		nodes.GET("/:id/files", fileHandler.handlerGetNodeFiles)
+		nodes.GET("/:id/images", fileHandler.handlerGetNodeImages)
+		nodes.GET("/:id/hardware", hardwareHandler.handlerGetNodeHardware)
+		nodes.POST("", nodeHandler.handlerCreateNode)
+		nodes.PUT("", nodeHandler.handlerEditNode)
 		nodes.GET("/:id/events/:type", func(c *gin.Context) {
 			handlerGetEventsFrom(c, "NODE")
 		})
-		nodes.DELETE("/:id", handlerDeleteNode)
+		nodes.DELETE("/:id", nodeHandler.handlerDeleteNode)
 	}
 
 	houses := routerAPI.Group("/houses")
 	{
-		houses.GET("", handlerGetHouses)
-		houses.GET("/:id", handlerGetHouse)
-		houses.GET("/search", handlerGetSuggestions)
-		houses.GET("/:id/files", handlerGetHouseFiles)
-		houses.GET("/:id/nodes", handlerGetHouseNodes)
-		houses.GET("/:id/hardware", handlerGetHouseHardware)
+		houses.GET("", addressHandler.handlerGetHouses)
+		houses.GET("/:id", addressHandler.handlerGetHouse)
+		houses.GET("/search", addressHandler.handlerGetSuggestions)
+		houses.GET("/:id/files", fileHandler.handlerGetHouseFiles)
+		houses.GET("/:id/nodes", nodeHandler.handlerGetHouseNodes)
+		houses.GET("/:id/hardware", hardwareHandler.handlerGetHouseHardware)
 		houses.GET("/:id/events/:type", func(c *gin.Context) {
 			handlerGetEventsFrom(c, "HOUSE")
 		})
@@ -102,44 +111,44 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 
 	hardware := routerAPI.Group("/hardware")
 	{
-		hardware.GET("", handlerGetHardware)
-		hardware.GET("/search", handlerGetSearchHardware)
-		hardware.GET("/:id", handlerGetHardwareByID)
-		hardware.GET("/:id/files", handlerGetHardwareFiles)
-		hardware.POST("", handlerCreateHardware)
-		hardware.PUT("", handlerEditHardware)
+		hardware.GET("", hardwareHandler.handlerGetHardware)
+		hardware.GET("/search", hardwareHandler.handlerGetSearchHardware)
+		hardware.GET("/:id", hardwareHandler.handlerGetHardwareByID)
+		hardware.GET("/:id/files", fileHandler.handlerGetHardwareFiles)
+		hardware.POST("", hardwareHandler.handlerCreateHardware)
+		hardware.PUT("", hardwareHandler.handlerEditHardware)
 		hardware.GET("/:id/events/:type", func(c *gin.Context) {
 			handlerGetEventsFrom(c, "HARDWARE")
 		})
-		hardware.DELETE("/:id", handlerDeleteHardware)
+		hardware.DELETE("/:id", hardwareHandler.handlerDeleteHardware)
 	}
 
 	switches := routerAPI.Group("/switches")
 	{
-		switches.GET("", handlerGetSwitches)
-		switches.POST("", handlerCreateSwitch)
-		switches.PUT("", handlerEditSwitch)
+		switches.GET("", switchHandler.handlerGetSwitches)
+		switches.POST("", switchHandler.handlerCreateSwitch)
+		switches.PUT("", switchHandler.handlerEditSwitch)
 	}
 
 	files := routerAPI.Group("/files")
 	{
-		files.POST("/upload", handlerUploadFile)
-		files.POST("/:action", handlerFile)
+		files.POST("/upload", fileHandler.handlerUploadFile)
+		files.POST("/:action", fileHandler.handlerFile)
 	}
 
 	references := routerAPI.Group("/references")
 	{
 		references.GET("/:reference", func(c *gin.Context) {
-			handlerGetReference(c, false)
+			referenceHandler.handlerGetReference(c, false)
 		})
 		references.GET("/role", func(c *gin.Context) {
-			handlerGetReference(c, true)
+			referenceHandler.handlerGetReference(c, true)
 		})
 		references.POST("/:reference", func(c *gin.Context) {
-			handleReferenceRecord(c, false)
+			referenceHandler.handleReferenceRecord(c, false)
 		})
 		references.PUT("/:reference", func(c *gin.Context) {
-			handleReferenceRecord(c, true)
+			referenceHandler.handleReferenceRecord(c, true)
 		})
 	}
 

@@ -7,7 +7,17 @@ import (
 	"strconv"
 )
 
-func handlerGetHouses(c *gin.Context) {
+type AddressHandler interface {
+	handlerGetHouses(c *gin.Context)
+	handlerGetHouse(c *gin.Context)
+	handlerGetSuggestions(c *gin.Context)
+}
+
+type DefaultAddressHandler struct {
+	AddressService database.AddressService
+}
+
+func (ah *DefaultAddressHandler) handlerGetHouses(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -15,7 +25,7 @@ func handlerGetHouses(c *gin.Context) {
 		return
 	}
 
-	addresses, count, err := database.GetHouses(offset)
+	addresses, count, err := ah.AddressService.GetHouses(offset)
 	if err != nil {
 		handlerError(c, err, 400)
 		return
@@ -27,7 +37,7 @@ func handlerGetHouses(c *gin.Context) {
 	})
 }
 
-func handlerGetHouse(c *gin.Context) {
+func (ah *DefaultAddressHandler) handlerGetHouse(c *gin.Context) {
 	var address database.Address
 	var err error
 
@@ -38,7 +48,7 @@ func handlerGetHouse(c *gin.Context) {
 		return
 	}
 
-	err = address.GetHouse()
+	err = ah.AddressService.GetHouse(&address)
 	if err != nil {
 		handlerError(c, err, 400)
 		return
@@ -47,7 +57,7 @@ func handlerGetHouse(c *gin.Context) {
 	c.JSON(200, address)
 }
 
-func handlerGetSuggestions(c *gin.Context) {
+func (ah *DefaultAddressHandler) handlerGetSuggestions(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -60,7 +70,7 @@ func handlerGetSuggestions(c *gin.Context) {
 	}
 	search := c.DefaultQuery("search", "")
 
-	suggestions, count, err := database.GetSuggestions(search, offset, limit)
+	suggestions, count, err := ah.AddressService.GetSuggestions(search, offset, limit)
 	if err != nil {
 		handlerError(c, err, 400)
 		return
@@ -70,4 +80,10 @@ func handlerGetSuggestions(c *gin.Context) {
 		"Addresses": suggestions,
 		"Count":     count,
 	})
+}
+
+func NewAddressHandler() AddressHandler {
+	return &DefaultAddressHandler{
+		AddressService: &database.DefaultAddressService{},
+	}
 }

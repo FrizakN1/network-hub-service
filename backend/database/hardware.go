@@ -3,10 +3,8 @@ package database
 import (
 	"backend/utils"
 	"database/sql"
-	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
 )
 
 type Hardware struct {
@@ -22,7 +20,19 @@ type Hardware struct {
 	IsDelete    bool
 }
 
-type HardwareService interface{}
+type HardwareService interface {
+	GetHardwareByID(hardware *Hardware) error
+	EditHardware(hardware *Hardware) error
+	CreateHardware(hardware *Hardware) error
+	GetSearchHardware(search string, offset int) ([]Hardware, int, error)
+	GetNodeHardware(nodeID int, offset int) ([]Hardware, int, error)
+	GetHouseHardware(houseID int, offset int) ([]Hardware, int, error)
+	GetHardware(offset int) ([]Hardware, int, error)
+	ValidateHardware(hardware Hardware) bool
+	DeleteHardware(hardwareID int) error
+}
+
+type DefaultHardwareService struct{}
 
 func prepareHardware() []string {
 	var e error
@@ -210,17 +220,10 @@ func prepareHardware() []string {
 		errorsList = append(errorsList, e.Error())
 	}
 
-	query["DELETE_HARDWARE"], e = Link.Prepare(`
-		UPDATE "Hardware" SET is_delete = true WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
 	return errorsList
 }
 
-func DeleteHardware(hardwareID int) error {
+func (hs *DefaultHardwareService) DeleteHardware(hardwareID int) error {
 	stmt, ok := query["DELETE_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос DELETE_HARDWARE не подготовлен")
@@ -237,55 +240,7 @@ func DeleteHardware(hardwareID int) error {
 	return nil
 }
 
-func GetHardwareFiles(hardwareID int) ([]File, error) {
-	stmt, ok := query["GET_HARDWARE_FILES"]
-	if !ok {
-		err := errors.New("запрос GET_HARDWARE_FILES не подготовлен")
-		utils.Logger.Println(err)
-		return nil, err
-	}
-
-	rows, err := stmt.Query(hardwareID)
-	if err != nil {
-		utils.Logger.Println(err)
-		return nil, err
-	}
-	defer rows.Close()
-
-	var files []File
-	for rows.Next() {
-		var file File
-
-		err = rows.Scan(
-			&file.ID,
-			&file.Hardware.ID,
-			&file.Path,
-			&file.Name,
-			&file.UploadAt,
-			&file.InArchive,
-		)
-		if err != nil {
-			utils.Logger.Println(err)
-			return nil, err
-		}
-
-		var fileData []byte
-
-		fileData, err = ioutil.ReadFile(file.Path)
-		if err != nil {
-			utils.Logger.Println(err)
-			return nil, err
-		}
-
-		file.Data = base64.StdEncoding.EncodeToString(fileData)
-
-		files = append(files, file)
-	}
-
-	return files, nil
-}
-
-func (hardware *Hardware) GetHardwareByID() error {
+func (hs *DefaultHardwareService) GetHardwareByID(hardware *Hardware) error {
 	stmt, ok := query["GET_HARDWARE_BY_ID"]
 	if !ok {
 		err := errors.New("запрос GET_HARDWARE_BY_ID не подготовлен")
@@ -330,7 +285,7 @@ func (hardware *Hardware) GetHardwareByID() error {
 	return nil
 }
 
-func (hardware *Hardware) EditHardware() error {
+func (hs *DefaultHardwareService) EditHardware(hardware *Hardware) error {
 	stmt, ok := query["EDIT_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос EDIT_HARDWARE не подготовлен")
@@ -362,7 +317,7 @@ func (hardware *Hardware) EditHardware() error {
 	return nil
 }
 
-func (hardware *Hardware) CreateHardware() error {
+func (hs *DefaultHardwareService) CreateHardware(hardware *Hardware) error {
 	stmt, ok := query["CREATE_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос CREATE_HARDWARE не подготовлен")
@@ -393,7 +348,7 @@ func (hardware *Hardware) CreateHardware() error {
 	return nil
 }
 
-func GetSearchHardware(search string, offset int) ([]Hardware, int, error) {
+func (hs *DefaultHardwareService) GetSearchHardware(search string, offset int) ([]Hardware, int, error) {
 	stmt, ok := query["GET_SEARCH_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос GET_SEARCH_HARDWARE не подготовлен")
@@ -457,7 +412,7 @@ func GetSearchHardware(search string, offset int) ([]Hardware, int, error) {
 	return hardware, count, nil
 }
 
-func GetNodeHardware(nodeID int, offset int) ([]Hardware, int, error) {
+func (hs *DefaultHardwareService) GetNodeHardware(nodeID int, offset int) ([]Hardware, int, error) {
 	stmt, ok := query["GET_NODE_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос GET_NODE_HARDWARE не подготовлен")
@@ -521,7 +476,7 @@ func GetNodeHardware(nodeID int, offset int) ([]Hardware, int, error) {
 	return hardware, count, nil
 }
 
-func GetHouseHardware(houseID int, offset int) ([]Hardware, int, error) {
+func (hs *DefaultHardwareService) GetHouseHardware(houseID int, offset int) ([]Hardware, int, error) {
 	stmt, ok := query["GET_HOUSE_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос GET_HOUSE_HARDWARE не подготовлен")
@@ -585,7 +540,7 @@ func GetHouseHardware(houseID int, offset int) ([]Hardware, int, error) {
 	return hardware, count, nil
 }
 
-func GetHardware(offset int) ([]Hardware, int, error) {
+func (hs *DefaultHardwareService) GetHardware(offset int) ([]Hardware, int, error) {
 	stmt, ok := query["GET_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос GET_HARDWARE не подготовлен")
@@ -649,7 +604,7 @@ func GetHardware(offset int) ([]Hardware, int, error) {
 	return hardware, count, nil
 }
 
-func ValidateHardware(hardware *Hardware) bool {
+func (hs *DefaultHardwareService) ValidateHardware(hardware Hardware) bool {
 	fmt.Println(hardware)
 
 	if hardware.Type.ID == 0 || hardware.Node.ID == 0 {

@@ -13,17 +13,19 @@ import (
 
 type NodeHandler interface {
 	handlerGetSearchNodes(c *gin.Context)
-	handlerGetNodeImages(c *gin.Context)
-	handlerGetNodeFiles(c *gin.Context)
 	handlerEditNode(c *gin.Context)
+	handlerCreateNode(c *gin.Context)
+	handlerGetNode(c *gin.Context)
+	handlerGetHouseNodes(c *gin.Context)
+	handlerGetNodes(c *gin.Context)
+	handlerDeleteNode(c *gin.Context)
 }
 
 type DefaultNodeHandler struct {
 	NodeService database.NodeService
-	FileService database.FileService
 }
 
-func handlerDeleteNode(c *gin.Context) {
+func (nh *DefaultNodeHandler) handlerDeleteNode(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -46,7 +48,7 @@ func handlerDeleteNode(c *gin.Context) {
 		return
 	}
 
-	if err = database.DeleteNode(nodeID); err != nil {
+	if err = nh.NodeService.DeleteNode(nodeID); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -70,40 +72,6 @@ func (nh *DefaultNodeHandler) handlerGetSearchNodes(c *gin.Context) {
 		"Nodes": nodes,
 		"Count": count,
 	})
-}
-
-func (nh *DefaultNodeHandler) handlerGetNodeImages(c *gin.Context) {
-	nodeID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	files, err := nh.FileService.GetNodeFiles(nodeID, true)
-	if err != nil {
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, files)
-}
-
-func (nh *DefaultNodeHandler) handlerGetNodeFiles(c *gin.Context) {
-	nodeID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	files, err := nh.FileService.GetNodeFiles(nodeID, false)
-	if err != nil {
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, files)
 }
 
 func (nh *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
@@ -140,7 +108,7 @@ func (nh *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
 		Valid: true,
 	}
 
-	if err := node.EditNode(); err != nil {
+	if err := nh.NodeService.EditNode(&node); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -162,7 +130,7 @@ func (nh *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
 	c.JSON(200, node)
 }
 
-func handlerCreateNode(c *gin.Context) {
+func (nh *DefaultNodeHandler) handlerCreateNode(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -186,14 +154,14 @@ func handlerCreateNode(c *gin.Context) {
 		return
 	}
 
-	if !node.ValidateNode() {
+	if !nh.NodeService.ValidateNode(node) {
 		c.JSON(400, nil)
 		return
 	}
 
 	node.CreatedAt = time.Now().Unix()
 
-	if err := node.CreateNode(); err != nil {
+	if err := nh.NodeService.CreateNode(&node); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -215,7 +183,7 @@ func handlerCreateNode(c *gin.Context) {
 	c.JSON(200, node)
 }
 
-func handlerGetNode(c *gin.Context) {
+func (nh *DefaultNodeHandler) handlerGetNode(c *gin.Context) {
 	var (
 		err  error
 		node database.Node
@@ -228,7 +196,7 @@ func handlerGetNode(c *gin.Context) {
 		return
 	}
 
-	if err = node.GetNode(); err != nil {
+	if err = nh.NodeService.GetNode(&node); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -237,7 +205,7 @@ func handlerGetNode(c *gin.Context) {
 	c.JSON(200, node)
 }
 
-func handlerGetHouseNodes(c *gin.Context) {
+func (nh *DefaultNodeHandler) handlerGetHouseNodes(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -252,7 +220,7 @@ func handlerGetHouseNodes(c *gin.Context) {
 		return
 	}
 
-	nodes, count, err := database.GetHouseNodes(houseID, offset)
+	nodes, count, err := nh.NodeService.GetHouseNodes(houseID, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -265,7 +233,13 @@ func handlerGetHouseNodes(c *gin.Context) {
 	})
 }
 
-func handlerGetNodes(c *gin.Context) {
+func NewNodeHandler() NodeHandler {
+	return &DefaultNodeHandler{
+		NodeService: &database.DefaultNodeService{},
+	}
+}
+
+func (nh *DefaultNodeHandler) handlerGetNodes(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -273,7 +247,7 @@ func handlerGetNodes(c *gin.Context) {
 		return
 	}
 
-	nodes, count, err := database.GetNodes(offset)
+	nodes, count, err := nh.NodeService.GetNodes(offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)

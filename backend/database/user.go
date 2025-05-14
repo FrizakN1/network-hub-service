@@ -465,7 +465,7 @@ func (us *DefaultUserService) CheckAdmin(config *settings.Setting) error {
 	}
 
 	if encryptPass != admin.Password {
-		admin.Password = encryptPass
+		admin.Password = config.SuperAdminPassword
 
 		if e = us.ChangeUserPassword(&admin); e != nil {
 			utils.Logger.Println(e)

@@ -2,12 +2,19 @@ package router
 
 import (
 	"backend/database"
+	"backend/proto/userpb"
 	"backend/utils"
+	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
+	"log"
 	"time"
 )
+
+var userClient userpb.UserServiceClient
 
 type UserHandler interface {
 	handlerEditUser(c *gin.Context)
@@ -21,6 +28,27 @@ type UserHandler interface {
 
 type DefaultUserHandler struct {
 	UserService database.UserService
+}
+
+func InitUserClient() {
+	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("could not connect to user service: %v", err)
+	}
+
+	userClient = userpb.NewUserServiceClient(conn)
+}
+
+func handlerGetUsers(c *gin.Context) {
+	res, err := userClient.GetUsers(context.Background(), &userpb.Empty{})
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to get users"})
+		return
+	}
+
+	fmt.Println(res.Users)
+
+	c.JSON(200, res.Users)
 }
 
 func (uh *DefaultUserHandler) handlerEditUser(c *gin.Context) {

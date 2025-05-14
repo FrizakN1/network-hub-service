@@ -109,6 +109,6 @@ func (sh *DefaultSwitchHandler) handlerCreateSwitch(c *gin.Context) {
 
 func NewSwitchHandler() SwitchHandler {
 	return &DefaultSwitchHandler{
-		SwitchService: database.NewSwitchService(),
+		SwitchService: &database.DefaultSwitchService{},
 	}
 }

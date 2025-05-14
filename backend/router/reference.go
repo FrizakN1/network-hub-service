@@ -101,6 +101,6 @@ func (rh *DefaultReferenceHandler) handlerGetReference(c *gin.Context, onlyAdmin
 
 func NewReferenceHandler() ReferenceHandler {
 	return &DefaultReferenceHandler{
-		ReferenceService: database.NewReferenceService(),
+		ReferenceService: &database.DefaultReferenceService{},
 	}
 }

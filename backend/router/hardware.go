@@ -11,7 +11,22 @@ import (
 	"time"
 )
 
-func handlerDeleteHardware(c *gin.Context) {
+type HardwareHandler interface {
+	handlerGetHardwareByID(c *gin.Context)
+	handlerEditHardware(c *gin.Context)
+	handlerCreateHardware(c *gin.Context)
+	handlerGetSearchHardware(c *gin.Context)
+	handlerGetNodeHardware(c *gin.Context)
+	handlerGetHouseHardware(c *gin.Context)
+	handlerGetHardware(c *gin.Context)
+	handlerDeleteHardware(c *gin.Context)
+}
+
+type DefaultHardwareHandler struct {
+	HardwareService database.HardwareService
+}
+
+func (hh *DefaultHardwareHandler) handlerDeleteHardware(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -34,7 +49,7 @@ func handlerDeleteHardware(c *gin.Context) {
 		return
 	}
 
-	if err = database.DeleteHardware(hardwareID); err != nil {
+	if err = hh.HardwareService.DeleteHardware(hardwareID); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -43,25 +58,7 @@ func handlerDeleteHardware(c *gin.Context) {
 	c.JSON(200, true)
 }
 
-func handlerGetHardwareFiles(c *gin.Context) {
-	hardwareID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	files, err := database.GetHardwareFiles(hardwareID)
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, files)
-}
-
-func handlerGetHardwareByID(c *gin.Context) {
+func (hh *DefaultHardwareHandler) handlerGetHardwareByID(c *gin.Context) {
 	var (
 		err      error
 		hardware database.Hardware
@@ -74,7 +71,7 @@ func handlerGetHardwareByID(c *gin.Context) {
 		return
 	}
 
-	if err = hardware.GetHardwareByID(); err != nil {
+	if err = hh.HardwareService.GetHardwareByID(&hardware); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -83,7 +80,7 @@ func handlerGetHardwareByID(c *gin.Context) {
 	c.JSON(200, hardware)
 }
 
-func handlerEditHardware(c *gin.Context) {
+func (hh *DefaultHardwareHandler) handlerEditHardware(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -107,14 +104,14 @@ func handlerEditHardware(c *gin.Context) {
 		return
 	}
 
-	if !hardware.ValidateHardware() {
+	if !hh.HardwareService.ValidateHardware(hardware) {
 		c.JSON(400, nil)
 		return
 	}
 
 	hardware.UpdatedAt = sql.NullInt64{Int64: time.Now().Unix(), Valid: true}
 
-	if err := hardware.EditHardware(); err != nil {
+	if err := hh.HardwareService.EditHardware(&hardware); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -136,7 +133,7 @@ func handlerEditHardware(c *gin.Context) {
 	c.JSON(200, hardware)
 }
 
-func handlerCreateHardware(c *gin.Context) {
+func (hh *DefaultHardwareHandler) handlerCreateHardware(c *gin.Context) {
 	sessionHash, ok := c.Get("sessionHash")
 	if !ok {
 		err := errors.New("сессия не найдена")
@@ -160,14 +157,14 @@ func handlerCreateHardware(c *gin.Context) {
 		return
 	}
 
-	if !hardware.ValidateHardware() {
+	if !hh.HardwareService.ValidateHardware(hardware) {
 		c.JSON(400, nil)
 		return
 	}
 
 	hardware.CreatedAt = time.Now().Unix()
 
-	if err := hardware.CreateHardware(); err != nil {
+	if err := hh.HardwareService.CreateHardware(&hardware); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -189,7 +186,7 @@ func handlerCreateHardware(c *gin.Context) {
 	c.JSON(200, hardware)
 }
 
-func handlerGetSearchHardware(c *gin.Context) {
+func (hh *DefaultHardwareHandler) handlerGetSearchHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -198,7 +195,7 @@ func handlerGetSearchHardware(c *gin.Context) {
 	}
 	search := c.Query("search")
 
-	hardware, count, err := database.GetSearchHardware(search, offset)
+	hardware, count, err := hh.HardwareService.GetSearchHardware(search, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -211,7 +208,7 @@ func handlerGetSearchHardware(c *gin.Context) {
 	})
 }
 
-func handlerGetNodeHardware(c *gin.Context) {
+func (hh *DefaultHardwareHandler) handlerGetNodeHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -226,7 +223,7 @@ func handlerGetNodeHardware(c *gin.Context) {
 		return
 	}
 
-	hardware, count, err := database.GetNodeHardware(nodeID, offset)
+	hardware, count, err := hh.HardwareService.GetNodeHardware(nodeID, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -239,7 +236,7 @@ func handlerGetNodeHardware(c *gin.Context) {
 	})
 }
 
-func handlerGetHouseHardware(c *gin.Context) {
+func (hh *DefaultHardwareHandler) handlerGetHouseHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -254,7 +251,7 @@ func handlerGetHouseHardware(c *gin.Context) {
 		return
 	}
 
-	hardware, count, err := database.GetHouseHardware(houseID, offset)
+	hardware, count, err := hh.HardwareService.GetHouseHardware(houseID, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -267,7 +264,7 @@ func handlerGetHouseHardware(c *gin.Context) {
 	})
 }
 
-func handlerGetHardware(c *gin.Context) {
+func (hh *DefaultHardwareHandler) handlerGetHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -275,7 +272,7 @@ func handlerGetHardware(c *gin.Context) {
 		return
 	}
 
-	hardware, count, err := database.GetHardware(offset)
+	hardware, count, err := hh.HardwareService.GetHardware(offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -286,4 +283,10 @@ func handlerGetHardware(c *gin.Context) {
 		"Hardware": hardware,
 		"Count":    count,
 	})
+}
+
+func NewHardwareHandler() HardwareHandler {
+	return &DefaultHardwareHandler{
+		HardwareService: &database.DefaultHardwareService{},
+	}
 }

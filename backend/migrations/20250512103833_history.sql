@@ -25,7 +25,7 @@ ALTER TABLE "Switch"
 ALTER TABLE "Switch"
     DROP COLUMN "mac_oid";
 
-DROP TABLE IF EXISTS Event;
+DROP TABLE IF EXISTS "Event";
 
 CREATE TABLE IF NOT EXISTS "House_history"(
     id bigserial PRIMARY KEY,
