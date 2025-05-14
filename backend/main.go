@@ -3,22 +3,22 @@ package main
 import (
 	"backend/database"
 	"backend/router"
-	"backend/settings"
 	"backend/utils"
+	"fmt"
+	"github.com/joho/godotenv"
+	"log"
+	"os"
 )
 
 func main() {
 	utils.InitLogger()
 
-	config := settings.Load("settings.json")
-
-	database.Connection(config)
-
-	userService := database.NewUserService()
-
-	if err := userService.CheckAdmin(config); err != nil {
+	if err := godotenv.Load(); err != nil {
+		log.Fatalln(err)
 		return
 	}
 
-	_ = router.Initialization(config).Run(config.Address + ":" + config.Port)
+	database.Connection()
+
+	_ = router.Initialization().Run(fmt.Sprintf("%s:%s", os.Getenv("APP_ADDRESS"), os.Getenv("APP_PORT")))
 }

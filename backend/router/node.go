@@ -2,6 +2,7 @@ package router
 
 import (
 	"backend/database"
+	"backend/proto/userpb"
 	"backend/utils"
 	"database/sql"
 	"errors"
@@ -25,8 +26,8 @@ type DefaultNodeHandler struct {
 	NodeService database.NodeService
 }
 
-func (nh *DefaultNodeHandler) handlerDeleteNode(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
+func (h *DefaultHandler) handlerDeleteNode(c *gin.Context) {
+	session, ok := c.Get("session")
 	if !ok {
 		err := errors.New("сессия не найдена")
 		utils.Logger.Println(err)
@@ -34,9 +35,7 @@ func (nh *DefaultNodeHandler) handlerDeleteNode(c *gin.Context) {
 		return
 	}
 
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
+	if session.(userpb.Session).User.Role.Value != "admin" {
 		c.JSON(403, nil)
 		return
 	}
@@ -48,7 +47,7 @@ func (nh *DefaultNodeHandler) handlerDeleteNode(c *gin.Context) {
 		return
 	}
 
-	if err = nh.NodeService.DeleteNode(nodeID); err != nil {
+	if err = h.NodeService.DeleteNode(nodeID); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -57,11 +56,11 @@ func (nh *DefaultNodeHandler) handlerDeleteNode(c *gin.Context) {
 	c.JSON(200, true)
 }
 
-func (nh *DefaultNodeHandler) handlerGetSearchNodes(c *gin.Context) {
+func (h *DefaultHandler) handlerGetSearchNodes(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	search := c.Query("search")
 
-	nodes, count, err := nh.NodeService.GetSearchNodes(search, offset)
+	nodes, count, err := h.NodeService.GetSearchNodes(search, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -74,8 +73,8 @@ func (nh *DefaultNodeHandler) handlerGetSearchNodes(c *gin.Context) {
 	})
 }
 
-func (nh *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
+func (h *DefaultHandler) handlerEditNode(c *gin.Context) {
+	session, ok := c.Get("session")
 	if !ok {
 		err := errors.New("сессия не найдена")
 		utils.Logger.Println(err)
@@ -83,9 +82,7 @@ func (nh *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
 		return
 	}
 
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
 		c.JSON(403, nil)
 		return
 	}
@@ -98,7 +95,7 @@ func (nh *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
 		return
 	}
 
-	if !nh.NodeService.ValidateNode(node) {
+	if !h.NodeService.ValidateNode(node) {
 		c.JSON(400, nil)
 		return
 	}
@@ -108,7 +105,7 @@ func (nh *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
 		Valid: true,
 	}
 
-	if err := nh.NodeService.EditNode(&node); err != nil {
+	if err := h.NodeService.EditNode(&node); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -118,20 +115,20 @@ func (nh *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
 		Address:     database.Address{House: database.AddressElement{ID: node.Address.House.ID}},
 		Node:        &database.Node{ID: node.ID},
 		Hardware:    nil,
-		User:        database.User{ID: session.User.ID},
+		User:        userpb.User{Id: session.(userpb.Session).User.Id},
 		Description: fmt.Sprintf("Изменение узла: %s", node.Name),
 		CreatedAt:   time.Now().Unix(),
 	}
 
-	if err := event.CreateEvent(); err != nil {
+	if err := h.EventService.CreateEvent(event); err != nil {
 		utils.Logger.Println(err)
 	}
 
 	c.JSON(200, node)
 }
 
-func (nh *DefaultNodeHandler) handlerCreateNode(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
+func (h *DefaultHandler) handlerCreateNode(c *gin.Context) {
+	session, ok := c.Get("session")
 	if !ok {
 		err := errors.New("сессия не найдена")
 		utils.Logger.Println(err)
@@ -139,9 +136,7 @@ func (nh *DefaultNodeHandler) handlerCreateNode(c *gin.Context) {
 		return
 	}
 
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
 		c.JSON(403, nil)
 		return
 	}
@@ -154,14 +149,14 @@ func (nh *DefaultNodeHandler) handlerCreateNode(c *gin.Context) {
 		return
 	}
 
-	if !nh.NodeService.ValidateNode(node) {
+	if !h.NodeService.ValidateNode(node) {
 		c.JSON(400, nil)
 		return
 	}
 
 	node.CreatedAt = time.Now().Unix()
 
-	if err := nh.NodeService.CreateNode(&node); err != nil {
+	if err := h.NodeService.CreateNode(&node); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -171,19 +166,19 @@ func (nh *DefaultNodeHandler) handlerCreateNode(c *gin.Context) {
 		Address:     database.Address{House: database.AddressElement{ID: node.Address.House.ID}},
 		Node:        nil,
 		Hardware:    nil,
-		User:        database.User{ID: session.User.ID},
+		User:        userpb.User{Id: session.(userpb.Session).User.Id},
 		Description: fmt.Sprintf("Создание нового узла: %s", node.Name),
 		CreatedAt:   time.Now().Unix(),
 	}
 
-	if err := event.CreateEvent(); err != nil {
+	if err := h.EventService.CreateEvent(event); err != nil {
 		utils.Logger.Println(err)
 	}
 
 	c.JSON(200, node)
 }
 
-func (nh *DefaultNodeHandler) handlerGetNode(c *gin.Context) {
+func (h *DefaultHandler) handlerGetNode(c *gin.Context) {
 	var (
 		err  error
 		node database.Node
@@ -196,7 +191,7 @@ func (nh *DefaultNodeHandler) handlerGetNode(c *gin.Context) {
 		return
 	}
 
-	if err = nh.NodeService.GetNode(&node); err != nil {
+	if err = h.NodeService.GetNode(&node); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -205,7 +200,7 @@ func (nh *DefaultNodeHandler) handlerGetNode(c *gin.Context) {
 	c.JSON(200, node)
 }
 
-func (nh *DefaultNodeHandler) handlerGetHouseNodes(c *gin.Context) {
+func (h *DefaultHandler) handlerGetHouseNodes(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -220,7 +215,7 @@ func (nh *DefaultNodeHandler) handlerGetHouseNodes(c *gin.Context) {
 		return
 	}
 
-	nodes, count, err := nh.NodeService.GetHouseNodes(houseID, offset)
+	nodes, count, err := h.NodeService.GetHouseNodes(houseID, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -233,13 +228,7 @@ func (nh *DefaultNodeHandler) handlerGetHouseNodes(c *gin.Context) {
 	})
 }
 
-func NewNodeHandler() NodeHandler {
-	return &DefaultNodeHandler{
-		NodeService: &database.DefaultNodeService{},
-	}
-}
-
-func (nh *DefaultNodeHandler) handlerGetNodes(c *gin.Context) {
+func (h *DefaultHandler) handlerGetNodes(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -247,7 +236,7 @@ func (nh *DefaultNodeHandler) handlerGetNodes(c *gin.Context) {
 		return
 	}
 
-	nodes, count, err := nh.NodeService.GetNodes(offset)
+	nodes, count, err := h.NodeService.GetNodes(offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)

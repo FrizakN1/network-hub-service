@@ -1,14 +1,13 @@
 package router
 
 import (
-	"backend/database"
 	"backend/utils"
 	"github.com/gin-gonic/gin"
 	"strconv"
 	"strings"
 )
 
-func handlerGetEventsFrom(c *gin.Context, from string) {
+func (h *DefaultHandler) handlerGetEventsFrom(c *gin.Context, from string) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -16,7 +15,7 @@ func handlerGetEventsFrom(c *gin.Context, from string) {
 		return
 	}
 
-	events, count, err := database.GetEvents(from+"_"+strings.ToUpper(c.Param("type")), id)
+	events, count, err := h.EventService.GetEvents(from+"_"+strings.ToUpper(c.Param("type")), id)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -29,8 +28,8 @@ func handlerGetEventsFrom(c *gin.Context, from string) {
 	})
 }
 
-func handlerGetEvents(c *gin.Context) {
-	events, count, err := database.GetEvents("", 0)
+func (h *DefaultHandler) handlerGetEvents(c *gin.Context) {
+	events, count, err := h.EventService.GetEvents("", 0)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)

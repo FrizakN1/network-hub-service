@@ -1,34 +1,17 @@
 package router
 
 import (
-	"backend/database"
 	"backend/proto/userpb"
 	"backend/utils"
 	"context"
-	"database/sql"
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 	"log"
-	"time"
+	"strconv"
 )
 
 var userClient userpb.UserServiceClient
-
-type UserHandler interface {
-	handlerEditUser(c *gin.Context)
-	handlerCreateUser(c *gin.Context)
-	handlerChangeUserStatus(c *gin.Context)
-	handlerGetUsers(c *gin.Context)
-	handlerGetAuth(c *gin.Context)
-	handlerLogout(c *gin.Context)
-	handlerLogin(c *gin.Context)
-}
-
-type DefaultUserHandler struct {
-	UserService database.UserService
-}
 
 func InitUserClient() {
 	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
@@ -39,20 +22,18 @@ func InitUserClient() {
 	userClient = userpb.NewUserServiceClient(conn)
 }
 
-func handlerGetUsers(c *gin.Context) {
+func (h *DefaultHandler) handlerGetUsers(c *gin.Context) {
 	res, err := userClient.GetUsers(context.Background(), &userpb.Empty{})
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to get users"})
 		return
 	}
 
-	fmt.Println(res.Users)
-
 	c.JSON(200, res.Users)
 }
 
-func (uh *DefaultUserHandler) handlerEditUser(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
+func (h *DefaultHandler) handlerCreateUser(c *gin.Context) {
+	session, ok := c.Get("session")
 	if !ok {
 		err := errors.New("сессия не найдена")
 		utils.Logger.Println(err)
@@ -60,121 +41,12 @@ func (uh *DefaultUserHandler) handlerEditUser(c *gin.Context) {
 		return
 	}
 
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
+	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
 		c.JSON(403, nil)
 		return
 	}
 
-	var (
-		err  error
-		user database.User
-	)
-
-	if err = c.BindJSON(&user); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	if !uh.UserService.ValidateUser(user, "edit") {
-		c.JSON(400, nil)
-		return
-	}
-
-	user.UpdatedAt = sql.NullInt64{
-		Int64: time.Now().Unix(),
-		Valid: true,
-	}
-
-	if err = uh.UserService.EditUser(&user); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	if len(user.Password) != 0 {
-		if err = uh.UserService.ChangeUserPassword(&user); err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
-			return
-		}
-
-		user.Password = ""
-	}
-
-	if err = uh.UserService.DeleteUserSessions(user.ID); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, user)
-}
-
-func (uh *DefaultUserHandler) handlerCreateUser(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
-
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
-		c.JSON(403, nil)
-		return
-	}
-
-	var (
-		err  error
-		user database.User
-	)
-
-	if err = c.BindJSON(&user); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	if !uh.UserService.ValidateUser(user, "create") {
-		c.JSON(400, nil)
-		return
-	}
-
-	user.CreatedAt = time.Now().Unix()
-
-	if err = uh.UserService.CreateUser(&user); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	user.Password = ""
-
-	c.JSON(200, user)
-}
-
-func (uh *DefaultUserHandler) handlerChangeUserStatus(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
-
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
-		c.JSON(403, nil)
-		return
-	}
-
-	var user database.User
+	user := &userpb.CreateUserRequest{}
 
 	if err := c.BindJSON(&user); err != nil {
 		utils.Logger.Println(err)
@@ -182,29 +54,17 @@ func (uh *DefaultUserHandler) handlerChangeUserStatus(c *gin.Context) {
 		return
 	}
 
-	if err := uh.UserService.GetUser(&user); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+	res, err := userClient.CreateUser(context.Background(), user)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to create user"})
 		return
 	}
 
-	if err := uh.UserService.ChangeStatus(&user); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	if err := uh.UserService.DeleteUserSessions(user.ID); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	c.JSON(200, user)
+	c.JSON(200, res)
 }
 
-func (uh *DefaultUserHandler) handlerGetUsers(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
+func (h *DefaultHandler) handlerEditUser(c *gin.Context) {
+	session, ok := c.Get("session")
 	if !ok {
 		err := errors.New("сессия не найдена")
 		utils.Logger.Println(err)
@@ -212,25 +72,60 @@ func (uh *DefaultUserHandler) handlerGetUsers(c *gin.Context) {
 		return
 	}
 
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
+	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
 		c.JSON(403, nil)
 		return
 	}
 
-	users, err := uh.UserService.GetUsers()
+	user := &userpb.EditUserRequest{}
+
+	if err := c.BindJSON(&user); err != nil {
+		utils.Logger.Println(err)
+		handlerError(c, err, 400)
+		return
+	}
+
+	res, err := userClient.EditUser(context.Background(), user)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to edit user"})
+		return
+	}
+
+	c.JSON(200, res)
+}
+
+func (h *DefaultHandler) handlerChangeUserStatus(c *gin.Context) {
+	session, ok := c.Get("session")
+	if !ok {
+		err := errors.New("сессия не найдена")
+		utils.Logger.Println(err)
+		handlerError(c, err, 401)
+		return
+	}
+
+	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
+		c.JSON(403, nil)
+		return
+	}
+
+	userID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
 	}
 
-	c.JSON(200, users)
+	res, err := userClient.ChangeUserStatus(context.Background(), &userpb.ChangeUserStatusRequest{Id: int32(userID)})
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to change user status"})
+		return
+	}
+
+	c.JSON(200, res)
 }
 
-func (uh *DefaultUserHandler) handlerGetAuth(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
+func (h *DefaultHandler) handlerGetAuth(c *gin.Context) {
+	session, ok := c.Get("session")
 	if !ok {
 		err := errors.New("сессия не найдена")
 		utils.Logger.Println(err)
@@ -238,13 +133,11 @@ func (uh *DefaultUserHandler) handlerGetAuth(c *gin.Context) {
 		return
 	}
 
-	session := database.GetSession(sessionHash.(string))
-
-	c.JSON(200, session.User)
+	c.JSON(200, session.(*userpb.Session).User)
 }
 
-func (uh *DefaultUserHandler) handlerLogout(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
+func (h *DefaultHandler) handlerLogout(c *gin.Context) {
+	session, ok := c.Get("session")
 	if !ok {
 		err := errors.New("сессия не найдена")
 		utils.Logger.Println(err)
@@ -252,72 +145,42 @@ func (uh *DefaultUserHandler) handlerLogout(c *gin.Context) {
 		return
 	}
 
-	session := database.GetSession(sessionHash.(string))
-
-	if err := uh.UserService.DeleteUserSessions(session.User.ID); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+	_, err := userClient.Logout(context.Background(), &userpb.LogoutRequest{Hash: session.(*userpb.Session).Hash})
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to logout"})
 		return
 	}
 
 	c.JSON(200, nil)
 }
 
-func (uh *DefaultUserHandler) handlerLogin(c *gin.Context) {
+func (uh *DefaultHandler) handlerLogin(c *gin.Context) {
 	var (
-		user database.User
-		err  error
+		loginData userpb.LoginRequest
+		err       error
 	)
 
-	if err = c.BindJSON(&user); err != nil {
+	if err = c.BindJSON(&loginData); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
 	}
 
-	if err = uh.UserService.GetAuthorize(&user); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	if user.ID <= 0 {
-		c.JSON(200, gin.H{
-			"failure": "Неверный логин/пароль",
-		})
-		return
-	}
-
-	if user.Baned {
-		c.JSON(200, gin.H{
-			"failure": "Этот аккаунт заблокирован",
-		})
-		return
-	}
-
-	user.Password = ""
-
-	hash, err := uh.UserService.CreateSession(user)
+	res, err := userClient.Login(context.Background(), &loginData)
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.JSON(500, gin.H{"error": "failed to login"})
 		return
 	}
 
-	token, err := generateToken(hash)
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+	if res.Failure != "" {
+		c.JSON(200, gin.H{
+			"failure": res.Failure,
+		})
+
 		return
 	}
 
 	c.JSON(200, gin.H{
-		"token": token,
+		"token": res.Hash,
 	})
-}
-
-func NewUserHandler() UserHandler {
-	return &DefaultUserHandler{
-		UserService: database.NewUserService(),
-	}
 }

@@ -2,6 +2,7 @@ package router
 
 import (
 	"backend/database"
+	"backend/proto/userpb"
 	"backend/utils"
 	"errors"
 	"github.com/gin-gonic/gin"
@@ -18,8 +19,8 @@ type DefaultSwitchHandler struct {
 	SwitchService database.SwitchService
 }
 
-func (sh *DefaultSwitchHandler) handlerGetSwitches(c *gin.Context) {
-	switches, err := sh.SwitchService.GetSwitches()
+func (h *DefaultHandler) handlerGetSwitches(c *gin.Context) {
+	switches, err := h.SwitchService.GetSwitches()
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -29,8 +30,8 @@ func (sh *DefaultSwitchHandler) handlerGetSwitches(c *gin.Context) {
 	c.JSON(200, switches)
 }
 
-func (sh *DefaultSwitchHandler) handlerEditSwitch(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
+func (h *DefaultHandler) handlerEditSwitch(c *gin.Context) {
+	session, ok := c.Get("session")
 	if !ok {
 		err := errors.New("сессия не найдена")
 		utils.Logger.Println(err)
@@ -38,9 +39,7 @@ func (sh *DefaultSwitchHandler) handlerEditSwitch(c *gin.Context) {
 		return
 	}
 
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
+	if session.(userpb.Session).User.Role.Value != "admin" {
 		c.JSON(403, nil)
 		return
 	}
@@ -58,7 +57,7 @@ func (sh *DefaultSwitchHandler) handlerEditSwitch(c *gin.Context) {
 		return
 	}
 
-	if err := sh.SwitchService.EditSwitch(&_switch); err != nil {
+	if err := h.SwitchService.EditSwitch(&_switch); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -67,8 +66,8 @@ func (sh *DefaultSwitchHandler) handlerEditSwitch(c *gin.Context) {
 	c.JSON(200, _switch)
 }
 
-func (sh *DefaultSwitchHandler) handlerCreateSwitch(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
+func (h *DefaultHandler) handlerCreateSwitch(c *gin.Context) {
+	session, ok := c.Get("session")
 	if !ok {
 		err := errors.New("сессия не найдена")
 		utils.Logger.Println(err)
@@ -76,9 +75,7 @@ func (sh *DefaultSwitchHandler) handlerCreateSwitch(c *gin.Context) {
 		return
 	}
 
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
+	if session.(userpb.Session).User.Role.Value != "admin" {
 		c.JSON(403, nil)
 		return
 	}
@@ -98,17 +95,11 @@ func (sh *DefaultSwitchHandler) handlerCreateSwitch(c *gin.Context) {
 
 	_switch.CreatedAt = time.Now().Unix()
 
-	if err := sh.SwitchService.CreateSwitch(&_switch); err != nil {
+	if err := h.SwitchService.CreateSwitch(&_switch); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
 	}
 
 	c.JSON(200, _switch)
-}
-
-func NewSwitchHandler() SwitchHandler {
-	return &DefaultSwitchHandler{
-		SwitchService: &database.DefaultSwitchService{},
-	}
 }

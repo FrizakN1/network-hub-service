@@ -2,6 +2,7 @@ package router
 
 import (
 	"backend/database"
+	"backend/proto/userpb"
 	"backend/utils"
 	"errors"
 	"github.com/gin-gonic/gin"
@@ -9,17 +10,8 @@ import (
 	"time"
 )
 
-type ReferenceHandler interface {
-	handleReferenceRecord(c *gin.Context, isEdit bool)
-	handlerGetReference(c *gin.Context, onlyAdmin bool)
-}
-
-type DefaultReferenceHandler struct {
-	ReferenceService database.ReferenceService
-}
-
-func (rh *DefaultReferenceHandler) handleReferenceRecord(c *gin.Context, isEdit bool) {
-	sessionHash, ok := c.Get("sessionHash")
+func (h *DefaultHandler) handleReferenceRecord(c *gin.Context, isEdit bool) {
+	session, ok := c.Get("session")
 	if !ok {
 		err := errors.New("сессия не найдена")
 		utils.Logger.Println(err)
@@ -27,9 +19,7 @@ func (rh *DefaultReferenceHandler) handleReferenceRecord(c *gin.Context, isEdit 
 		return
 	}
 
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
 		c.JSON(403, nil)
 		return
 	}
@@ -51,14 +41,14 @@ func (rh *DefaultReferenceHandler) handleReferenceRecord(c *gin.Context, isEdit 
 
 	if !isEdit {
 		record.CreatedAt = time.Now().Unix()
-		err := rh.ReferenceService.CreateReferenceRecord(&record, strings.ToUpper(reference))
+		err := h.ReferenceService.CreateReferenceRecord(&record, strings.ToUpper(reference))
 		if err != nil {
 			utils.Logger.Println(err)
 			handlerError(c, err, 400)
 			return
 		}
 	} else {
-		err := rh.ReferenceService.EditReferenceRecord(&record, strings.ToUpper(reference))
+		err := h.ReferenceService.EditReferenceRecord(&record, strings.ToUpper(reference))
 		if err != nil {
 			utils.Logger.Println(err)
 			handlerError(c, err, 400)
@@ -69,27 +59,10 @@ func (rh *DefaultReferenceHandler) handleReferenceRecord(c *gin.Context, isEdit 
 	c.JSON(200, record)
 }
 
-func (rh *DefaultReferenceHandler) handlerGetReference(c *gin.Context, onlyAdmin bool) {
-	if onlyAdmin {
-		sessionHash, ok := c.Get("sessionHash")
-		if !ok {
-			err := errors.New("сессия не найдена")
-			utils.Logger.Println(err)
-			handlerError(c, err, 401)
-			return
-		}
-
-		session := database.GetSession(sessionHash.(string))
-
-		if session.User.Role.Value != "admin" {
-			c.JSON(403, nil)
-			return
-		}
-	}
-
+func (h *DefaultHandler) handlerGetReference(c *gin.Context) {
 	reference := c.Param("reference")
 
-	records, err := rh.ReferenceService.GetReferenceRecords(strings.ToUpper(reference))
+	records, err := h.ReferenceService.GetReferenceRecords(strings.ToUpper(reference))
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -97,10 +70,4 @@ func (rh *DefaultReferenceHandler) handlerGetReference(c *gin.Context, onlyAdmin
 	}
 
 	c.JSON(200, records)
-}
-
-func NewReferenceHandler() ReferenceHandler {
-	return &DefaultReferenceHandler{
-		ReferenceService: &database.DefaultReferenceService{},
-	}
 }

@@ -128,7 +128,7 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
         }
 
         let body = {
-            Role: fields.Role,
+            RoleId: fields.Role.ID,
             Login: fields.Login,
             Name: fields.Name,
             Password: fields.Password,

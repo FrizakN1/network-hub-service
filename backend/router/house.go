@@ -17,7 +17,7 @@ type DefaultAddressHandler struct {
 	AddressService database.AddressService
 }
 
-func (ah *DefaultAddressHandler) handlerGetHouses(c *gin.Context) {
+func (h *DefaultHandler) handlerGetHouses(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -25,7 +25,7 @@ func (ah *DefaultAddressHandler) handlerGetHouses(c *gin.Context) {
 		return
 	}
 
-	addresses, count, err := ah.AddressService.GetHouses(offset)
+	addresses, count, err := h.AddressService.GetHouses(offset)
 	if err != nil {
 		handlerError(c, err, 400)
 		return
@@ -37,7 +37,7 @@ func (ah *DefaultAddressHandler) handlerGetHouses(c *gin.Context) {
 	})
 }
 
-func (ah *DefaultAddressHandler) handlerGetHouse(c *gin.Context) {
+func (h *DefaultHandler) handlerGetHouse(c *gin.Context) {
 	var address database.Address
 	var err error
 
@@ -48,7 +48,7 @@ func (ah *DefaultAddressHandler) handlerGetHouse(c *gin.Context) {
 		return
 	}
 
-	err = ah.AddressService.GetHouse(&address)
+	err = h.AddressService.GetHouse(&address)
 	if err != nil {
 		handlerError(c, err, 400)
 		return
@@ -57,7 +57,7 @@ func (ah *DefaultAddressHandler) handlerGetHouse(c *gin.Context) {
 	c.JSON(200, address)
 }
 
-func (ah *DefaultAddressHandler) handlerGetSuggestions(c *gin.Context) {
+func (h *DefaultHandler) handlerGetSuggestions(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -70,7 +70,7 @@ func (ah *DefaultAddressHandler) handlerGetSuggestions(c *gin.Context) {
 	}
 	search := c.DefaultQuery("search", "")
 
-	suggestions, count, err := ah.AddressService.GetSuggestions(search, offset, limit)
+	suggestions, count, err := h.AddressService.GetSuggestions(search, offset, limit)
 	if err != nil {
 		handlerError(c, err, 400)
 		return
@@ -80,10 +80,4 @@ func (ah *DefaultAddressHandler) handlerGetSuggestions(c *gin.Context) {
 		"Addresses": suggestions,
 		"Count":     count,
 	})
-}
-
-func NewAddressHandler() AddressHandler {
-	return &DefaultAddressHandler{
-		AddressService: &database.DefaultAddressService{},
-	}
 }

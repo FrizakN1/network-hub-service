@@ -2,6 +2,7 @@ package router
 
 import (
 	"backend/database"
+	"backend/proto/userpb"
 	"backend/utils"
 	"database/sql"
 	"errors"
@@ -26,8 +27,8 @@ type DefaultHardwareHandler struct {
 	HardwareService database.HardwareService
 }
 
-func (hh *DefaultHardwareHandler) handlerDeleteHardware(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
+func (h *DefaultHandler) handlerDeleteHardware(c *gin.Context) {
+	session, ok := c.Get("session")
 	if !ok {
 		err := errors.New("сессия не найдена")
 		utils.Logger.Println(err)
@@ -35,9 +36,7 @@ func (hh *DefaultHardwareHandler) handlerDeleteHardware(c *gin.Context) {
 		return
 	}
 
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" {
+	if session.(userpb.Session).User.Role.Value != "admin" {
 		c.JSON(403, nil)
 		return
 	}
@@ -49,7 +48,7 @@ func (hh *DefaultHardwareHandler) handlerDeleteHardware(c *gin.Context) {
 		return
 	}
 
-	if err = hh.HardwareService.DeleteHardware(hardwareID); err != nil {
+	if err = h.HardwareService.DeleteHardware(hardwareID); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -58,7 +57,7 @@ func (hh *DefaultHardwareHandler) handlerDeleteHardware(c *gin.Context) {
 	c.JSON(200, true)
 }
 
-func (hh *DefaultHardwareHandler) handlerGetHardwareByID(c *gin.Context) {
+func (h *DefaultHandler) handlerGetHardwareByID(c *gin.Context) {
 	var (
 		err      error
 		hardware database.Hardware
@@ -71,7 +70,7 @@ func (hh *DefaultHardwareHandler) handlerGetHardwareByID(c *gin.Context) {
 		return
 	}
 
-	if err = hh.HardwareService.GetHardwareByID(&hardware); err != nil {
+	if err = h.HardwareService.GetHardwareByID(&hardware); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -80,8 +79,8 @@ func (hh *DefaultHardwareHandler) handlerGetHardwareByID(c *gin.Context) {
 	c.JSON(200, hardware)
 }
 
-func (hh *DefaultHardwareHandler) handlerEditHardware(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
+func (h *DefaultHandler) handlerEditHardware(c *gin.Context) {
+	session, ok := c.Get("session")
 	if !ok {
 		err := errors.New("сессия не найдена")
 		utils.Logger.Println(err)
@@ -89,9 +88,7 @@ func (hh *DefaultHardwareHandler) handlerEditHardware(c *gin.Context) {
 		return
 	}
 
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
 		c.JSON(403, nil)
 		return
 	}
@@ -104,14 +101,14 @@ func (hh *DefaultHardwareHandler) handlerEditHardware(c *gin.Context) {
 		return
 	}
 
-	if !hh.HardwareService.ValidateHardware(hardware) {
+	if !h.HardwareService.ValidateHardware(hardware) {
 		c.JSON(400, nil)
 		return
 	}
 
 	hardware.UpdatedAt = sql.NullInt64{Int64: time.Now().Unix(), Valid: true}
 
-	if err := hh.HardwareService.EditHardware(&hardware); err != nil {
+	if err := h.HardwareService.EditHardware(&hardware); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -121,20 +118,20 @@ func (hh *DefaultHardwareHandler) handlerEditHardware(c *gin.Context) {
 		Address:     database.Address{House: database.AddressElement{ID: hardware.Node.Address.House.ID}},
 		Node:        &database.Node{ID: hardware.Node.ID},
 		Hardware:    &database.Hardware{ID: hardware.ID},
-		User:        database.User{ID: session.User.ID},
+		User:        userpb.User{Id: session.(userpb.Session).User.Id},
 		Description: fmt.Sprintf("Изменение оборудования: %s", hardware.Type.TranslateValue),
 		CreatedAt:   time.Now().Unix(),
 	}
 
-	if err := event.CreateEvent(); err != nil {
+	if err := h.EventService.CreateEvent(event); err != nil {
 		utils.Logger.Println(err)
 	}
 
 	c.JSON(200, hardware)
 }
 
-func (hh *DefaultHardwareHandler) handlerCreateHardware(c *gin.Context) {
-	sessionHash, ok := c.Get("sessionHash")
+func (h *DefaultHandler) handlerCreateHardware(c *gin.Context) {
+	session, ok := c.Get("session")
 	if !ok {
 		err := errors.New("сессия не найдена")
 		utils.Logger.Println(err)
@@ -142,9 +139,7 @@ func (hh *DefaultHardwareHandler) handlerCreateHardware(c *gin.Context) {
 		return
 	}
 
-	session := database.GetSession(sessionHash.(string))
-
-	if session.User.Role.Value != "admin" && session.User.Role.Value != "operator" {
+	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
 		c.JSON(403, nil)
 		return
 	}
@@ -157,14 +152,14 @@ func (hh *DefaultHardwareHandler) handlerCreateHardware(c *gin.Context) {
 		return
 	}
 
-	if !hh.HardwareService.ValidateHardware(hardware) {
+	if !h.HardwareService.ValidateHardware(hardware) {
 		c.JSON(400, nil)
 		return
 	}
 
 	hardware.CreatedAt = time.Now().Unix()
 
-	if err := hh.HardwareService.CreateHardware(&hardware); err != nil {
+	if err := h.HardwareService.CreateHardware(&hardware); err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
 		return
@@ -174,19 +169,19 @@ func (hh *DefaultHardwareHandler) handlerCreateHardware(c *gin.Context) {
 		Address:     database.Address{House: database.AddressElement{ID: hardware.Node.Address.House.ID}},
 		Node:        &database.Node{ID: hardware.Node.ID},
 		Hardware:    nil,
-		User:        database.User{ID: session.User.ID},
+		User:        userpb.User{Id: session.(userpb.Session).User.Id},
 		Description: fmt.Sprintf("Создание оборудования: %s", hardware.Type.TranslateValue),
 		CreatedAt:   time.Now().Unix(),
 	}
 
-	if err := event.CreateEvent(); err != nil {
+	if err := h.EventService.CreateEvent(event); err != nil {
 		utils.Logger.Println(err)
 	}
 
 	c.JSON(200, hardware)
 }
 
-func (hh *DefaultHardwareHandler) handlerGetSearchHardware(c *gin.Context) {
+func (h *DefaultHandler) handlerGetSearchHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -195,7 +190,7 @@ func (hh *DefaultHardwareHandler) handlerGetSearchHardware(c *gin.Context) {
 	}
 	search := c.Query("search")
 
-	hardware, count, err := hh.HardwareService.GetSearchHardware(search, offset)
+	hardware, count, err := h.HardwareService.GetSearchHardware(search, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -208,7 +203,7 @@ func (hh *DefaultHardwareHandler) handlerGetSearchHardware(c *gin.Context) {
 	})
 }
 
-func (hh *DefaultHardwareHandler) handlerGetNodeHardware(c *gin.Context) {
+func (h *DefaultHandler) handlerGetNodeHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -223,7 +218,7 @@ func (hh *DefaultHardwareHandler) handlerGetNodeHardware(c *gin.Context) {
 		return
 	}
 
-	hardware, count, err := hh.HardwareService.GetNodeHardware(nodeID, offset)
+	hardware, count, err := h.HardwareService.GetNodeHardware(nodeID, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -236,7 +231,7 @@ func (hh *DefaultHardwareHandler) handlerGetNodeHardware(c *gin.Context) {
 	})
 }
 
-func (hh *DefaultHardwareHandler) handlerGetHouseHardware(c *gin.Context) {
+func (h *DefaultHandler) handlerGetHouseHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -251,7 +246,7 @@ func (hh *DefaultHardwareHandler) handlerGetHouseHardware(c *gin.Context) {
 		return
 	}
 
-	hardware, count, err := hh.HardwareService.GetHouseHardware(houseID, offset)
+	hardware, count, err := h.HardwareService.GetHouseHardware(houseID, offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -264,7 +259,7 @@ func (hh *DefaultHardwareHandler) handlerGetHouseHardware(c *gin.Context) {
 	})
 }
 
-func (hh *DefaultHardwareHandler) handlerGetHardware(c *gin.Context) {
+func (h *DefaultHandler) handlerGetHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -272,7 +267,7 @@ func (hh *DefaultHardwareHandler) handlerGetHardware(c *gin.Context) {
 		return
 	}
 
-	hardware, count, err := hh.HardwareService.GetHardware(offset)
+	hardware, count, err := h.HardwareService.GetHardware(offset)
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 400)
@@ -283,10 +278,4 @@ func (hh *DefaultHardwareHandler) handlerGetHardware(c *gin.Context) {
 		"Hardware": hardware,
 		"Count":    count,
 	})
-}
-
-func NewHardwareHandler() HardwareHandler {
-	return &DefaultHardwareHandler{
-		HardwareService: &database.DefaultHardwareService{},
-	}
 }

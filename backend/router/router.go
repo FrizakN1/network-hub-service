@@ -2,36 +2,71 @@ package router
 
 import (
 	"backend/database"
-	"backend/settings"
+	"backend/proto/userpb"
 	"backend/utils"
+	"context"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"os"
 	"strings"
 )
 
-var jwtSecret = []byte("!S@crEtW0r@")
-
-type Claims struct {
-	SessionHash string `json:"hash"`
-	jwt.StandardClaims
+type Handler interface {
+	handlerGetEventsFrom(c *gin.Context, from string)
+	handlerGetEvents(c *gin.Context)
+	handlerGetHardwareFiles(c *gin.Context)
+	handlerGetNodeImages(c *gin.Context)
+	handlerGetNodeFiles(c *gin.Context)
+	handlerGetHouseFiles(c *gin.Context)
+	handlerUploadFile(c *gin.Context)
+	handlerFile(c *gin.Context)
+	handlerGetHardwareByID(c *gin.Context)
+	handlerEditHardware(c *gin.Context)
+	handlerCreateHardware(c *gin.Context)
+	handlerGetSearchHardware(c *gin.Context)
+	handlerGetNodeHardware(c *gin.Context)
+	handlerGetHouseHardware(c *gin.Context)
+	handlerGetHardware(c *gin.Context)
+	handlerDeleteHardware(c *gin.Context)
+	handlerGetHouses(c *gin.Context)
+	handlerGetHouse(c *gin.Context)
+	handlerGetSuggestions(c *gin.Context)
+	handlerGetSearchNodes(c *gin.Context)
+	handlerEditNode(c *gin.Context)
+	handlerCreateNode(c *gin.Context)
+	handlerGetNode(c *gin.Context)
+	handlerGetHouseNodes(c *gin.Context)
+	handlerGetNodes(c *gin.Context)
+	handlerDeleteNode(c *gin.Context)
+	handleReferenceRecord(c *gin.Context, isEdit bool)
+	handlerGetReference(c *gin.Context)
+	handlerGetSwitches(c *gin.Context)
+	handlerEditSwitch(c *gin.Context)
+	handlerCreateSwitch(c *gin.Context)
+	handlerEditUser(c *gin.Context)
+	handlerCreateUser(c *gin.Context)
+	handlerChangeUserStatus(c *gin.Context)
+	handlerGetUsers(c *gin.Context)
+	handlerGetAuth(c *gin.Context)
+	handlerLogout(c *gin.Context)
+	handlerLogin(c *gin.Context)
 }
 
-// Переменная для хранения конфигурации из файла settings.json
-var config settings.Setting
+type DefaultHandler struct {
+	AddressService   database.AddressService
+	SwitchService    database.SwitchService
+	ReferenceService database.ReferenceService
+	NodeService      database.NodeService
+	HardwareService  database.HardwareService
+	FileService      database.FileService
+	EventService     database.EventService
+}
 
 // Initialization Функция роутинга
-func Initialization(_config *settings.Setting) *gin.Engine {
-	config = *_config
+func Initialization() *gin.Engine {
 
-	userHandler := NewUserHandler()
-	switchHandler := NewSwitchHandler()
-	referenceHandler := NewReferenceHandler()
-	nodeHandler := NewNodeHandler()
-	addressHandler := NewAddressHandler()
-	hardwareHandler := NewHardwareHandler()
-	fileHandler := NewFileHandler()
+	handler := NewHandler()
 
 	InitUserClient()
 
@@ -41,7 +76,7 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 	// В settings.json параметр AllowOrigin содерижт этот самый домен, которому разрешено делать запросы
 	router.Use(func(c *gin.Context) {
 		// Получение из settings.json разрешенной ссылки
-		allowedOrigin := config.AllowOrigin
+		allowedOrigin := os.Getenv("ALLOWED_ORIGIN")
 
 		// Получение ссылки из запроса
 		origin := c.Request.Header.Get("Origin")
@@ -63,96 +98,93 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 	// Групировка запросов содержащих в запросе /api в отдельный роутер routerAPI
 	routerAPI := router.Group("/api")
 
-	routerAPI.POST("/auth/login", userHandler.handlerLogin)
+	routerAPI.POST("/auth/login", handler.handlerLogin)
 
 	routerAPI.Use(authMiddleware())
 
-	routerAPI.GET("/auth/logout", userHandler.handlerLogout)
-	routerAPI.GET("/auth/me", userHandler.handlerGetAuth)
+	routerAPI.GET("/auth/logout", handler.handlerLogout)
+	routerAPI.GET("/auth/me", handler.handlerGetAuth)
 	//routerAPI.GET("/auth/users", handlerGetUsers)
 
 	users := routerAPI.Group("/users")
 	{
 		//users.GET("", userHandler.handlerGetUsers)
-		users.GET("", handlerGetUsers)
-		users.POST("", userHandler.handlerCreateUser)
-		users.PUT("", userHandler.handlerEditUser)
-		users.PATCH("/status", userHandler.handlerChangeUserStatus)
+		users.GET("", handler.handlerGetUsers)
+		//users.POST("", userHandler.handlerCreateUser)
+		users.POST("", handler.handlerCreateUser)
+		users.PUT("", handler.handlerEditUser)
+		users.PATCH("/:id/status", handler.handlerChangeUserStatus)
 	}
 
 	nodes := routerAPI.Group("/nodes")
 	{
-		nodes.GET("", nodeHandler.handlerGetNodes)
-		nodes.GET("/:id", nodeHandler.handlerGetNode)
-		nodes.GET("/search", nodeHandler.handlerGetSearchNodes)
-		nodes.GET("/:id/files", fileHandler.handlerGetNodeFiles)
-		nodes.GET("/:id/images", fileHandler.handlerGetNodeImages)
-		nodes.GET("/:id/hardware", hardwareHandler.handlerGetNodeHardware)
-		nodes.POST("", nodeHandler.handlerCreateNode)
-		nodes.PUT("", nodeHandler.handlerEditNode)
+		nodes.GET("", handler.handlerGetNodes)
+		nodes.GET("/:id", handler.handlerGetNode)
+		nodes.GET("/search", handler.handlerGetSearchNodes)
+		nodes.GET("/:id/files", handler.handlerGetNodeFiles)
+		nodes.GET("/:id/images", handler.handlerGetNodeImages)
+		nodes.GET("/:id/hardware", handler.handlerGetNodeHardware)
+		nodes.POST("", handler.handlerCreateNode)
+		nodes.PUT("", handler.handlerEditNode)
 		nodes.GET("/:id/events/:type", func(c *gin.Context) {
-			handlerGetEventsFrom(c, "NODE")
+			handler.handlerGetEventsFrom(c, "NODE")
 		})
-		nodes.DELETE("/:id", nodeHandler.handlerDeleteNode)
+		nodes.DELETE("/:id", handler.handlerDeleteNode)
 	}
 
 	houses := routerAPI.Group("/houses")
 	{
-		houses.GET("", addressHandler.handlerGetHouses)
-		houses.GET("/:id", addressHandler.handlerGetHouse)
-		houses.GET("/search", addressHandler.handlerGetSuggestions)
-		houses.GET("/:id/files", fileHandler.handlerGetHouseFiles)
-		houses.GET("/:id/nodes", nodeHandler.handlerGetHouseNodes)
-		houses.GET("/:id/hardware", hardwareHandler.handlerGetHouseHardware)
+		houses.GET("", handler.handlerGetHouses)
+		houses.GET("/:id", handler.handlerGetHouse)
+		houses.GET("/search", handler.handlerGetSuggestions)
+		houses.GET("/:id/files", handler.handlerGetHouseFiles)
+		houses.GET("/:id/nodes", handler.handlerGetHouseNodes)
+		houses.GET("/:id/hardware", handler.handlerGetHouseHardware)
 		houses.GET("/:id/events/:type", func(c *gin.Context) {
-			handlerGetEventsFrom(c, "HOUSE")
+			handler.handlerGetEventsFrom(c, "HOUSE")
 		})
 	}
 
 	hardware := routerAPI.Group("/hardware")
 	{
-		hardware.GET("", hardwareHandler.handlerGetHardware)
-		hardware.GET("/search", hardwareHandler.handlerGetSearchHardware)
-		hardware.GET("/:id", hardwareHandler.handlerGetHardwareByID)
-		hardware.GET("/:id/files", fileHandler.handlerGetHardwareFiles)
-		hardware.POST("", hardwareHandler.handlerCreateHardware)
-		hardware.PUT("", hardwareHandler.handlerEditHardware)
+		hardware.GET("", handler.handlerGetHardware)
+		hardware.GET("/search", handler.handlerGetSearchHardware)
+		hardware.GET("/:id", handler.handlerGetHardwareByID)
+		hardware.GET("/:id/files", handler.handlerGetHardwareFiles)
+		hardware.POST("", handler.handlerCreateHardware)
+		hardware.PUT("", handler.handlerEditHardware)
 		hardware.GET("/:id/events/:type", func(c *gin.Context) {
-			handlerGetEventsFrom(c, "HARDWARE")
+			handler.handlerGetEventsFrom(c, "HARDWARE")
 		})
-		hardware.DELETE("/:id", hardwareHandler.handlerDeleteHardware)
+		hardware.DELETE("/:id", handler.handlerDeleteHardware)
 	}
 
 	switches := routerAPI.Group("/switches")
 	{
-		switches.GET("", switchHandler.handlerGetSwitches)
-		switches.POST("", switchHandler.handlerCreateSwitch)
-		switches.PUT("", switchHandler.handlerEditSwitch)
+		switches.GET("", handler.handlerGetSwitches)
+		switches.POST("", handler.handlerCreateSwitch)
+		switches.PUT("", handler.handlerEditSwitch)
 	}
 
 	files := routerAPI.Group("/files")
 	{
-		files.POST("/upload", fileHandler.handlerUploadFile)
-		files.POST("/:action", fileHandler.handlerFile)
+		files.POST("/upload", handler.handlerUploadFile)
+		files.POST("/:action", handler.handlerFile)
 	}
 
 	references := routerAPI.Group("/references")
 	{
-		references.GET("/:reference", func(c *gin.Context) {
-			referenceHandler.handlerGetReference(c, false)
-		})
-		references.GET("/role", func(c *gin.Context) {
-			referenceHandler.handlerGetReference(c, true)
-		})
+		references.GET("/:reference", handler.handlerGetReference)
+		references.GET("/role", handler.handlerGetReference)
 		references.POST("/:reference", func(c *gin.Context) {
-			referenceHandler.handleReferenceRecord(c, false)
+			handler.handleReferenceRecord(c, false)
 		})
 		references.PUT("/:reference", func(c *gin.Context) {
-			referenceHandler.handleReferenceRecord(c, true)
+			handler.handleReferenceRecord(c, true)
 		})
 	}
 
-	routerAPI.GET("/events", handlerGetEvents)
+	routerAPI.GET("/events", handler.handlerGetEvents)
 
 	return router
 }
@@ -160,16 +192,6 @@ func Initialization(_config *settings.Setting) *gin.Engine {
 func handlerError(c *gin.Context, err error, code int) {
 	fmt.Println(err)
 	c.JSON(code, nil)
-	c.Abort()
-}
-
-func generateToken(hash string) (string, error) {
-	claims := &Claims{
-		SessionHash:    hash,
-		StandardClaims: jwt.StandardClaims{},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
 }
 
 func authMiddleware() gin.HandlerFunc {
@@ -178,7 +200,6 @@ func authMiddleware() gin.HandlerFunc {
 		if authHeader == "" {
 			fmt.Println("Не обнаружен заголовок авторизации")
 			c.JSON(401, gin.H{"error": "Не обнаружен заголовок авторизации"})
-			c.Abort()
 			return
 		}
 
@@ -186,42 +207,38 @@ func authMiddleware() gin.HandlerFunc {
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			fmt.Println("Неверный формат токена")
 			c.JSON(401, gin.H{"error": "Неверный формат токена"})
-			c.Abort()
 			return
 		}
 
 		tokenString := parts[1]
-		claims := &Claims{}
 
-		token, e := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil
-		})
-		if e != nil {
-			fmt.Println(e)
-			fmt.Println("Неверный токен")
-			utils.Logger.Println(e)
-			c.JSON(401, gin.H{"error": "Неверный токен"})
-			c.Abort()
+		session, err := userClient.GetSession(context.Background(), &userpb.GetSessionRequest{Hash: tokenString})
+		if err != nil {
+			utils.Logger.Println(err)
+			c.JSON(400, gin.H{"error": "ошибка при получении сессии"})
 			return
 		}
 
-		if !token.Valid {
-			fmt.Println("Токен не валиден")
-			c.JSON(401, gin.H{"error": "Токен не валиден"})
-			c.Abort()
-			return
-		}
-
-		session := database.GetSession(claims.SessionHash)
 		if session == nil {
 			fmt.Println("Сессия не найдена")
 			c.JSON(401, gin.H{"error": "Сессия не найдена"})
-			c.Abort()
 			return
 		}
 
-		c.Set("sessionHash", session.Hash)
+		c.Set("session", session)
 
 		c.Next()
+	}
+}
+
+func NewHandler() Handler {
+	return &DefaultHandler{
+		AddressService:   &database.DefaultAddressService{},
+		SwitchService:    &database.DefaultSwitchService{},
+		ReferenceService: &database.DefaultReferenceService{},
+		NodeService:      &database.DefaultNodeService{},
+		HardwareService:  &database.DefaultHardwareService{},
+		FileService:      &database.DefaultFileService{},
+		EventService:     &database.DefaultEventService{},
 	}
 }

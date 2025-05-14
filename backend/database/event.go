@@ -1,6 +1,7 @@
 package database
 
 import (
+	"backend/proto/userpb"
 	"backend/utils"
 	"database/sql"
 	"errors"
@@ -11,10 +12,17 @@ type Event struct {
 	Address     Address
 	Node        *Node
 	Hardware    *Hardware
-	User        User
+	User        userpb.User
 	Description string
 	CreatedAt   int64
 }
+
+type EventService interface {
+	CreateEvent(event Event) error
+	GetEvents(from string, id int) ([]Event, int, error)
+}
+
+type DefaultEventService struct{}
 
 func prepareEvent() []string {
 	var e error
@@ -187,7 +195,7 @@ func prepareEvent() []string {
 	return errorsList
 }
 
-func (event *Event) CreateEvent() error {
+func (s *DefaultEventService) CreateEvent(event Event) error {
 	stmt, ok := query["CREATE_EVENT"]
 	if !ok {
 		err := errors.New("запрос CREATE_EVENT не подготовлен")
@@ -210,7 +218,7 @@ func (event *Event) CreateEvent() error {
 		event.Address.House.ID,
 		nodeID,
 		hardwareID,
-		event.User.ID,
+		event.User.Id,
 		event.Description,
 		event.CreatedAt,
 	)
@@ -222,7 +230,7 @@ func (event *Event) CreateEvent() error {
 	return nil
 }
 
-func GetEvents(from string, id int) ([]Event, int, error) {
+func (s *DefaultEventService) GetEvents(from string, id int) ([]Event, int, error) {
 	key := "GET_EVENTS"
 
 	if from != "" {
@@ -269,7 +277,7 @@ func GetEvents(from string, id int) ([]Event, int, error) {
 			&event.Address.House.ID,
 			&nodeID,
 			&hardwareID,
-			&event.User.ID,
+			&event.User.Id,
 			&event.Description,
 			&event.CreatedAt,
 			&event.User.Login,
