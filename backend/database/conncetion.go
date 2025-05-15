@@ -44,7 +44,6 @@ func Connection() {
 
 	errorsList = append(errorsList, prepareReferences()...)
 	errorsList = append(errorsList, prepareHouse()...)
-	errorsList = append(errorsList, prepareUsers()...)
 	errorsList = append(errorsList, prepareNodes()...)
 	errorsList = append(errorsList, prepareHardware()...)
 	errorsList = append(errorsList, prepareFile()...)
@@ -59,5 +58,4 @@ func Connection() {
 	}
 
 	LoadAddressElementTypeMap(addressElementTypeMap)
-	LoadSession(sessionMap)
 }

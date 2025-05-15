@@ -145,7 +145,7 @@ const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
 
     return (
         <div className="contain hardware">
-            {user.Role.Value !== "user" && canCreate && <>
+            {user.role.key !== "user" && canCreate && <>
                 {modalCreate && <HardwareModalCreate action={"create"} setState={setModalCreate} returnHardware={handlerAddHardware}/>}
                 {modalEdit.State && <HardwareModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editHardware={modalEdit.EditHardware} returnHardware={handlerEditHardware}/>}
                 <div className="contain">
@@ -179,8 +179,8 @@ const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
                             <td>{_hardware.Type.Value === "switch" && _hardware.IpAddress.Valid ? _hardware.IpAddress.String : "-"}</td>
                             <td>
                                 <FontAwesomeIcon icon={faEye} className="eye" title="Просмотр" onClick={() => navigate(`/hardware/view/${_hardware.ID}`)}/>
-                                {user.Role.Value !== "user" &&<FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditHardware: _hardware})}/>}
-                                {user.Role.Value === "admin" && <FontAwesomeIcon icon={faTrash} className="delete" title="Удалить" onClick={() => handlerDeleteHardware(_hardware.ID)}/>}
+                                {user.role.key !== "user" &&<FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditHardware: _hardware})}/>}
+                                {user.role.key === "admin" && <FontAwesomeIcon icon={faTrash} className="delete" title="Удалить" onClick={() => handlerDeleteHardware(_hardware.ID)}/>}
                             </td>
                         </tr>
                     ))}

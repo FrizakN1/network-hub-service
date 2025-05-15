@@ -1,11 +1,12 @@
 package main
 
 import (
-	"backend/settings"
 	"database/sql"
 	"encoding/xml"
 	"fmt"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"log"
 	"os"
 	"sync"
 )
@@ -71,15 +72,18 @@ func main() {
 	var streetTypes []HouseType
 	mainObjectID := "731553"
 
-	config := settings.Load("../settings.json")
+	if err := godotenv.Load("../.env"); err != nil {
+		log.Fatalln(err)
+		return
+	}
 
 	// Подключаемся к БД
 	Link, err := sql.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		config.DbHost,
-		config.DbPort,
-		config.DbUser,
-		config.DbPass,
-		config.DbName))
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASS"),
+		os.Getenv("DB_NAME")))
 	if err != nil {
 		fmt.Println(err)
 		return

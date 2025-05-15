@@ -2,9 +2,7 @@ package router
 
 import (
 	"backend/database"
-	"backend/proto/userpb"
 	"backend/utils"
-	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"image"
@@ -87,19 +85,12 @@ func (h *DefaultHandler) handlerGetHouseFiles(c *gin.Context) {
 }
 
 func (h *DefaultHandler) handlerUploadFile(c *gin.Context) {
-	session, ok := c.Get("session")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
+	session, _, isOperatorOrHigher := h.getPrivilege(c)
 
-	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
+	if !isOperatorOrHigher {
 		c.JSON(403, nil)
 		return
 	}
-
 	var (
 		uploadFile database.File
 		err        error
@@ -234,7 +225,7 @@ func (h *DefaultHandler) handlerUploadFile(c *gin.Context) {
 		return
 	}
 
-	event.User.Id = session.(userpb.Session).User.Id
+	event.UserId = session.User.Id
 	event.Description = fmt.Sprintf("Загрузка файла: %s", uploadFile.Name)
 	event.CreatedAt = time.Now().Unix()
 
@@ -246,22 +237,16 @@ func (h *DefaultHandler) handlerUploadFile(c *gin.Context) {
 }
 
 func (h *DefaultHandler) handlerFile(c *gin.Context) {
-	session, ok := c.Get("session")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
+	session, isAdmin, isOperatorOrHigher := h.getPrivilege(c)
 
 	action := c.Param("action")
 
-	if action == "delete" && session.(userpb.Session).User.Role.Value != "admin" {
+	if action == "delete" && !isAdmin {
 		c.JSON(403, nil)
 		return
 	}
 
-	if action == "archive" && session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
+	if action == "archive" && !isOperatorOrHigher {
 		c.JSON(403, nil)
 		return
 	}
@@ -344,7 +329,7 @@ func (h *DefaultHandler) handlerFile(c *gin.Context) {
 		return
 	}
 
-	event.User.Id = session.(userpb.Session).User.Id
+	event.UserId = session.User.Id
 	event.CreatedAt = time.Now().Unix()
 
 	if err = h.EventService.CreateEvent(event); err != nil {

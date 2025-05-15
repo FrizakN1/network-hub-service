@@ -3,8 +3,7 @@ package router
 import (
 	"backend/proto/userpb"
 	"backend/utils"
-	"context"
-	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 	"log"
@@ -22,10 +21,34 @@ func InitUserClient() {
 	userClient = userpb.NewUserServiceClient(conn)
 }
 
-func (h *DefaultHandler) handlerGetUsers(c *gin.Context) {
-	res, err := userClient.GetUsers(context.Background(), &userpb.Empty{})
+func (h *DefaultHandler) handlerGetUsersByIds(c *gin.Context, ids []int32) (map[int32]*userpb.User, error) {
+	userResp, err := userClient.GetUsersByIds(c, &userpb.GetUsersByIdsRequest{Ids: ids})
 	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to get users"})
+		utils.Logger.Println(err)
+		handlerError(c, err, 500)
+		return nil, err
+	}
+
+	usersMap := make(map[int32]*userpb.User)
+	for _, user := range userResp.Users {
+		usersMap[user.Id] = user
+	}
+
+	return usersMap, nil
+}
+
+func (h *DefaultHandler) handlerGetUsers(c *gin.Context) {
+	_, _, isOperatorOrHigher := h.getPrivilege(c)
+
+	if !isOperatorOrHigher {
+		c.JSON(403, nil)
+		return
+	}
+
+	res, err := userClient.GetUsers(c.Request.Context(), &userpb.Empty{})
+	if err != nil {
+		utils.Logger.Println(err)
+		handlerError(c, err, 500)
 		return
 	}
 
@@ -33,15 +56,9 @@ func (h *DefaultHandler) handlerGetUsers(c *gin.Context) {
 }
 
 func (h *DefaultHandler) handlerCreateUser(c *gin.Context) {
-	session, ok := c.Get("session")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
+	_, _, isOperatorOrHigher := h.getPrivilege(c)
 
-	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
+	if !isOperatorOrHigher {
 		c.JSON(403, nil)
 		return
 	}
@@ -54,8 +71,9 @@ func (h *DefaultHandler) handlerCreateUser(c *gin.Context) {
 		return
 	}
 
-	res, err := userClient.CreateUser(context.Background(), user)
+	res, err := userClient.CreateUser(c.Request.Context(), user)
 	if err != nil {
+		utils.Logger.Println(err)
 		c.JSON(500, gin.H{"error": "failed to create user"})
 		return
 	}
@@ -64,15 +82,9 @@ func (h *DefaultHandler) handlerCreateUser(c *gin.Context) {
 }
 
 func (h *DefaultHandler) handlerEditUser(c *gin.Context) {
-	session, ok := c.Get("session")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
+	_, _, isOperatorOrHigher := h.getPrivilege(c)
 
-	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
+	if !isOperatorOrHigher {
 		c.JSON(403, nil)
 		return
 	}
@@ -85,8 +97,9 @@ func (h *DefaultHandler) handlerEditUser(c *gin.Context) {
 		return
 	}
 
-	res, err := userClient.EditUser(context.Background(), user)
+	res, err := userClient.EditUser(c.Request.Context(), user)
 	if err != nil {
+		utils.Logger.Println(err)
 		c.JSON(500, gin.H{"error": "failed to edit user"})
 		return
 	}
@@ -95,15 +108,9 @@ func (h *DefaultHandler) handlerEditUser(c *gin.Context) {
 }
 
 func (h *DefaultHandler) handlerChangeUserStatus(c *gin.Context) {
-	session, ok := c.Get("session")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
+	_, _, isOperatorOrHigher := h.getPrivilege(c)
 
-	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
+	if !isOperatorOrHigher {
 		c.JSON(403, nil)
 		return
 	}
@@ -115,8 +122,9 @@ func (h *DefaultHandler) handlerChangeUserStatus(c *gin.Context) {
 		return
 	}
 
-	res, err := userClient.ChangeUserStatus(context.Background(), &userpb.ChangeUserStatusRequest{Id: int32(userID)})
+	res, err := userClient.ChangeUserStatus(c.Request.Context(), &userpb.ChangeUserStatusRequest{Id: int32(userID)})
 	if err != nil {
+		utils.Logger.Println(err)
 		c.JSON(500, gin.H{"error": "failed to change user status"})
 		return
 	}
@@ -125,28 +133,18 @@ func (h *DefaultHandler) handlerChangeUserStatus(c *gin.Context) {
 }
 
 func (h *DefaultHandler) handlerGetAuth(c *gin.Context) {
-	session, ok := c.Get("session")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
+	fmt.Println(1233213123)
+	session, _, _ := h.getPrivilege(c)
 
-	c.JSON(200, session.(*userpb.Session).User)
+	c.JSON(200, session.User)
 }
 
 func (h *DefaultHandler) handlerLogout(c *gin.Context) {
-	session, ok := c.Get("session")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
+	session, _, _ := h.getPrivilege(c)
 
-	_, err := userClient.Logout(context.Background(), &userpb.LogoutRequest{Hash: session.(*userpb.Session).Hash})
+	_, err := userClient.Logout(c.Request.Context(), &userpb.LogoutRequest{Hash: session.Hash})
 	if err != nil {
+		utils.Logger.Println(err)
 		c.JSON(500, gin.H{"error": "failed to logout"})
 		return
 	}
@@ -154,11 +152,9 @@ func (h *DefaultHandler) handlerLogout(c *gin.Context) {
 	c.JSON(200, nil)
 }
 
-func (uh *DefaultHandler) handlerLogin(c *gin.Context) {
-	var (
-		loginData userpb.LoginRequest
-		err       error
-	)
+func (h *DefaultHandler) handlerLogin(c *gin.Context) {
+	var err error
+	loginData := &userpb.LoginRequest{}
 
 	if err = c.BindJSON(&loginData); err != nil {
 		utils.Logger.Println(err)
@@ -166,21 +162,15 @@ func (uh *DefaultHandler) handlerLogin(c *gin.Context) {
 		return
 	}
 
-	res, err := userClient.Login(context.Background(), &loginData)
+	res, err := userClient.Login(c.Request.Context(), loginData)
 	if err != nil {
+		utils.Logger.Println(err)
 		c.JSON(500, gin.H{"error": "failed to login"})
 		return
 	}
 
-	if res.Failure != "" {
-		c.JSON(200, gin.H{
-			"failure": res.Failure,
-		})
-
-		return
-	}
-
 	c.JSON(200, gin.H{
-		"token": res.Hash,
+		"token":   res.Hash,
+		"failure": res.Failure,
 	})
 }

@@ -2,24 +2,16 @@ package router
 
 import (
 	"backend/database"
-	"backend/proto/userpb"
 	"backend/utils"
-	"errors"
 	"github.com/gin-gonic/gin"
 	"strings"
 	"time"
 )
 
 func (h *DefaultHandler) handleReferenceRecord(c *gin.Context, isEdit bool) {
-	session, ok := c.Get("session")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
+	_, _, isOperatorOrHigher := h.getPrivilege(c)
 
-	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
+	if !isOperatorOrHigher {
 		c.JSON(403, nil)
 		return
 	}

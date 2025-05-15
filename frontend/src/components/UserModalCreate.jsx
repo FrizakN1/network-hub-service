@@ -12,9 +12,9 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
         Password: "",
         PasswordConfirm: "",
         Role: {
-            ID: 0,
+            Id: 0,
+            Key: "",
             Value: "",
-            TranslateValue: "",
         },
     })
     const [validation, setValidation] = useState({
@@ -43,7 +43,7 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
     }, [action, editUser]);
 
     useEffect(() => {
-        FetchRequest("GET", "/references/roles", null)
+        FetchRequest("GET", "/users/roles", null)
             .then(response => {
                 if (response.success && response.data != null) {
                     setRoles(response.data)
@@ -98,7 +98,7 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
             case "Password":
                 return fields[field] !== editUser[field]
             case "Role":
-                return fields.Role.ID !== editUser.Role.ID
+                return fields.Role.Id !== editUser.Role.Id
             default: return false
         }
     }

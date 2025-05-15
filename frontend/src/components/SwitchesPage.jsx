@@ -36,7 +36,7 @@ const SwitchesPage = () => {
 
     return (
         <section className="references">
-            {user.Role.Value !== "user" && <>
+            {user.role.key !== "user" && <>
                 {modalCreate && <SwitchModalCreate action="create" setState={setModalCreate} returnSwitch={handlerAddSwitch}/>}
                 {modalEdit.State && <SwitchModalCreate action="edit"
                                                        setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))}
@@ -67,7 +67,7 @@ const SwitchesPage = () => {
                                 <td>{record.Name || record.TranslateValue}</td>
                                 <td>{new Date(record.CreatedAt * 1000).toLocaleString().slice(0, 17)}</td>
                                 <td>
-                                    {user.Role.Value !== "user" && <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditSwitch: record})}/>}
+                                    {user.role.key !== "user" && <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditSwitch: record})}/>}
                                 </td>
                             </tr>
                         ))}

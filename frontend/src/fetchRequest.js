@@ -22,10 +22,12 @@ const FetchRequest = async (method, url, body = null) => {
         if (response.status === 401) {
             localStorage.removeItem("token");
             window.location.href = "/login";
+            return{ success: false }
         }
 
         if (response.status === 403) {
             window.location.href = "/";
+            return { success: false }
         }
 
         const data = await response.json();

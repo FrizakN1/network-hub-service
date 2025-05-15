@@ -20,7 +20,6 @@ const UsersPage = () => {
     useEffect(() => {
         FetchRequest("GET", "/users", null)
             .then(response => {
-                console.log(response)
                 if (response.success && response.data != null) {
                     setUsers(response.data)
                 }
@@ -30,11 +29,12 @@ const UsersPage = () => {
     }, []);
 
     const changeUserStatus = (userID) => {
-        FetchRequest("PATCH", "/users/status", {ID: Number(userID)})
+        FetchRequest("PATCH", `/users/${userID}/status`, {ID: Number(userID)})
             .then(response => {
+                console.log(response)
                 if (response.success && response.data != null) {
                     setUsers(prevState => prevState.map(user =>
-                        user.ID === response.data.ID ? response.data : user
+                        user.ID === response.data.ID ? {...user, IsActive: response.data} : user
                     ))
                 }
             })

@@ -80,7 +80,7 @@ const ReferencePage = ({reference}) => {
 
     return (
         <section className="references">
-            {user.Role.Value !== "user" && <>
+            {user.role.key !== "user" && <>
                 {switchModalCreate && <SwitchModalCreate action="create" setState={setSwitchModalCreate} returnSwitch={handlerAddRecord}/>}
                 {nodeReferenceModalCreate && <NodeReferenceRecordModalCreate action="create" setState={setNodeReferenceModalCreate} returnRecord={handlerAddRecord} reference={reference}/>}
                 {hardwareReferenceModalCreate && <HardwareReferenceRecordModalCreate action="create" setState={setHardwareReferenceModalCreate} returnRecord={handlerAddRecord} reference={reference}/>}
@@ -129,7 +129,7 @@ const ReferencePage = ({reference}) => {
                                 <td>{record.Name || record.TranslateValue}</td>
                                 <td>{new Date(record.CreatedAt * 1000).toLocaleString().slice(0, 17)}</td>
                                 <td>
-                                    {user.Role.Value !== "user" && <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => handlerOpenModalEdit(record)}/>}
+                                    {user.role.key !== "user" && <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => handlerOpenModalEdit(record)}/>}
                                 </td>
                             </tr>
                         ))}

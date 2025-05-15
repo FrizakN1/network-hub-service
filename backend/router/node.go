@@ -2,40 +2,18 @@ package router
 
 import (
 	"backend/database"
-	"backend/proto/userpb"
 	"backend/utils"
 	"database/sql"
-	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"strconv"
 	"time"
 )
 
-type NodeHandler interface {
-	handlerGetSearchNodes(c *gin.Context)
-	handlerEditNode(c *gin.Context)
-	handlerCreateNode(c *gin.Context)
-	handlerGetNode(c *gin.Context)
-	handlerGetHouseNodes(c *gin.Context)
-	handlerGetNodes(c *gin.Context)
-	handlerDeleteNode(c *gin.Context)
-}
-
-type DefaultNodeHandler struct {
-	NodeService database.NodeService
-}
-
 func (h *DefaultHandler) handlerDeleteNode(c *gin.Context) {
-	session, ok := c.Get("session")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
+	_, isAdmin, _ := h.getPrivilege(c)
 
-	if session.(userpb.Session).User.Role.Value != "admin" {
+	if !isAdmin {
 		c.JSON(403, nil)
 		return
 	}
@@ -74,15 +52,9 @@ func (h *DefaultHandler) handlerGetSearchNodes(c *gin.Context) {
 }
 
 func (h *DefaultHandler) handlerEditNode(c *gin.Context) {
-	session, ok := c.Get("session")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
+	session, _, isOperatorOrHigher := h.getPrivilege(c)
 
-	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
+	if !isOperatorOrHigher {
 		c.JSON(403, nil)
 		return
 	}
@@ -115,7 +87,7 @@ func (h *DefaultHandler) handlerEditNode(c *gin.Context) {
 		Address:     database.Address{House: database.AddressElement{ID: node.Address.House.ID}},
 		Node:        &database.Node{ID: node.ID},
 		Hardware:    nil,
-		User:        userpb.User{Id: session.(userpb.Session).User.Id},
+		UserId:      session.User.Id,
 		Description: fmt.Sprintf("Изменение узла: %s", node.Name),
 		CreatedAt:   time.Now().Unix(),
 	}
@@ -128,15 +100,9 @@ func (h *DefaultHandler) handlerEditNode(c *gin.Context) {
 }
 
 func (h *DefaultHandler) handlerCreateNode(c *gin.Context) {
-	session, ok := c.Get("session")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
+	session, _, isOperatorOrHigher := h.getPrivilege(c)
 
-	if session.(userpb.Session).User.Role.Value != "admin" && session.(userpb.Session).User.Role.Value != "operator" {
+	if !isOperatorOrHigher {
 		c.JSON(403, nil)
 		return
 	}
@@ -166,7 +132,7 @@ func (h *DefaultHandler) handlerCreateNode(c *gin.Context) {
 		Address:     database.Address{House: database.AddressElement{ID: node.Address.House.ID}},
 		Node:        nil,
 		Hardware:    nil,
-		User:        userpb.User{Id: session.(userpb.Session).User.Id},
+		UserId:      session.User.Id,
 		Description: fmt.Sprintf("Создание нового узла: %s", node.Name),
 		CreatedAt:   time.Now().Unix(),
 	}

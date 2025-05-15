@@ -4,7 +4,6 @@ import (
 	"backend/database"
 	"backend/proto/userpb"
 	"backend/utils"
-	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -13,8 +12,8 @@ import (
 )
 
 type Handler interface {
-	handlerGetEventsFrom(c *gin.Context, from string)
-	handlerGetEvents(c *gin.Context)
+	//handlerGetEventsFrom(c *gin.Context, from string)
+	handlerGetEvents(c *gin.Context, from string)
 	handlerGetHardwareFiles(c *gin.Context)
 	handlerGetNodeImages(c *gin.Context)
 	handlerGetNodeFiles(c *gin.Context)
@@ -51,6 +50,8 @@ type Handler interface {
 	handlerGetAuth(c *gin.Context)
 	handlerLogout(c *gin.Context)
 	handlerLogin(c *gin.Context)
+	getPrivilege(c *gin.Context) (*userpb.Session, bool, bool)
+	handlerGetUsersByIds(c *gin.Context, ids []int32) (map[int32]*userpb.User, error)
 }
 
 type DefaultHandler struct {
@@ -76,7 +77,7 @@ func Initialization() *gin.Engine {
 	// В settings.json параметр AllowOrigin содерижт этот самый домен, которому разрешено делать запросы
 	router.Use(func(c *gin.Context) {
 		// Получение из settings.json разрешенной ссылки
-		allowedOrigin := os.Getenv("ALLOWED_ORIGIN")
+		allowedOrigin := os.Getenv("ALLOW_ORIGIN")
 
 		// Получение ссылки из запроса
 		origin := c.Request.Header.Get("Origin")
@@ -89,6 +90,7 @@ func Initialization() *gin.Engine {
 
 			if c.Request.Method == "OPTIONS" {
 				c.AbortWithStatus(http.StatusNoContent)
+				return
 			} else {
 				c.Next()
 			}
@@ -104,13 +106,10 @@ func Initialization() *gin.Engine {
 
 	routerAPI.GET("/auth/logout", handler.handlerLogout)
 	routerAPI.GET("/auth/me", handler.handlerGetAuth)
-	//routerAPI.GET("/auth/users", handlerGetUsers)
 
 	users := routerAPI.Group("/users")
 	{
-		//users.GET("", userHandler.handlerGetUsers)
 		users.GET("", handler.handlerGetUsers)
-		//users.POST("", userHandler.handlerCreateUser)
 		users.POST("", handler.handlerCreateUser)
 		users.PUT("", handler.handlerEditUser)
 		users.PATCH("/:id/status", handler.handlerChangeUserStatus)
@@ -127,7 +126,7 @@ func Initialization() *gin.Engine {
 		nodes.POST("", handler.handlerCreateNode)
 		nodes.PUT("", handler.handlerEditNode)
 		nodes.GET("/:id/events/:type", func(c *gin.Context) {
-			handler.handlerGetEventsFrom(c, "NODE")
+			handler.handlerGetEvents(c, "NODE")
 		})
 		nodes.DELETE("/:id", handler.handlerDeleteNode)
 	}
@@ -141,7 +140,7 @@ func Initialization() *gin.Engine {
 		houses.GET("/:id/nodes", handler.handlerGetHouseNodes)
 		houses.GET("/:id/hardware", handler.handlerGetHouseHardware)
 		houses.GET("/:id/events/:type", func(c *gin.Context) {
-			handler.handlerGetEventsFrom(c, "HOUSE")
+			handler.handlerGetEvents(c, "HOUSE")
 		})
 	}
 
@@ -154,7 +153,7 @@ func Initialization() *gin.Engine {
 		hardware.POST("", handler.handlerCreateHardware)
 		hardware.PUT("", handler.handlerEditHardware)
 		hardware.GET("/:id/events/:type", func(c *gin.Context) {
-			handler.handlerGetEventsFrom(c, "HARDWARE")
+			handler.handlerGetEvents(c, "HARDWARE")
 		})
 		hardware.DELETE("/:id", handler.handlerDeleteHardware)
 	}
@@ -175,7 +174,6 @@ func Initialization() *gin.Engine {
 	references := routerAPI.Group("/references")
 	{
 		references.GET("/:reference", handler.handlerGetReference)
-		references.GET("/role", handler.handlerGetReference)
 		references.POST("/:reference", func(c *gin.Context) {
 			handler.handleReferenceRecord(c, false)
 		})
@@ -184,7 +182,9 @@ func Initialization() *gin.Engine {
 		})
 	}
 
-	routerAPI.GET("/events", handler.handlerGetEvents)
+	routerAPI.GET("/events", func(c *gin.Context) {
+		handler.handlerGetEvents(c, "")
+	})
 
 	return router
 }
@@ -192,6 +192,7 @@ func Initialization() *gin.Engine {
 func handlerError(c *gin.Context, err error, code int) {
 	fmt.Println(err)
 	c.JSON(code, nil)
+	c.Abort()
 }
 
 func authMiddleware() gin.HandlerFunc {
@@ -200,6 +201,7 @@ func authMiddleware() gin.HandlerFunc {
 		if authHeader == "" {
 			fmt.Println("Не обнаружен заголовок авторизации")
 			c.JSON(401, gin.H{"error": "Не обнаружен заголовок авторизации"})
+			c.Abort()
 			return
 		}
 
@@ -207,28 +209,44 @@ func authMiddleware() gin.HandlerFunc {
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			fmt.Println("Неверный формат токена")
 			c.JSON(401, gin.H{"error": "Неверный формат токена"})
+			c.Abort()
 			return
 		}
 
 		tokenString := parts[1]
 
-		session, err := userClient.GetSession(context.Background(), &userpb.GetSessionRequest{Hash: tokenString})
+		res, err := userClient.GetSession(c.Request.Context(), &userpb.GetSessionRequest{Hash: tokenString})
 		if err != nil {
+			fmt.Println(err)
 			utils.Logger.Println(err)
-			c.JSON(400, gin.H{"error": "ошибка при получении сессии"})
+			c.JSON(500, gin.H{"error": "Ошибка при получении сессии"})
+			c.Abort()
 			return
 		}
 
-		if session == nil {
+		if !res.Exist {
 			fmt.Println("Сессия не найдена")
 			c.JSON(401, gin.H{"error": "Сессия не найдена"})
+			c.Abort()
 			return
 		}
 
-		c.Set("session", session)
+		c.Set("session", res.Session)
 
 		c.Next()
 	}
+}
+
+func (h *DefaultHandler) getPrivilege(c *gin.Context) (*userpb.Session, bool, bool) {
+	session, ok := c.Get("session")
+	if !ok {
+		return nil, false, false
+	}
+
+	isAdmin := session.(*userpb.Session).User.Role.Key == "admin"
+	isOperatorOrHigher := session.(*userpb.Session).User.Role.Key == "operator" || isAdmin
+
+	return session.(*userpb.Session), isAdmin, isOperatorOrHigher
 }
 
 func NewHandler() Handler {

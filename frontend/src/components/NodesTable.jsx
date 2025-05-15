@@ -149,7 +149,7 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
 
     return (
         <div className="contain nodes">
-            {user.Role.Value !== "user" && canCreate && <>
+            {user.role.key !== "user" && canCreate && <>
                 {modalCreate && <NodeModalCreate action={"create"} setState={setModalCreate} returnNode={handlerAddNode} defaultAddress={defaultAddress}/>}
                 {modalEdit.State && <NodeModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editNode={modalEdit.EditNode} returnNode={handlerEditNode}/>}
                 <div className="contain">
@@ -188,8 +188,8 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
                             :
                                 <td>
                                     <FontAwesomeIcon icon={faEye} className="eye" title="Просмотр" onClick={() => navigate(`/nodes/view/${node.ID}`)}/>
-                                    {user.Role.Value !== "user" && <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditNode: node})}/>}
-                                    {user.Role.Value === "admin" && <FontAwesomeIcon icon={faTrash} className="delete" title="Удалить" onClick={() => handlerDeleteNode(node.ID)}/>}
+                                    {user.role.key !== "user" && <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditNode: node})}/>}
+                                    {user.role.key === "admin" && <FontAwesomeIcon icon={faTrash} className="delete" title="Удалить" onClick={() => handlerDeleteNode(node.ID)}/>}
                                 </td>
                             }
                         </tr>

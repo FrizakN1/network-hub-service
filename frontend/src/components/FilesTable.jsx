@@ -135,7 +135,7 @@ const FilesTable = ({type}) => {
 
     return (
         <div style={{paddingBottom: "20px"}}>
-            {user.Role.Value !== "user" && <UploadFile returnFile={handlerAddFile} type={type}/>}
+            {user.role.key !== "user" && <UploadFile returnFile={handlerAddFile} type={type}/>}
             <div className="contain tables">
                 <div className="tabs">
                     <div className={activeTab === 1 ? "tab active" : "tab"} onClick={() => setActiveTab(1)}>Актуальные файлы</div>
@@ -158,7 +158,7 @@ const FilesTable = ({type}) => {
                                             <td className={"col2"}>{new Date(file.UploadAt * 1000).toLocaleString().slice(0, 17)}</td>
                                             <td className={"col3"}>
                                                 <FontAwesomeIcon icon={faDownload} title="Скачать" onClick={() => handlerDownloadFile(file)}/>
-                                                {user.Role.Value !== "user" && <FontAwesomeIcon icon={faFolderPlus} className="delete" title="Переместить в архив" onClick={() => handlerArchiveFile(file)}/>}
+                                                {user.role.key !== "user" && <FontAwesomeIcon icon={faFolderPlus} className="delete" title="Переместить в архив" onClick={() => handlerArchiveFile(file)}/>}
                                             </td>
                                         </tr>
                                     ))}
@@ -184,8 +184,8 @@ const FilesTable = ({type}) => {
                                         <td className={"col2"}>{new Date(file.UploadAt * 1000).toLocaleString().slice(0, 17)}</td>
                                         <td className={"col3"}>
                                             <FontAwesomeIcon icon={faDownload} title="Скачать" onClick={() => handlerDownloadFile(file)}/>
-                                            {user.Role.Value !== "user" && <FontAwesomeIcon icon={faFolderMinus} className="eye" title="Восстановить" onClick={() => handlerArchiveFile(file)}/>}
-                                            {user.Role.Value === "admin" && <FontAwesomeIcon icon={faTrash} className="delete" title="Удалить" onClick={() => handlerDeleteFile(file)}/>}
+                                            {user.role.key !== "user" && <FontAwesomeIcon icon={faFolderMinus} className="eye" title="Восстановить" onClick={() => handlerArchiveFile(file)}/>}
+                                            {user.role.key === "admin" && <FontAwesomeIcon icon={faTrash} className="delete" title="Удалить" onClick={() => handlerDeleteFile(file)}/>}
                                         </td>
                                     </tr>
                                 ))}

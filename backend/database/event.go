@@ -12,7 +12,8 @@ type Event struct {
 	Address     Address
 	Node        *Node
 	Hardware    *Hardware
-	User        userpb.User
+	UserId      int32
+	User        *userpb.User
 	Description string
 	CreatedAt   int64
 }
@@ -33,13 +34,12 @@ func prepareEvent() []string {
 	}
 
 	query["GET_EVENTS"], e = Link.Prepare(`
-		SELECT e.*, u.login, u.name, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.translate_value
+		SELECT e.*, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.translate_value
 		FROM "Event" AS e
 		JOIN "House" AS h ON e.house_id = h.id
         JOIN "Street" AS s ON s.id = h.street_id
         JOIN "Street_type" AS st ON s.type_id = st.id
         JOIN "House_type" AS ht ON h.type_id = ht.id
-		JOIN "User" AS u ON e.user_id = u.id
 		LEFT JOIN "Node" AS n ON e.node_id = n.id
 		LEFT JOIN "Hardware" AS hw ON e.hardware_id = hw.id
 		LEFT JOIN "Hardware_type" AS hwt ON hw.type_id = hwt.id
@@ -57,13 +57,12 @@ func prepareEvent() []string {
 	}
 
 	query["GET_EVENTS_HOUSE_ALL"], e = Link.Prepare(`
-		SELECT e.*, u.login, u.name, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.translate_value
+		SELECT e.*, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.translate_value
 		FROM "Event" AS e
 		JOIN "House" AS h ON e.house_id = h.id
         JOIN "Street" AS s ON s.id = h.street_id
         JOIN "Street_type" AS st ON s.type_id = st.id
         JOIN "House_type" AS ht ON h.type_id = ht.id
-		JOIN "User" AS u ON e.user_id = u.id
 		LEFT JOIN "Node" AS n ON e.node_id = n.id
 		LEFT JOIN "Hardware" AS hw ON e.hardware_id = hw.id
 		LEFT JOIN "Hardware_type" AS hwt ON hw.type_id = hwt.id
@@ -82,13 +81,12 @@ func prepareEvent() []string {
 	}
 
 	query["GET_EVENTS_HOUSE_ONLY"], e = Link.Prepare(`
-		SELECT e.*, u.login, u.name, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.translate_value
+		SELECT e.*, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.translate_value
 		FROM "Event" AS e
 		JOIN "House" AS h ON e.house_id = h.id
         JOIN "Street" AS s ON s.id = h.street_id
         JOIN "Street_type" AS st ON s.type_id = st.id
         JOIN "House_type" AS ht ON h.type_id = ht.id
-		JOIN "User" AS u ON e.user_id = u.id
 		LEFT JOIN "Node" AS n ON e.node_id = n.id
 		LEFT JOIN "Hardware" AS hw ON e.hardware_id = hw.id
 		LEFT JOIN "Hardware_type" AS hwt ON hw.type_id = hwt.id
@@ -108,13 +106,12 @@ func prepareEvent() []string {
 	}
 
 	query["GET_EVENTS_NODE_ALL"], e = Link.Prepare(`
-		SELECT e.*, u.login, u.name, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.translate_value
+		SELECT e.*, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.translate_value
 		FROM "Event" AS e
 		JOIN "House" AS h ON e.house_id = h.id
         JOIN "Street" AS s ON s.id = h.street_id
         JOIN "Street_type" AS st ON s.type_id = st.id
         JOIN "House_type" AS ht ON h.type_id = ht.id
-		JOIN "User" AS u ON e.user_id = u.id
 		LEFT JOIN "Node" AS n ON e.node_id = n.id
 		LEFT JOIN "Hardware" AS hw ON e.hardware_id = hw.id
 		LEFT JOIN "Hardware_type" AS hwt ON hw.type_id = hwt.id
@@ -135,13 +132,12 @@ func prepareEvent() []string {
 	}
 
 	query["GET_EVENTS_NODE_ONLY"], e = Link.Prepare(`
-		SELECT e.*, u.login, u.name, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.translate_value
+		SELECT e.*, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.translate_value
 		FROM "Event" AS e
 		JOIN "House" AS h ON e.house_id = h.id
         JOIN "Street" AS s ON s.id = h.street_id
         JOIN "Street_type" AS st ON s.type_id = st.id
         JOIN "House_type" AS ht ON h.type_id = ht.id
-		JOIN "User" AS u ON e.user_id = u.id
 		LEFT JOIN "Node" AS n ON e.node_id = n.id
 		LEFT JOIN "Hardware" AS hw ON e.hardware_id = hw.id
 		LEFT JOIN "Hardware_type" AS hwt ON hw.type_id = hwt.id
@@ -161,13 +157,12 @@ func prepareEvent() []string {
 	}
 
 	query["GET_EVENTS_HARDWARE"], e = Link.Prepare(`
-		SELECT e.*, u.login, u.name, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.translate_value
+		SELECT e.*, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.translate_value
 		FROM "Event" AS e
 		JOIN "House" AS h ON e.house_id = h.id
         JOIN "Street" AS s ON s.id = h.street_id
         JOIN "Street_type" AS st ON s.type_id = st.id
         JOIN "House_type" AS ht ON h.type_id = ht.id
-		JOIN "User" AS u ON e.user_id = u.id
 		LEFT JOIN "Node" AS n ON e.node_id = n.id
 		LEFT JOIN "Hardware" AS hw ON e.hardware_id = hw.id
 		LEFT JOIN "Hardware_type" AS hwt ON hw.type_id = hwt.id
@@ -218,7 +213,7 @@ func (s *DefaultEventService) CreateEvent(event Event) error {
 		event.Address.House.ID,
 		nodeID,
 		hardwareID,
-		event.User.Id,
+		event.UserId,
 		event.Description,
 		event.CreatedAt,
 	)
@@ -277,11 +272,9 @@ func (s *DefaultEventService) GetEvents(from string, id int) ([]Event, int, erro
 			&event.Address.House.ID,
 			&nodeID,
 			&hardwareID,
-			&event.User.Id,
+			&event.UserId,
 			&event.Description,
 			&event.CreatedAt,
-			&event.User.Login,
-			&event.User.Name,
 			&event.Address.Street.Name,
 			&event.Address.Street.Type.ShortName,
 			&event.Address.House.Name,

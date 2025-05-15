@@ -101,7 +101,7 @@ const ImageTable = ({type}) => {
     return (
         <div style={{paddingBottom: "20px"}}>
             {openImage.State && <ImageOpen setState={(state) => setOpenImage(prevState => ({...prevState, State: state}))} images={openImage.ImagesType === "active" ? images : archiveImages} currentIndex={openImage.Index}/>}
-            {user.Role.Value !== "user" && <UploadFile returnFile={handlerAddImage} type={type} onlyImage={true}/>}
+            {user.role.key !== "user" && <UploadFile returnFile={handlerAddImage} type={type} onlyImage={true}/>}
             <div className="contain tables">
                 <div className="tabs">
                     <div className={activeTab === 1 ? "tab active" : "tab"} onClick={() => {setActiveTab(1); setPanelIndex(null)}}>Актуальные изображения</div>
@@ -112,11 +112,11 @@ const ImageTable = ({type}) => {
                         <div className="images">
                             {images.map((image, index) => (
                                 <div key={"image"+index} className="image">
-                                    {user.Role.Value !== "user" && <FontAwesomeIcon icon={faEllipsisVertical} style={panelIndex === index && {color: "#ffffff"}} className="menu" onClick={() => setPanelIndex(prevState => prevState === index ? null : index)}/>}
-                                    {user.Role.Value !== "user" && panelIndex === index ?
+                                    {user.role.key !== "user" && <FontAwesomeIcon icon={faEllipsisVertical} style={panelIndex === index && {color: "#ffffff"}} className="menu" onClick={() => setPanelIndex(prevState => prevState === index ? null : index)}/>}
+                                    {user.role.key !== "user" && panelIndex === index ?
                                         <div className="menu-block">
-                                            {user.Role.Value !== "user" && <div onClick={() => handlerArchiveImage(image)}><FontAwesomeIcon icon={faFolderPlus} title="Переместить в архив"/> Переметить в архив</div>}
-                                            {user.Role.Value === "admin" && <div onClick={() => handlerDeleteImage(image)}><FontAwesomeIcon icon={faTrash} title="Удалить" /> Удалить</div>}
+                                            {user.role.key !== "user" && <div onClick={() => handlerArchiveImage(image)}><FontAwesomeIcon icon={faFolderPlus} title="Переместить в архив"/> Переметить в архив</div>}
+                                            {user.role.key === "admin" && <div onClick={() => handlerDeleteImage(image)}><FontAwesomeIcon icon={faTrash} title="Удалить" /> Удалить</div>}
                                         </div>
                                         :
                                         <img src={image.Src} alt="" onClick={() => setOpenImage({State: true, Index: index, ImagesType: "active"})}/>
@@ -131,11 +131,11 @@ const ImageTable = ({type}) => {
                         <div className="images">
                             {archiveImages.map((image, index) => (
                                 <div key={"image"+index} className="image">
-                                    <FontAwesomeIcon icon={faEllipsisVertical} style={panelIndex === index && {color: "#ffffff"}} className="menu" onClick={() => setPanelIndex(prevState => prevState === index ? null : index)}/>
+                                    {user.role.key !== "user" && <FontAwesomeIcon icon={faEllipsisVertical} style={panelIndex === index && {color: "#ffffff"}} className="menu" onClick={() => setPanelIndex(prevState => prevState === index ? null : index)}/>}
                                     {panelIndex === index ?
                                         <div className="menu-block">
-                                            <div onClick={() => handlerArchiveImage(image)}><FontAwesomeIcon icon={faFolderPlus} title="Восстановить"/> Восстановить</div>
-                                            <div onClick={() => handlerDeleteImage(image)}><FontAwesomeIcon icon={faTrash} title="Удалить" /> Удалить</div>
+                                            {user.role.key !== "user" && <div onClick={() => handlerArchiveImage(image)}><FontAwesomeIcon icon={faFolderPlus} title="Восстановить"/> Восстановить</div>}
+                                            {user.role.key === "admin" && <div onClick={() => handlerDeleteImage(image)}><FontAwesomeIcon icon={faTrash} title="Удалить" /> Удалить</div>}
                                         </div>
                                         :
                                         <img src={image.Src} alt="" onClick={() => setOpenImage({State: true, Index: index, ImagesType: "archive"})}/>

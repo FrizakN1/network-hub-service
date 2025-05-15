@@ -2,22 +2,10 @@ package router
 
 import (
 	"backend/database"
-	"backend/proto/userpb"
 	"backend/utils"
-	"errors"
 	"github.com/gin-gonic/gin"
 	"time"
 )
-
-type SwitchHandler interface {
-	handlerGetSwitches(c *gin.Context)
-	handlerEditSwitch(c *gin.Context)
-	handlerCreateSwitch(c *gin.Context)
-}
-
-type DefaultSwitchHandler struct {
-	SwitchService database.SwitchService
-}
 
 func (h *DefaultHandler) handlerGetSwitches(c *gin.Context) {
 	switches, err := h.SwitchService.GetSwitches()
@@ -31,15 +19,9 @@ func (h *DefaultHandler) handlerGetSwitches(c *gin.Context) {
 }
 
 func (h *DefaultHandler) handlerEditSwitch(c *gin.Context) {
-	session, ok := c.Get("session")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
+	_, _, isOperatorOrHigher := h.getPrivilege(c)
 
-	if session.(userpb.Session).User.Role.Value != "admin" {
+	if !isOperatorOrHigher {
 		c.JSON(403, nil)
 		return
 	}
@@ -67,15 +49,9 @@ func (h *DefaultHandler) handlerEditSwitch(c *gin.Context) {
 }
 
 func (h *DefaultHandler) handlerCreateSwitch(c *gin.Context) {
-	session, ok := c.Get("session")
-	if !ok {
-		err := errors.New("сессия не найдена")
-		utils.Logger.Println(err)
-		handlerError(c, err, 401)
-		return
-	}
+	_, _, isOperatorOrHigher := h.getPrivilege(c)
 
-	if session.(userpb.Session).User.Role.Value != "admin" {
+	if !isOperatorOrHigher {
 		c.JSON(403, nil)
 		return
 	}

@@ -33,7 +33,7 @@ const Authorization = () => {
         FetchRequest("POST", "/auth/login", loginData)
             .then(response => {
                 if (response.success) {
-                    if ("failure" in response.data) {
+                    if (response.data.failure !== "") {
                         setFailureMessage(response.data.failure)
                     } else {
                         const authToken = response.data.token

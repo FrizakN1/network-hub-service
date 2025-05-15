@@ -51,7 +51,7 @@ const PrivateRoute = ({requiredAdmin}) => {
                     <Link to={"/hardware"}>
                         <li className={activeTab === 4 ? "active" : ""} onClick={() => {setActiveTab(4)}}>Оборудование</li>
                     </Link>
-                    {user.Role.Value === "admin" &&
+                    {user.role.key === "admin" &&
                         <Link to={"/users"}>
                             <li className={activeTab === 5 ? "active" : ""} onClick={() => {setActiveTab(5)}}>Пользователи</li>
                         </Link>}
@@ -63,11 +63,11 @@ const PrivateRoute = ({requiredAdmin}) => {
                     </Link>
                 </ul>
                 <div>
-                    <span style={{color: "#fff"}}>{user.Login}</span>
+                    <span style={{color: "#fff"}}>{user.login}</span>
                     <button onClick={handlerExit}>Выход</button>
                 </div>
             </nav>
-                {requiredAdmin ? user.Role.Value === "admin" ? <Outlet/> : <Navigate to="/" /> : <Outlet/>}
+                {requiredAdmin ? user.role.key === "admin" ? <Outlet/> : <Navigate to="/" /> : <Outlet/>}
             </>}
         </div>
     )

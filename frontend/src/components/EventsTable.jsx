@@ -135,7 +135,7 @@ const EventsTable = ({from = ""}) => {
                             <td>{`${event.Address.Street.Type.ShortName} ${event.Address.Street.Name}, ${event.Address.House.Type.ShortName} ${event.Address.House.Name}`}</td>
                             <td>{event.Node != null ? event.Node.Name : "-"}</td>
                             <td>{event.Hardware != null ? event.Hardware.Type.TranslateValue : "-"}</td>
-                            <td>{event.User.Name}</td>
+                            <td>{event.User.name}</td>
                             <td>{new Date(event.CreatedAt * 1000).toLocaleString().slice(0, 17)}</td>
                             <td></td>
                         </tr>

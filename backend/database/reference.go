@@ -32,13 +32,6 @@ func prepareReferences() []string {
 		query = make(map[string]*sql.Stmt)
 	}
 
-	query["GET_ROLES"], e = Link.Prepare(`
-		SELECT * FROM "Role"
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
 	query["GET_OWNERS"], e = Link.Prepare(`
 		SELECT * FROM "Node_owner"
     `)

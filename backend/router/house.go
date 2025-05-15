@@ -7,16 +7,6 @@ import (
 	"strconv"
 )
 
-type AddressHandler interface {
-	handlerGetHouses(c *gin.Context)
-	handlerGetHouse(c *gin.Context)
-	handlerGetSuggestions(c *gin.Context)
-}
-
-type DefaultAddressHandler struct {
-	AddressService database.AddressService
-}
-
 func (h *DefaultHandler) handlerGetHouses(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
