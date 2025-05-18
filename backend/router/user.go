@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"log"
 	"strconv"
 )
@@ -162,7 +163,19 @@ func (h *DefaultHandler) handlerLogin(c *gin.Context) {
 		return
 	}
 
-	res, err := userClient.Login(c.Request.Context(), loginData)
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		c.JSON(401, gin.H{"error": "authorization header missing"})
+		return
+	}
+
+	// Встраиваем метаданные
+	md := metadata.New(map[string]string{
+		"Authorization": authHeader,
+	})
+	ctx := metadata.NewOutgoingContext(c.Request.Context(), md)
+
+	res, err := userClient.Login(ctx, loginData)
 	if err != nil {
 		utils.Logger.Println(err)
 		c.JSON(500, gin.H{"error": "failed to login"})

@@ -30,7 +30,7 @@ message LogoutRequest {
 
 message GetSessionResponse {
   Session session = 1;
-  google.protobuf.BoolValue exist = 2;
+  bool exist = 2;
 }
 
 message GetSessionRequest {
