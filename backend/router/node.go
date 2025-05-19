@@ -10,8 +10,32 @@ import (
 	"time"
 )
 
-func (h *DefaultHandler) handlerDeleteNode(c *gin.Context) {
-	_, isAdmin, _ := h.getPrivilege(c)
+type NodeHandler interface {
+	handlerGetSearchNodes(c *gin.Context)
+	handlerEditNode(c *gin.Context)
+	handlerCreateNode(c *gin.Context)
+	handlerGetNode(c *gin.Context)
+	handlerGetHouseNodes(c *gin.Context)
+	handlerGetNodes(c *gin.Context)
+	handlerDeleteNode(c *gin.Context)
+}
+
+type DefaultNodeHandler struct {
+	Privilege    Privilege
+	NodeService  database.NodeService
+	EventService database.EventService
+}
+
+func NewNodeHandler() NodeHandler {
+	return &DefaultNodeHandler{
+		Privilege:    &DefaultPrivilege{},
+		NodeService:  &database.DefaultNodeService{},
+		EventService: &database.DefaultEventService{},
+	}
+}
+
+func (h *DefaultNodeHandler) handlerDeleteNode(c *gin.Context) {
+	_, isAdmin, _ := h.Privilege.getPrivilege(c)
 
 	if !isAdmin {
 		c.JSON(403, nil)
@@ -34,7 +58,7 @@ func (h *DefaultHandler) handlerDeleteNode(c *gin.Context) {
 	c.JSON(200, true)
 }
 
-func (h *DefaultHandler) handlerGetSearchNodes(c *gin.Context) {
+func (h *DefaultNodeHandler) handlerGetSearchNodes(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	search := c.Query("search")
 
@@ -51,8 +75,8 @@ func (h *DefaultHandler) handlerGetSearchNodes(c *gin.Context) {
 	})
 }
 
-func (h *DefaultHandler) handlerEditNode(c *gin.Context) {
-	session, _, isOperatorOrHigher := h.getPrivilege(c)
+func (h *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
+	session, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
 		c.JSON(403, nil)
@@ -99,8 +123,8 @@ func (h *DefaultHandler) handlerEditNode(c *gin.Context) {
 	c.JSON(200, node)
 }
 
-func (h *DefaultHandler) handlerCreateNode(c *gin.Context) {
-	session, _, isOperatorOrHigher := h.getPrivilege(c)
+func (h *DefaultNodeHandler) handlerCreateNode(c *gin.Context) {
+	session, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
 		c.JSON(403, nil)
@@ -144,7 +168,7 @@ func (h *DefaultHandler) handlerCreateNode(c *gin.Context) {
 	c.JSON(200, node)
 }
 
-func (h *DefaultHandler) handlerGetNode(c *gin.Context) {
+func (h *DefaultNodeHandler) handlerGetNode(c *gin.Context) {
 	var (
 		err  error
 		node database.Node
@@ -166,7 +190,7 @@ func (h *DefaultHandler) handlerGetNode(c *gin.Context) {
 	c.JSON(200, node)
 }
 
-func (h *DefaultHandler) handlerGetHouseNodes(c *gin.Context) {
+func (h *DefaultNodeHandler) handlerGetHouseNodes(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -194,7 +218,7 @@ func (h *DefaultHandler) handlerGetHouseNodes(c *gin.Context) {
 	})
 }
 
-func (h *DefaultHandler) handlerGetNodes(c *gin.Context) {
+func (h *DefaultNodeHandler) handlerGetNodes(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)

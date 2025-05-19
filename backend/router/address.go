@@ -7,7 +7,23 @@ import (
 	"strconv"
 )
 
-func (h *DefaultHandler) handlerGetHouses(c *gin.Context) {
+type AddressHandler interface {
+	handlerGetHouses(c *gin.Context)
+	handlerGetHouse(c *gin.Context)
+	handlerGetSuggestions(c *gin.Context)
+}
+
+type DefaultAddressHandler struct {
+	AddressService database.AddressService
+}
+
+func NewAddressHandler() AddressHandler {
+	return &DefaultAddressHandler{
+		AddressService: &database.DefaultAddressService{},
+	}
+}
+
+func (h *DefaultAddressHandler) handlerGetHouses(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -27,7 +43,7 @@ func (h *DefaultHandler) handlerGetHouses(c *gin.Context) {
 	})
 }
 
-func (h *DefaultHandler) handlerGetHouse(c *gin.Context) {
+func (h *DefaultAddressHandler) handlerGetHouse(c *gin.Context) {
 	var address database.Address
 	var err error
 
@@ -47,7 +63,7 @@ func (h *DefaultHandler) handlerGetHouse(c *gin.Context) {
 	c.JSON(200, address)
 }
 
-func (h *DefaultHandler) handlerGetSuggestions(c *gin.Context) {
+func (h *DefaultAddressHandler) handlerGetSuggestions(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)

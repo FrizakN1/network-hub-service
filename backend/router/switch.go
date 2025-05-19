@@ -7,7 +7,25 @@ import (
 	"time"
 )
 
-func (h *DefaultHandler) handlerGetSwitches(c *gin.Context) {
+type SwitchHandler interface {
+	handlerGetSwitches(c *gin.Context)
+	handlerEditSwitch(c *gin.Context)
+	handlerCreateSwitch(c *gin.Context)
+}
+
+type DefaultSwitchHandler struct {
+	Privilege     Privilege
+	SwitchService database.SwitchService
+}
+
+func NewSwitchHandler() SwitchHandler {
+	return &DefaultSwitchHandler{
+		Privilege:     &DefaultPrivilege{},
+		SwitchService: &database.DefaultSwitchService{},
+	}
+}
+
+func (h *DefaultSwitchHandler) handlerGetSwitches(c *gin.Context) {
 	switches, err := h.SwitchService.GetSwitches()
 	if err != nil {
 		utils.Logger.Println(err)
@@ -18,8 +36,8 @@ func (h *DefaultHandler) handlerGetSwitches(c *gin.Context) {
 	c.JSON(200, switches)
 }
 
-func (h *DefaultHandler) handlerEditSwitch(c *gin.Context) {
-	_, _, isOperatorOrHigher := h.getPrivilege(c)
+func (h *DefaultSwitchHandler) handlerEditSwitch(c *gin.Context) {
+	_, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
 		c.JSON(403, nil)
@@ -48,8 +66,8 @@ func (h *DefaultHandler) handlerEditSwitch(c *gin.Context) {
 	c.JSON(200, _switch)
 }
 
-func (h *DefaultHandler) handlerCreateSwitch(c *gin.Context) {
-	_, _, isOperatorOrHigher := h.getPrivilege(c)
+func (h *DefaultSwitchHandler) handlerCreateSwitch(c *gin.Context) {
+	_, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
 		c.JSON(403, nil)

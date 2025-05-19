@@ -16,7 +16,34 @@ import (
 	"time"
 )
 
-func (h *DefaultHandler) handlerGetHardwareFiles(c *gin.Context) {
+type FileHandler interface {
+	handlerGetHardwareFiles(c *gin.Context)
+	handlerGetNodeImages(c *gin.Context)
+	handlerGetNodeFiles(c *gin.Context)
+	handlerGetHouseFiles(c *gin.Context)
+	handlerUploadFile(c *gin.Context)
+	handlerFile(c *gin.Context)
+}
+
+type DefaultFileHandler struct {
+	Privilege       Privilege
+	FileService     database.FileService
+	EventService    database.EventService
+	NodeService     database.NodeService
+	HardwareService database.HardwareService
+}
+
+func NewFileHandler() FileHandler {
+	return &DefaultFileHandler{
+		Privilege:       &DefaultPrivilege{},
+		FileService:     &database.DefaultFileService{},
+		EventService:    &database.DefaultEventService{},
+		NodeService:     &database.DefaultNodeService{},
+		HardwareService: &database.DefaultHardwareService{},
+	}
+}
+
+func (h *DefaultFileHandler) handlerGetHardwareFiles(c *gin.Context) {
 	hardwareID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -33,7 +60,7 @@ func (h *DefaultHandler) handlerGetHardwareFiles(c *gin.Context) {
 	c.JSON(200, files)
 }
 
-func (h *DefaultHandler) handlerGetNodeImages(c *gin.Context) {
+func (h *DefaultFileHandler) handlerGetNodeImages(c *gin.Context) {
 	nodeID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -50,7 +77,7 @@ func (h *DefaultHandler) handlerGetNodeImages(c *gin.Context) {
 	c.JSON(200, files)
 }
 
-func (h *DefaultHandler) handlerGetNodeFiles(c *gin.Context) {
+func (h *DefaultFileHandler) handlerGetNodeFiles(c *gin.Context) {
 	nodeID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -67,7 +94,7 @@ func (h *DefaultHandler) handlerGetNodeFiles(c *gin.Context) {
 	c.JSON(200, files)
 }
 
-func (h *DefaultHandler) handlerGetHouseFiles(c *gin.Context) {
+func (h *DefaultFileHandler) handlerGetHouseFiles(c *gin.Context) {
 	houseID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -84,8 +111,8 @@ func (h *DefaultHandler) handlerGetHouseFiles(c *gin.Context) {
 	c.JSON(200, files)
 }
 
-func (h *DefaultHandler) handlerUploadFile(c *gin.Context) {
-	session, _, isOperatorOrHigher := h.getPrivilege(c)
+func (h *DefaultFileHandler) handlerUploadFile(c *gin.Context) {
+	session, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
 		c.JSON(403, nil)
@@ -236,8 +263,8 @@ func (h *DefaultHandler) handlerUploadFile(c *gin.Context) {
 	c.JSON(200, uploadFile)
 }
 
-func (h *DefaultHandler) handlerFile(c *gin.Context) {
-	session, isAdmin, isOperatorOrHigher := h.getPrivilege(c)
+func (h *DefaultFileHandler) handlerFile(c *gin.Context) {
+	session, isAdmin, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	action := c.Param("action")
 

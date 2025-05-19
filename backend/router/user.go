@@ -6,47 +6,73 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"log"
+	"os"
 	"strconv"
 )
 
-var userClient userpb.UserServiceClient
+type UserHandler interface {
+	handlerEditUser(c *gin.Context)
+	handlerCreateUser(c *gin.Context)
+	handlerChangeUserStatus(c *gin.Context)
+	handlerGetUsers(c *gin.Context)
+	//handlerGetUsersByIds(c *gin.Context, ids []int32) (map[int32]*userpb.User, error)
+}
 
-func InitUserClient() {
-	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+type DefaultUserHandler struct {
+	Metadata    Metadata
+	Privilege   Privilege
+	UserService userpb.UserServiceClient
+}
+
+func NewUserHandler(userService *userpb.UserServiceClient) UserHandler {
+	return &DefaultUserHandler{
+		UserService: *userService,
+		Privilege:   &DefaultPrivilege{},
+		Metadata:    &DefaultMetadata{},
+	}
+}
+
+func InitUserClient() userpb.UserServiceClient {
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", os.Getenv("USER_SERVICE_ADDRESS"), os.Getenv("USER_SERVICE_PORT")), grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("could not connect to user service: %v", err)
 	}
 
-	userClient = userpb.NewUserServiceClient(conn)
+	userClient := userpb.NewUserServiceClient(conn)
+
+	return userClient
 }
 
-func (h *DefaultHandler) handlerGetUsersByIds(c *gin.Context, ids []int32) (map[int32]*userpb.User, error) {
-	userResp, err := userClient.GetUsersByIds(c, &userpb.GetUsersByIdsRequest{Ids: ids})
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 500)
-		return nil, err
-	}
+//func (h DefaultUserHandler) handlerGetUsersByIds(c *gin.Context, ids []int32) (map[int32]*userpb.User, error) {
+//	ctx := h.Metadata.setAuthorizationHeader(c)
+//
+//	userResp, err := h.UserService.GetUsersByIds(ctx, &userpb.GetUsersByIdsRequest{Ids: ids})
+//	if err != nil {
+//		utils.Logger.Println(err)
+//		handlerError(c, err, 500)
+//		return nil, err
+//	}
+//
+//	usersMap := make(map[int32]*userpb.User)
+//	for _, user := range userResp.Users {
+//		usersMap[user.Id] = user
+//	}
+//
+//	return usersMap, nil
+//}
 
-	usersMap := make(map[int32]*userpb.User)
-	for _, user := range userResp.Users {
-		usersMap[user.Id] = user
-	}
-
-	return usersMap, nil
-}
-
-func (h *DefaultHandler) handlerGetUsers(c *gin.Context) {
-	_, _, isOperatorOrHigher := h.getPrivilege(c)
+func (h DefaultUserHandler) handlerGetUsers(c *gin.Context) {
+	_, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
 		c.JSON(403, nil)
 		return
 	}
 
-	res, err := userClient.GetUsers(c.Request.Context(), &userpb.Empty{})
+	ctx := h.Metadata.setAuthorizationHeader(c)
+
+	res, err := h.UserService.GetUsers(ctx, &userpb.Empty{})
 	if err != nil {
 		utils.Logger.Println(err)
 		handlerError(c, err, 500)
@@ -56,8 +82,8 @@ func (h *DefaultHandler) handlerGetUsers(c *gin.Context) {
 	c.JSON(200, res.Users)
 }
 
-func (h *DefaultHandler) handlerCreateUser(c *gin.Context) {
-	_, _, isOperatorOrHigher := h.getPrivilege(c)
+func (h DefaultUserHandler) handlerCreateUser(c *gin.Context) {
+	_, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
 		c.JSON(403, nil)
@@ -72,7 +98,9 @@ func (h *DefaultHandler) handlerCreateUser(c *gin.Context) {
 		return
 	}
 
-	res, err := userClient.CreateUser(c.Request.Context(), user)
+	ctx := h.Metadata.setAuthorizationHeader(c)
+
+	res, err := h.UserService.CreateUser(ctx, user)
 	if err != nil {
 		utils.Logger.Println(err)
 		c.JSON(500, gin.H{"error": "failed to create user"})
@@ -82,8 +110,8 @@ func (h *DefaultHandler) handlerCreateUser(c *gin.Context) {
 	c.JSON(200, res)
 }
 
-func (h *DefaultHandler) handlerEditUser(c *gin.Context) {
-	_, _, isOperatorOrHigher := h.getPrivilege(c)
+func (h DefaultUserHandler) handlerEditUser(c *gin.Context) {
+	_, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
 		c.JSON(403, nil)
@@ -98,7 +126,9 @@ func (h *DefaultHandler) handlerEditUser(c *gin.Context) {
 		return
 	}
 
-	res, err := userClient.EditUser(c.Request.Context(), user)
+	ctx := h.Metadata.setAuthorizationHeader(c)
+
+	res, err := h.UserService.EditUser(ctx, user)
 	if err != nil {
 		utils.Logger.Println(err)
 		c.JSON(500, gin.H{"error": "failed to edit user"})
@@ -108,8 +138,8 @@ func (h *DefaultHandler) handlerEditUser(c *gin.Context) {
 	c.JSON(200, res)
 }
 
-func (h *DefaultHandler) handlerChangeUserStatus(c *gin.Context) {
-	_, _, isOperatorOrHigher := h.getPrivilege(c)
+func (h DefaultUserHandler) handlerChangeUserStatus(c *gin.Context) {
+	_, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
 		c.JSON(403, nil)
@@ -123,7 +153,9 @@ func (h *DefaultHandler) handlerChangeUserStatus(c *gin.Context) {
 		return
 	}
 
-	res, err := userClient.ChangeUserStatus(c.Request.Context(), &userpb.ChangeUserStatusRequest{Id: int32(userID)})
+	ctx := h.Metadata.setAuthorizationHeader(c)
+
+	res, err := h.UserService.ChangeUserStatus(ctx, &userpb.ChangeUserStatusRequest{Id: int32(userID)})
 	if err != nil {
 		utils.Logger.Println(err)
 		c.JSON(500, gin.H{"error": "failed to change user status"})
@@ -131,59 +163,4 @@ func (h *DefaultHandler) handlerChangeUserStatus(c *gin.Context) {
 	}
 
 	c.JSON(200, res)
-}
-
-func (h *DefaultHandler) handlerGetAuth(c *gin.Context) {
-	fmt.Println(1233213123)
-	session, _, _ := h.getPrivilege(c)
-
-	c.JSON(200, session.User)
-}
-
-func (h *DefaultHandler) handlerLogout(c *gin.Context) {
-	session, _, _ := h.getPrivilege(c)
-
-	_, err := userClient.Logout(c.Request.Context(), &userpb.LogoutRequest{Hash: session.Hash})
-	if err != nil {
-		utils.Logger.Println(err)
-		c.JSON(500, gin.H{"error": "failed to logout"})
-		return
-	}
-
-	c.JSON(200, nil)
-}
-
-func (h *DefaultHandler) handlerLogin(c *gin.Context) {
-	var err error
-	loginData := &userpb.LoginRequest{}
-
-	if err = c.BindJSON(&loginData); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
-
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(401, gin.H{"error": "authorization header missing"})
-		return
-	}
-
-	// Встраиваем метаданные
-	md := metadata.New(map[string]string{
-		"Authorization": authHeader,
-	})
-	ctx := metadata.NewOutgoingContext(c.Request.Context(), md)
-
-	res, err := userClient.Login(ctx, loginData)
-	if err != nil {
-		utils.Logger.Println(err)
-		c.JSON(500, gin.H{"error": "failed to login"})
-		return
-	}
-
-	c.JSON(200, gin.H{
-		"token":   res.Hash,
-		"failure": res.Failure,
-	})
 }

@@ -8,8 +8,25 @@ import (
 	"time"
 )
 
-func (h *DefaultHandler) handleReferenceRecord(c *gin.Context, isEdit bool) {
-	_, _, isOperatorOrHigher := h.getPrivilege(c)
+type ReferenceHandler interface {
+	handleReferenceRecord(c *gin.Context, isEdit bool)
+	handlerGetReference(c *gin.Context)
+}
+
+type DefaultReferenceHandler struct {
+	Privilege        Privilege
+	ReferenceService database.ReferenceService
+}
+
+func NewReferenceHandler() ReferenceHandler {
+	return &DefaultReferenceHandler{
+		Privilege:        &DefaultPrivilege{},
+		ReferenceService: &database.DefaultReferenceService{},
+	}
+}
+
+func (h *DefaultReferenceHandler) handleReferenceRecord(c *gin.Context, isEdit bool) {
+	_, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
 		c.JSON(403, nil)
@@ -51,7 +68,7 @@ func (h *DefaultHandler) handleReferenceRecord(c *gin.Context, isEdit bool) {
 	c.JSON(200, record)
 }
 
-func (h *DefaultHandler) handlerGetReference(c *gin.Context) {
+func (h *DefaultReferenceHandler) handlerGetReference(c *gin.Context) {
 	reference := c.Param("reference")
 
 	records, err := h.ReferenceService.GetReferenceRecords(strings.ToUpper(reference))

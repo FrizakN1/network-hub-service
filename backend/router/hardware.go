@@ -10,8 +10,33 @@ import (
 	"time"
 )
 
-func (h *DefaultHandler) handlerDeleteHardware(c *gin.Context) {
-	_, isAdmin, _ := h.getPrivilege(c)
+type HardwareHandler interface {
+	handlerGetHardwareByID(c *gin.Context)
+	handlerEditHardware(c *gin.Context)
+	handlerCreateHardware(c *gin.Context)
+	handlerGetSearchHardware(c *gin.Context)
+	handlerGetNodeHardware(c *gin.Context)
+	handlerGetHouseHardware(c *gin.Context)
+	handlerGetHardware(c *gin.Context)
+	handlerDeleteHardware(c *gin.Context)
+}
+
+type DefaultHardwareHandler struct {
+	Privilege       Privilege
+	HardwareService database.HardwareService
+	EventService    database.EventService
+}
+
+func NewHardwareHandler() HardwareHandler {
+	return &DefaultHardwareHandler{
+		Privilege:       &DefaultPrivilege{},
+		HardwareService: &database.DefaultHardwareService{},
+		EventService:    &database.DefaultEventService{},
+	}
+}
+
+func (h *DefaultHardwareHandler) handlerDeleteHardware(c *gin.Context) {
+	_, isAdmin, _ := h.Privilege.getPrivilege(c)
 
 	if !isAdmin {
 		c.JSON(403, nil)
@@ -34,7 +59,7 @@ func (h *DefaultHandler) handlerDeleteHardware(c *gin.Context) {
 	c.JSON(200, true)
 }
 
-func (h *DefaultHandler) handlerGetHardwareByID(c *gin.Context) {
+func (h *DefaultHardwareHandler) handlerGetHardwareByID(c *gin.Context) {
 	var (
 		err      error
 		hardware database.Hardware
@@ -56,8 +81,8 @@ func (h *DefaultHandler) handlerGetHardwareByID(c *gin.Context) {
 	c.JSON(200, hardware)
 }
 
-func (h *DefaultHandler) handlerEditHardware(c *gin.Context) {
-	session, _, isOperatorOrHigher := h.getPrivilege(c)
+func (h *DefaultHardwareHandler) handlerEditHardware(c *gin.Context) {
+	session, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
 		c.JSON(403, nil)
@@ -101,8 +126,8 @@ func (h *DefaultHandler) handlerEditHardware(c *gin.Context) {
 	c.JSON(200, hardware)
 }
 
-func (h *DefaultHandler) handlerCreateHardware(c *gin.Context) {
-	session, _, isOperatorOrHigher := h.getPrivilege(c)
+func (h *DefaultHardwareHandler) handlerCreateHardware(c *gin.Context) {
+	session, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
 		c.JSON(403, nil)
@@ -146,7 +171,7 @@ func (h *DefaultHandler) handlerCreateHardware(c *gin.Context) {
 	c.JSON(200, hardware)
 }
 
-func (h *DefaultHandler) handlerGetSearchHardware(c *gin.Context) {
+func (h *DefaultHardwareHandler) handlerGetSearchHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -168,7 +193,7 @@ func (h *DefaultHandler) handlerGetSearchHardware(c *gin.Context) {
 	})
 }
 
-func (h *DefaultHandler) handlerGetNodeHardware(c *gin.Context) {
+func (h *DefaultHardwareHandler) handlerGetNodeHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -196,7 +221,7 @@ func (h *DefaultHandler) handlerGetNodeHardware(c *gin.Context) {
 	})
 }
 
-func (h *DefaultHandler) handlerGetHouseHardware(c *gin.Context) {
+func (h *DefaultHardwareHandler) handlerGetHouseHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
@@ -224,7 +249,7 @@ func (h *DefaultHandler) handlerGetHouseHardware(c *gin.Context) {
 	})
 }
 
-func (h *DefaultHandler) handlerGetHardware(c *gin.Context) {
+func (h *DefaultHardwareHandler) handlerGetHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
 		utils.Logger.Println(err)
