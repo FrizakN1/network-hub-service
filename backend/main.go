@@ -3,7 +3,6 @@ package main
 import (
 	"backend/database"
 	"backend/router"
-	"backend/utils"
 	"fmt"
 	"github.com/joho/godotenv"
 	"log"
@@ -11,14 +10,19 @@ import (
 )
 
 func main() {
-	utils.InitLogger()
-
+	// Загружаем переменные среды
 	if err := godotenv.Load(); err != nil {
 		log.Fatalln(err)
 		return
 	}
 
-	database.Connection()
+	// Инициализируем базу данных
+	db, err := database.InitDatabase()
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
 
-	_ = router.Initialization().Run(fmt.Sprintf("%s:%s", os.Getenv("APP_ADDRESS"), os.Getenv("APP_PORT")))
+	// Инициализируем роутер: передаем указатель на БД, адрес и порт берем из переменных среды
+	_ = router.Initialization(&db).Run(fmt.Sprintf("%s:%s", os.Getenv("APP_ADDRESS"), os.Getenv("APP_PORT")))
 }

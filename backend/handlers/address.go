@@ -3,6 +3,7 @@ package handlers
 import (
 	"backend/database"
 	"backend/errors"
+	"backend/models"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -15,12 +16,21 @@ type AddressHandler interface {
 }
 
 type DefaultAddressHandler struct {
-	AddressService database.AddressService
+	AddressRepo database.AddressRepository
 }
 
-func NewAddressHandler() AddressHandler {
+func NewAddressHandler(db *database.Database) AddressHandler {
+	addressRepo := &database.DefaultAddressRepository{
+		Database: *db,
+		Counter: &database.DefaultCounter{
+			Database: *db,
+		},
+	}
+
+	addressRepo.LoadAddressElementTypeMap()
+
 	return &DefaultAddressHandler{
-		AddressService: &database.DefaultAddressService{},
+		AddressRepo: addressRepo,
 	}
 }
 
@@ -31,7 +41,7 @@ func (h *DefaultAddressHandler) HandlerGetHouses(c *gin.Context) {
 		return
 	}
 
-	addresses, count, err := h.AddressService.GetHouses(offset)
+	addresses, count, err := h.AddressRepo.GetHouses(offset)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get houses", http.StatusInternalServerError))
 		return
@@ -44,7 +54,7 @@ func (h *DefaultAddressHandler) HandlerGetHouses(c *gin.Context) {
 }
 
 func (h *DefaultAddressHandler) HandlerGetHouse(c *gin.Context) {
-	var address database.Address
+	var address models.Address
 	var err error
 
 	address.House.ID, err = strconv.Atoi(c.Param("id"))
@@ -53,7 +63,7 @@ func (h *DefaultAddressHandler) HandlerGetHouse(c *gin.Context) {
 		return
 	}
 
-	err = h.AddressService.GetHouse(&address)
+	err = h.AddressRepo.GetHouse(&address)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get house", http.StatusInternalServerError))
 		return
@@ -75,7 +85,7 @@ func (h *DefaultAddressHandler) HandlerGetSuggestions(c *gin.Context) {
 	}
 	search := c.DefaultQuery("search", "")
 
-	suggestions, count, err := h.AddressService.GetSuggestions(search, offset, limit)
+	suggestions, count, err := h.AddressRepo.GetSuggestions(search, offset, limit)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get suggestions", http.StatusInternalServerError))
 		return

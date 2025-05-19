@@ -1,237 +1,63 @@
 package database
 
 import (
+	"backend/models"
 	"database/sql"
 	"errors"
 )
 
-type Node struct {
-	ID          int
-	Parent      *Node
-	Address     Address
-	Type        Reference
-	Owner       Reference
-	Name        string
-	Zone        sql.NullString
-	Placement   sql.NullString
-	Supply      sql.NullString
-	Access      sql.NullString
-	Description sql.NullString
-	CreatedAt   int64
-	UpdatedAt   sql.NullInt64
-	IsDelete    bool
-}
-
-type NodeService interface {
-	GetSearchNodes(search string, offset int) ([]Node, int, error)
-	EditNode(node *Node) error
-	CreateNode(node *Node) error
-	GetNode(node *Node) error
-	GetHouseNodes(houseID int, offset int) ([]Node, int, error)
-	GetNodes(offset int) ([]Node, int, error)
-	ValidateNode(node Node) bool
+type NodeRepository interface {
+	GetSearchNodes(search string, offset int) ([]models.Node, int, error)
+	EditNode(node *models.Node) error
+	CreateNode(node *models.Node) error
+	GetNode(node *models.Node) error
+	GetHouseNodes(houseID int, offset int) ([]models.Node, int, error)
+	GetNodes(offset int) ([]models.Node, int, error)
+	ValidateNode(node models.Node) bool
 	DeleteNode(nodeID int) error
 }
 
-type DefaultNodeService struct{}
-
-func prepareNodes() []string {
-	var e error
-	errorsList := make([]string, 0)
-
-	if query == nil {
-		query = make(map[string]*sql.Stmt)
-	}
-
-	query["GET_NODES"], e = Link.Prepare(`
-		SELECT n.*, s.name, st.short_name, h.name, ht.short_name, nt.name, no.name, (SELECT p.name FROM "Node" AS p WHERE p.id = n.parent_id) AS parent_name
-		FROM "Node" AS n 
-		JOIN "House" AS h ON n.house_id = h.id
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
-		JOIN "Node_type" AS nt ON n.type_id = nt.id
-		JOIN "Node_owner" AS no ON n.owner_id = no.id
-		WHERE n.is_delete = false
-		ORDER BY id DESC
-		OFFSET $1
-		LIMIT 20
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_NODES_COUNT"], e = Link.Prepare(`
-		SELECT COUNT(*) FROM "Node" WHERE is_delete = false
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_HOUSE_NODES"], e = Link.Prepare(`
-		SELECT n.*, s.name, st.short_name, h.name, ht.short_name, nt.name, no.name, (SELECT p.name FROM "Node" AS p WHERE p.id = n.parent_id) AS parent_name
-		FROM "Node" AS n
-		JOIN "House" AS h ON n.house_id = h.id
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
-		JOIN "Node_type" AS nt ON n.type_id = nt.id
-		JOIN "Node_owner" AS no ON n.owner_id = no.id
-		WHERE n.house_id = $1 AND n.is_delete = false
-		ORDER BY id DESC
-		OFFSET $2
-		LIMIT 20
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_HOUSE_NODES_COUNT"], e = Link.Prepare(`
-		SELECT COUNT(*)
-		FROM "Node"
-		WHERE house_id = $1 AND is_delete = false
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_NODE"], e = Link.Prepare(`
-		SELECT n.*, s.name, st.short_name, h.name, ht.short_name, nt.name, no.name, (SELECT p.name FROM "Node" AS p WHERE p.id = n.parent_id) AS parent_name
-		FROM "Node" AS n 
-		JOIN "House" AS h ON n.house_id = h.id
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
-		JOIN "Node_type" AS nt ON n.type_id = nt.id
-		JOIN "Node_owner" AS no ON n.owner_id = no.id
-		WHERE n.id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["CREATE_NODE"], e = Link.Prepare(`
-		INSERT INTO "Node"(parent_id, house_id, type_id, owner_id, name, zone, placement, supply, access, description, created_at, updated_at) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["EDIT_NODE"], e = Link.Prepare(`
-		UPDATE "Node" SET parent_id = $2, type_id = $3, owner_id = $4, name = $5, zone = $6, placement = $7, supply = $8,
-		                  access = $9, description = $10, updated_at = $11, house_id = $12
-		WHERE id = $1	
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_SEARCH_NODES"], e = Link.Prepare(`
-		SELECT n.*, s.name, st.short_name, h.name, ht.short_name, nt.name, no.name, (SELECT p.name FROM "Node" AS p WHERE p.id = n.parent_id) AS parent_name
-		FROM "Node" AS n 
-		JOIN "House" AS h ON n.house_id = h.id
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
-		JOIN "Node_type" AS nt ON n.type_id = nt.id
-		JOIN "Node_owner" AS no ON n.owner_id = no.id
-		WHERE (n.name ILIKE '%' || $1 || '%'
-			OR nt.name ILIKE '%' || $1 || '%'
-			OR no.name ILIKE '%' || $1 || '%'
-			OR n.zone ILIKE '%' || $1 || '%'
-			OR s.name ILIKE '%' || $1 || '%'
-			OR st.short_name ILIKE '%' || $1 || '%'
-			OR h.name ILIKE '%' || $1 || '%'
-			OR ht.short_name ILIKE '%' || $1 || '%'
-			OR (st.short_name || ' ' || s.name || ', ' || ht.short_name || ' ' || h.name) ILIKE '%' || $1 || '%')
-			AND n.is_delete = false
-		ORDER BY id
-		OFFSET $2
-		LIMIT 20
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_SEARCH_NODES_COUNT"], e = Link.Prepare(`
-		SELECT COUNT(n.*)
-		FROM "Node" AS n 
-		JOIN "House" AS h ON n.house_id = h.id
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
-		JOIN "Node_type" AS nt ON n.type_id = nt.id
-		JOIN "Node_owner" AS no ON n.owner_id = no.id
-		WHERE (n.name ILIKE '%' || $1 || '%'
-			OR nt.name ILIKE '%' || $1 || '%'
-			OR no.name ILIKE '%' || $1 || '%'
-			OR n.zone ILIKE '%' || $1 || '%'
-			OR s.name ILIKE '%' || $1 || '%'
-			OR st.short_name ILIKE '%' || $1 || '%'
-			OR h.name ILIKE '%' || $1 || '%'
-			OR ht.short_name ILIKE '%' || $1 || '%'
-			OR (st.short_name || ' ' || s.name || ', ' || ht.short_name || ' ' || h.name) ILIKE '%' || $1 || '%')
-			AND n.is_delete = false 
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["DELETE_NODE"], e = Link.Prepare(`
-		UPDATE "Node" SET is_delete = true WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	return errorsList
+type DefaultNodeRepository struct {
+	Database Database
+	Counter  Counter
 }
 
-func (ns *DefaultNodeService) DeleteNode(nodeID int) error {
-	stmt, ok := query["DELETE_NODE"]
+func (r *DefaultNodeRepository) DeleteNode(nodeID int) error {
+	stmt, ok := r.Database.GetQuery("DELETE_NODE")
 	if !ok {
-		err := errors.New("запрос DELETE_NODE не подготовлен")
-		//utils.Logger.Println(err)
-		return err
+		return errors.New("запрос DELETE_NODE не подготовлен")
 	}
 
 	_, err := stmt.Exec(nodeID)
 	if err != nil {
-		//utils.Logger.Println(err)
 		return err
 	}
 
 	return nil
 }
 
-func (ns *DefaultNodeService) GetSearchNodes(search string, offset int) ([]Node, int, error) {
-	stmt, ok := query["GET_SEARCH_NODES"]
+func (r *DefaultNodeRepository) GetSearchNodes(search string, offset int) ([]models.Node, int, error) {
+	stmt, ok := r.Database.GetQuery("GET_SEARCH_NODES")
 	if !ok {
-		err := errors.New("запрос GET_SEARCH_NODES не подготовлен")
-		//utils.Logger.Println(err)
-		return nil, 0, err
+		return nil, 0, errors.New("запрос GET_SEARCH_NODES не подготовлен")
 	}
 
-	count, err := countRecord("GET_SEARCH_NODES_COUNT", search)
+	count, err := r.Counter.countRecords("GET_SEARCH_NODES_COUNT", []interface{}{search})
 	if err != nil {
-		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	rows, err := stmt.Query(search, offset)
 	if err != nil {
-		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
 
-	var nodes []Node
+	var nodes []models.Node
 
 	for rows.Next() {
 		var (
-			node       Node
+			node       models.Node
 			parentID   sql.NullInt64
 			parentName sql.NullString
 		)
@@ -259,12 +85,11 @@ func (ns *DefaultNodeService) GetSearchNodes(search string, offset int) ([]Node,
 			&node.Owner.Name,
 			&parentName,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 
 		if parentID.Valid {
-			node.Parent = &Node{ID: int(parentID.Int64), Name: parentName.String}
+			node.Parent = &models.Node{ID: int(parentID.Int64), Name: parentName.String}
 		}
 
 		nodes = append(nodes, node)
@@ -273,12 +98,10 @@ func (ns *DefaultNodeService) GetSearchNodes(search string, offset int) ([]Node,
 	return nodes, count, nil
 }
 
-func (ns *DefaultNodeService) EditNode(node *Node) error {
-	stmt, ok := query["EDIT_NODE"]
+func (r *DefaultNodeRepository) EditNode(node *models.Node) error {
+	stmt, ok := r.Database.GetQuery("EDIT_NODE")
 	if !ok {
-		err := errors.New("запрос EDIT_NODE не подготовлен")
-		//utils.Logger.Println(err)
-		return err
+		return errors.New("запрос EDIT_NODE не подготовлен")
 	}
 
 	var parentID interface{}
@@ -302,19 +125,16 @@ func (ns *DefaultNodeService) EditNode(node *Node) error {
 		node.Address.House.ID,
 	)
 	if err != nil {
-		//utils.Logger.Println(err)
 		return err
 	}
 
 	return nil
 }
 
-func (ns *DefaultNodeService) CreateNode(node *Node) error {
-	stmt, ok := query["CREATE_NODE"]
+func (r *DefaultNodeRepository) CreateNode(node *models.Node) error {
+	stmt, ok := r.Database.GetQuery("CREATE_NODE")
 	if !ok {
-		err := errors.New("запрос CREATE_NODE не подготовлен")
-		//utils.Logger.Println(err)
-		return err
+		return errors.New("запрос CREATE_NODE не подготовлен")
 	}
 
 	var parentID interface{}
@@ -337,18 +157,16 @@ func (ns *DefaultNodeService) CreateNode(node *Node) error {
 		node.CreatedAt,
 		node.UpdatedAt,
 	).Scan(&node.ID); err != nil {
-		//utils.Logger.Println(err)
 		return err
 	}
 
 	return nil
 }
 
-func (ns *DefaultNodeService) GetNode(node *Node) error {
-	stmt, ok := query["GET_NODE"]
+func (r *DefaultNodeRepository) GetNode(node *models.Node) error {
+	stmt, ok := r.Database.GetQuery("GET_NODE")
 	if !ok {
 		err := errors.New("запрос GET_NODE не подготовлен")
-		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -380,43 +198,38 @@ func (ns *DefaultNodeService) GetNode(node *Node) error {
 		&node.Owner.Name,
 		&parentName,
 	); err != nil {
-		//utils.Logger.Println(err)
 		return err
 	}
 
 	if parentID.Valid {
-		node.Parent = &Node{ID: int(parentID.Int64), Name: parentName.String}
+		node.Parent = &models.Node{ID: int(parentID.Int64), Name: parentName.String}
 	}
 
 	return nil
 }
 
-func (ns *DefaultNodeService) GetHouseNodes(houseID int, offset int) ([]Node, int, error) {
-	stmt, ok := query["GET_HOUSE_NODES"]
+func (r *DefaultNodeRepository) GetHouseNodes(houseID int, offset int) ([]models.Node, int, error) {
+	stmt, ok := r.Database.GetQuery("GET_HOUSE_NODES")
 	if !ok {
-		err := errors.New("запрос GET_HOUSE_NODES не подготовлен")
-		//utils.Logger.Println(err)
-		return nil, 0, err
+		return nil, 0, errors.New("запрос GET_HOUSE_NODES не подготовлен")
 	}
 
-	count, err := countRecord("GET_HOUSE_NODES_COUNT", houseID)
+	count, err := r.Counter.countRecords("GET_HOUSE_NODES_COUNT", []interface{}{houseID})
 	if err != nil {
-		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	rows, err := stmt.Query(houseID, offset)
 	if err != nil {
-		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
 
-	var nodes []Node
+	var nodes []models.Node
 
 	for rows.Next() {
 		var (
-			node       Node
+			node       models.Node
 			parentID   sql.NullInt64
 			parentName sql.NullString
 		)
@@ -444,12 +257,11 @@ func (ns *DefaultNodeService) GetHouseNodes(houseID int, offset int) ([]Node, in
 			&node.Owner.Name,
 			&parentName,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 
 		if parentID.Valid {
-			node.Parent = &Node{ID: int(parentID.Int64), Name: parentName.String}
+			node.Parent = &models.Node{ID: int(parentID.Int64), Name: parentName.String}
 		}
 
 		nodes = append(nodes, node)
@@ -458,32 +270,28 @@ func (ns *DefaultNodeService) GetHouseNodes(houseID int, offset int) ([]Node, in
 	return nodes, count, nil
 }
 
-func (ns *DefaultNodeService) GetNodes(offset int) ([]Node, int, error) {
-	stmt, ok := query["GET_NODES"]
+func (r *DefaultNodeRepository) GetNodes(offset int) ([]models.Node, int, error) {
+	stmt, ok := r.Database.GetQuery("GET_NODES")
 	if !ok {
-		err := errors.New("запрос GET_NODES не подготовлен")
-		//utils.Logger.Println(err)
-		return nil, 0, err
+		return nil, 0, errors.New("запрос GET_NODES не подготовлен")
 	}
 
-	count, err := countRecord("GET_NODES_COUNT", nil)
+	count, err := r.Counter.countRecords("GET_NODES_COUNT", nil)
 	if err != nil {
-		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	rows, err := stmt.Query(offset)
 	if err != nil {
-		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
 
-	var nodes []Node
+	var nodes []models.Node
 
 	for rows.Next() {
 		var (
-			node       Node
+			node       models.Node
 			parentID   sql.NullInt64
 			parentName sql.NullString
 		)
@@ -511,12 +319,11 @@ func (ns *DefaultNodeService) GetNodes(offset int) ([]Node, int, error) {
 			&node.Owner.Name,
 			&parentName,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 
 		if parentID.Valid {
-			node.Parent = &Node{ID: int(parentID.Int64), Name: parentName.String}
+			node.Parent = &models.Node{ID: int(parentID.Int64), Name: parentName.String}
 		}
 
 		nodes = append(nodes, node)
@@ -525,14 +332,10 @@ func (ns *DefaultNodeService) GetNodes(offset int) ([]Node, int, error) {
 	return nodes, count, nil
 }
 
-func (ns *DefaultNodeService) ValidateNode(node Node) bool {
+func (r *DefaultNodeRepository) ValidateNode(node models.Node) bool {
 	if len(node.Name) == 0 || node.Address.House.ID == 0 || node.Type.ID == 0 || node.Owner.ID == 0 {
 		return false
 	}
 
 	return true
-}
-
-func NewNodeService() NodeService {
-	return &DefaultNodeService{}
 }

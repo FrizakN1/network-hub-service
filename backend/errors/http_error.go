@@ -31,12 +31,7 @@ func NewHTTPError(err error, msg string, code int) *HTTPError {
 	wd = filepath.ToSlash(wd)
 	file = filepath.ToSlash(file)
 
-	fmt.Println(wd)
-	fmt.Println(file)
-	// Преобразуем в относительный путь
 	relPath := strings.TrimPrefix(file, fmt.Sprintf("%s/", wd))
-
-	fmt.Println(relPath)
 
 	return &HTTPError{
 		Code:    code,

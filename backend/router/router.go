@@ -1,43 +1,40 @@
 package router
 
 import (
+	"backend/database"
 	"backend/handlers"
 	"backend/middleware"
 	"backend/utils"
-	"fmt"
 	"github.com/gin-gonic/gin"
 )
 
-// Initialization Функция роутинга
-func Initialization() *gin.Engine {
-	userService := handlers.InitUserClient()
-	logger := utils.InitLogger()
+// Initialization Функция инициализации роутинга
+func Initialization(db *database.Database) *gin.Engine {
+	userService := handlers.InitUserClient() // Инициализируем связь по gRPC с user-service
+	logger := utils.InitLogger()             // Инициализируем logger
 
-	mw := middleware.NewMiddleware(&userService, &logger)
+	mw := middleware.NewMiddleware(&userService, &logger) // Инициализируем все middleware
+	// Инициализируем хендлеры
 	handlerUser := handlers.NewUserHandler(&userService)
-	handlerSwitch := handlers.NewSwitchHandler()
-	handlerReference := handlers.NewReferenceHandler()
-	handlerNode := handlers.NewNodeHandler()
-	handleHardware := handlers.NewHardwareHandler()
-	handlerFile := handlers.NewFileHandler()
-	handlerEvent := handlers.NewEventHandler(&userService)
+	handlerSwitch := handlers.NewSwitchHandler(db)
+	handlerReference := handlers.NewReferenceHandler(db)
+	handlerNode := handlers.NewNodeHandler(db)
+	handleHardware := handlers.NewHardwareHandler(db)
+	handlerFile := handlers.NewFileHandler(db)
+	handlerEvent := handlers.NewEventHandler(&userService, db)
 	handlerAuth := handlers.NewAuthHandler(&userService)
-	handlerAddress := handlers.NewAddressHandler()
+	handlerAddress := handlers.NewAddressHandler(db)
 
-	router := gin.Default()
+	router := gin.Default() // Инициализируем роутер
 
-	router.Use(mw.ErrorMiddleware())
+	router.Use(mw.ErrorMiddleware()) // Говорим роутеру использовать ErrorMiddleware перед запросами для обработки ошибок возникших в запросах
+	router.Use(mw.CorsMiddleware())  // Говорим роутеру использовать CorsMiddleware перед запросами для настройки CORS политики
 
-	// Middleware, проверяющий домен у отправителя запроса, если домену разрешены запросы, то выполняется запрос дальше,
-	// В settings.json параметр AllowOrigin содерижт этот самый домен, которому разрешено делать запросы
-	router.Use(mw.CorsMiddleware())
-
-	// Групировка запросов содержащих в запросе /api в отдельный роутер routerAPI
 	routerAPI := router.Group("/api")
 
 	routerAPI.POST("/auth/login", handlerAuth.HandlerLogin)
 
-	routerAPI.Use(mw.AuthMiddleware())
+	routerAPI.Use(mw.AuthMiddleware()) // Говорим роутеру использовать AuthMiddleware перед запросами ниже для аутентификации пользователя
 
 	routerAPI.GET("/auth/logout", handlerAuth.HandlerLogout)
 	routerAPI.GET("/auth/me", handlerAuth.HandlerGetAuth)
@@ -122,10 +119,4 @@ func Initialization() *gin.Engine {
 	})
 
 	return router
-}
-
-func handlerError(c *gin.Context, err error, code int) {
-	fmt.Println(err)
-	c.JSON(code, nil)
-	c.Abort()
 }

@@ -1,201 +1,46 @@
 package database
 
 import (
-	"database/sql"
+	"backend/models"
 	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 )
 
-type AddressElementType struct {
-	ID        int
-	Name      string
-	ShortName string
+type AddressRepository interface {
+	GetHouses(offset int) ([]models.Address, int, error)
+	GetHouse(addresr *models.Address) error
+	GetSuggestions(search string, offset int, limit int) ([]models.Address, int, error)
 }
 
-type AddressElement struct {
-	ID   int
-	Name string
-	Type AddressElementType
-	FIAS sql.NullString
+type DefaultAddressRepository struct {
+	addressElementTypeMap map[string]map[string]struct{}
+	Database              Database
+	Counter               Counter
 }
 
-type Address struct {
-	Street         AddressElement
-	House          AddressElement
-	FileAmount     int
-	NodeAmount     int
-	HardwareAmount int
-}
-
-type AddressService interface {
-	GetHouses(offset int) ([]Address, int, error)
-	GetHouse(address *Address) error
-	GetSuggestions(search string, offset int, limit int) ([]Address, int, error)
-}
-
-type DefaultAddressService struct{}
-
-var addressElementTypeMap map[string]map[string]bool
-
-func prepareHouse() []string {
-	var e error
-	errorsList := make([]string, 0)
-	addressElementTypeMap = make(map[string]map[string]bool)
-
-	if query == nil {
-		query = make(map[string]*sql.Stmt)
-	}
-
-	query["STREET_TYPE"], e = Link.Prepare(`SELECT * FROM "Street_type" ORDER BY id`)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["HOUSE_TYPE"], e = Link.Prepare(`SELECT * FROM "House_type" ORDER BY id`)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_SUGGESTIONS"], e = Link.Prepare(`
-		SELECT s.name, s.type_id, st.short_name, h.id, h.name, h.type_id, ht.short_name, 
-		       (SELECT COUNT(*) FROM "House_files" AS f
-			                        WHERE f.house_id = h.id ),
-				(SELECT COUNT(*) FROM "Node" AS n
-										WHERE n.house_id = h.id ),
-		    (SELECT COUNT(*) FROM "Hardware" AS hd
-		                     JOIN "Node" AS n ON hd.node_id = n.id
-										WHERE n.house_id = h.id )
-        FROM "Street" AS s
-        JOIN "House" AS h ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
-        WHERE s.name ILIKE '%' || $1 || '%'
-          AND (h.name ILIKE '%' || $2 || '%' OR $2 = '')
-        ORDER BY 
-            CASE 
-				WHEN h.name = $2 THEN 0               -- точное полное совпадение (например, "3" == "3")
-				WHEN h.name ~ ('^' || $2 || '[^0-9]') THEN 1  -- точное числовое совпадение с префиксом (например, "3а" при "3")
-				WHEN h.name ILIKE $2 || '%' THEN 2     -- начинается с номера (например, "3" соответствует "3а")
-				ELSE 3                                 -- частичное совпадение
-    		END,
-			LENGTH(h.name),                           -- сортировка по длине
-			h.name
-        OFFSET $3
-		LIMIT $4
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_SUGGESTIONS_COUNT"], e = Link.Prepare(`
-		SELECT COUNT(h.name)
-        FROM "Street" AS s
-        JOIN "House" AS h ON s.id = h.street_id
-        WHERE s.name ILIKE '%' || $1 || '%'
-          AND (h.name ILIKE '%' || $2 || '%' OR $2 = '')
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_HOUSE"], e = Link.Prepare(`
-		SELECT s.name, s.type_id, st.short_name, h.name, h.type_id, ht.short_name
-        FROM "House" AS h
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
-        WHERE h.id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_HOUSES"], e = Link.Prepare(`
-		SELECT s.name, s.type_id, st.short_name, h.id, h.name, h.type_id, ht.short_name, 
-		        (SELECT COUNT(*) FROM "House_files" AS f
-			                        	WHERE f.house_id = h.id ),
-				(SELECT COUNT(*) FROM "Node" AS n
-										WHERE n.house_id = h.id ),
-				(SELECT COUNT(*) FROM "Hardware" AS hd
-								 JOIN "Node" AS n ON hd.node_id = n.id
-								 WHERE n.house_id = h.id )
-        FROM "Street" AS s
-        JOIN "House" AS h ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
-        WHERE EXISTS (
-			SELECT 1 
-			FROM "House_files" AS f
-			WHERE f.house_id = h.id
-		) OR EXISTS (
-			SELECT 1 
-			FROM "Node" AS n
-			WHERE n.house_id = h.id
-		) OR EXISTS (
-			SELECT 1 
-			FROM "Hardware" AS hd
-			JOIN "Node" AS n ON hd.node_id = n.id
-			WHERE n.house_id = h.id
-		)
-        OFFSET $1
-		LIMIT 20
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_HOUSES_COUNT"], e = Link.Prepare(`
-		SELECT COUNT(*)
-        FROM "Street" AS s
-        JOIN "House" AS h ON s.id = h.street_id
-        WHERE EXISTS (
-			SELECT 1 
-			FROM "House_files" AS f
-			WHERE f.house_id = h.id
-		) OR EXISTS (
-			SELECT 1 
-			FROM "Node" AS n
-			WHERE n.house_id = h.id
-		) OR EXISTS (
-			SELECT 1 
-			FROM "Hardware" AS hd
-			JOIN "Node" AS n ON hd.node_id = n.id
-			WHERE n.house_id = h.id
-		)
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	return errorsList
-}
-
-func (as *DefaultAddressService) GetHouses(offset int) ([]Address, int, error) {
-	stmt, ok := query["GET_HOUSES"]
+func (r *DefaultAddressRepository) GetHouses(offset int) ([]models.Address, int, error) {
+	stmt, ok := r.Database.GetQuery("GET_HOUSES")
 	if !ok {
-		err := "запрос не подготовлен"
-		//utils.Logger.Println(err)
-		return nil, 0, errors.New(err)
+		return nil, 0, errors.New("запрос GET_HOUSES не подготовлен")
 	}
 
-	count, err := countRecord("GET_HOUSES_COUNT", nil)
+	count, err := r.Counter.countRecords("GET_HOUSES_COUNT", nil)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	rows, err := stmt.Query(offset)
 	if err != nil {
-		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
 
-	var addresses []Address
+	var addresses []models.Address
 
 	for rows.Next() {
-		var address Address
+		var address models.Address
 
 		err = rows.Scan(
 			&address.Street.Name,
@@ -210,7 +55,6 @@ func (as *DefaultAddressService) GetHouses(offset int) ([]Address, int, error) {
 			&address.HardwareAmount,
 		)
 		if err != nil {
-			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 
@@ -220,12 +64,10 @@ func (as *DefaultAddressService) GetHouses(offset int) ([]Address, int, error) {
 	return addresses, count, nil
 }
 
-func (as *DefaultAddressService) GetHouse(address *Address) error {
-	stmt, ok := query["GET_HOUSE"]
+func (r *DefaultAddressRepository) GetHouse(address *models.Address) error {
+	stmt, ok := r.Database.GetQuery("GET_HOUSE")
 	if !ok {
-		err := "запрос не подготовлен"
-		//utils.Logger.Println(err)
-		return errors.New(err)
+		return errors.New("запрос GET_HOUSE не подготовлен")
 	}
 
 	row := stmt.QueryRow(address.House.ID)
@@ -239,48 +81,25 @@ func (as *DefaultAddressService) GetHouse(address *Address) error {
 		&address.House.Type.ShortName,
 	)
 	if err != nil {
-		//utils.Logger.Println(err)
 		return err
 	}
 
 	return nil
 }
 
-func countSuggestions(streetPart, housePart string) (int, error) {
-	stmt, ok := query["GET_SUGGESTIONS_COUNT"]
+func (r *DefaultAddressRepository) GetSuggestions(search string, offset int, limit int) ([]models.Address, int, error) {
+	streetPart, housePart := parseAddress(search, r.addressElementTypeMap)
+
+	stmt, ok := r.Database.GetQuery("GET_SUGGESTIONS")
 	if !ok {
-		err := "запрос не подготовлен"
-		//utils.Logger.Println(err)
-		return 0, errors.New(err)
-	}
-
-	row := stmt.QueryRow(streetPart, housePart)
-
-	var count int
-	err := row.Scan(&count)
-	if err != nil {
-		//utils.Logger.Println(err)
-		return 0, err
-	}
-
-	return count, nil
-}
-
-func (as *DefaultAddressService) GetSuggestions(search string, offset int, limit int) ([]Address, int, error) {
-	streetPart, housePart := as.parseAddress(search)
-
-	stmt, ok := query["GET_SUGGESTIONS"]
-	if !ok {
-		err := "запрос GET_SUGGESTIONS не подготовлен"
-		//utils.Logger.Println(err)
-		return nil, 0, errors.New(err)
+		return nil, 0, errors.New("запрос GET_SUGGESTIONS не подготовлен")
 	}
 
 	var count int
 	var err error
 
 	if limit > 10 {
-		count, err = countSuggestions(streetPart, housePart)
+		count, err = r.Counter.countRecords("GET_SUGGESTIONS_COUNT", []interface{}{streetPart, housePart})
 		if err != nil {
 			return nil, 0, err
 		}
@@ -288,14 +107,13 @@ func (as *DefaultAddressService) GetSuggestions(search string, offset int, limit
 
 	rows, err := stmt.Query(streetPart, housePart, offset, limit)
 	if err != nil {
-		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
 
-	var addresses []Address
+	var addresses []models.Address
 	for rows.Next() {
-		var address Address
+		var address models.Address
 		err = rows.Scan(
 			&address.Street.Name,
 			&address.Street.Type.ID,
@@ -309,7 +127,6 @@ func (as *DefaultAddressService) GetSuggestions(search string, offset int, limit
 			&address.HardwareAmount,
 		)
 		if err != nil {
-			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 
@@ -319,7 +136,7 @@ func (as *DefaultAddressService) GetSuggestions(search string, offset int, limit
 	return addresses, count, nil
 }
 
-func (as *DefaultAddressService) parseAddress(input string) (streetPart string, housePart string) {
+func parseAddress(input string, addressElementTypeMap map[string]map[string]struct{}) (streetPart string, housePart string) {
 	// Убираем лишние пробелы и разделяем строку на слова
 	cleanedInput := strings.ReplaceAll(input, ",", "")
 	words := strings.Fields(cleanedInput)
@@ -337,8 +154,11 @@ func (as *DefaultAddressService) parseAddress(input string) (streetPart string, 
 			continue
 		}
 
+		_, streetTypeExist := addressElementTypeMap["STREET_TYPE"][lowerWord]
+		_, houseTypeExist := addressElementTypeMap["HOUSE_TYPE"][lowerWord]
+
 		// Если слово относится к типам улиц или домов, пропускаем его
-		if addressElementTypeMap["STREET_TYPE"][lowerWord] || addressElementTypeMap["HOUSE_TYPE"][lowerWord] {
+		if streetTypeExist || houseTypeExist {
 			continue
 		}
 
@@ -357,78 +177,48 @@ func isHouseNumber(word string) bool {
 	return matched
 }
 
-func countRecord(key string, param interface{}) (int, error) {
-	stmt, ok := query[key]
-	if !ok {
-		err := errors.New("запрос " + key + " не подготовлен")
-		//utils.Logger.Println(err)
-		return 0, err
-	}
+func (r *DefaultAddressRepository) LoadAddressElementTypeMap() {
+	r.addressElementTypeMap = make(map[string]map[string]struct{}, 0)
 
-	var row *sql.Row
-	if param != nil {
-		row = stmt.QueryRow(param)
-	} else {
-		row = stmt.QueryRow()
-	}
-
-	var count int
-	if err := row.Scan(&count); err != nil {
-		//utils.Logger.Println(err)
-		return 0, err
-	}
-
-	return count, nil
-}
-
-func LoadAddressElementTypeMap(m map[string]map[string]bool) {
 	keys := [2]string{
 		"STREET_TYPE",
 		"HOUSE_TYPE",
 	}
 
 	for _, key := range keys {
-		stmt, ok := query[key]
+		stmt, ok := r.Database.GetQuery(key)
 		if !ok {
 			fmt.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
-			//utils.Logger.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
 			return
 		}
 
 		rows, e := stmt.Query()
 		if e != nil {
 			fmt.Println(e)
-			//utils.Logger.Println(e)
 			fmt.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
-			//utils.Logger.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
 			return
 		}
 
-		if m[key] == nil {
-			m[key] = make(map[string]bool)
+		if r.addressElementTypeMap[key] == nil {
+			r.addressElementTypeMap[key] = make(map[string]struct{})
 		}
 
 		for rows.Next() {
-			var addressElementType AddressElementType
+			var addressElementType models.AddressElementType
 			e = rows.Scan(
 				&addressElementType.ID,
 				&addressElementType.Name,
 				&addressElementType.ShortName,
 			)
 			if e != nil {
-				//utils.Logger.Println(e)
 				fmt.Println(e)
 				return
 			}
 
-			m[key][addressElementType.Name] = true
-			m[key][addressElementType.ShortName] = true
+			r.addressElementTypeMap[key][addressElementType.Name] = struct{}{}
+			r.addressElementTypeMap[key][addressElementType.ShortName] = struct{}{}
 		}
 
 		_ = rows.Close()
 	}
-}
-
-func NewAddressService() AddressService {
-	return &DefaultAddressService{}
 }

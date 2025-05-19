@@ -17,16 +17,21 @@ type EventHandler interface {
 }
 
 type DefaultEventHandler struct {
-	EventService database.EventService
-	UserService  userpb.UserServiceClient
-	Metadata     utils.Metadata
+	EventRepo   database.EventRepository
+	UserService userpb.UserServiceClient
+	Metadata    utils.Metadata
 }
 
-func NewEventHandler(userClient *userpb.UserServiceClient) EventHandler {
+func NewEventHandler(userClient *userpb.UserServiceClient, db *database.Database) EventHandler {
 	return &DefaultEventHandler{
-		EventService: &database.DefaultEventService{},
-		UserService:  *userClient,
-		Metadata:     &utils.DefaultMetadata{},
+		EventRepo: &database.DefaultEventRepository{
+			Database: *db,
+			Counter: &database.DefaultCounter{
+				Database: *db,
+			},
+		},
+		UserService: *userClient,
+		Metadata:    &utils.DefaultMetadata{},
 	}
 }
 
@@ -44,7 +49,7 @@ func (h *DefaultEventHandler) HandlerGetEvents(c *gin.Context, from string) {
 		}
 	}
 
-	events, count, err := h.EventService.GetEvents(from, id)
+	events, count, err := h.EventRepo.GetEvents(from, id)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get events", http.StatusInternalServerError))
 		return

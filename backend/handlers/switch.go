@@ -3,6 +3,7 @@ package handlers
 import (
 	"backend/database"
 	"backend/errors"
+	"backend/models"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
@@ -15,19 +16,21 @@ type SwitchHandler interface {
 }
 
 type DefaultSwitchHandler struct {
-	Privilege     Privilege
-	SwitchService database.SwitchService
+	Privilege  Privilege
+	SwitchRepo database.SwitchRepository
 }
 
-func NewSwitchHandler() SwitchHandler {
+func NewSwitchHandler(db *database.Database) SwitchHandler {
 	return &DefaultSwitchHandler{
-		Privilege:     &DefaultPrivilege{},
-		SwitchService: &database.DefaultSwitchService{},
+		Privilege: &DefaultPrivilege{},
+		SwitchRepo: &database.DefaultSwitchRepository{
+			Database: *db,
+		},
 	}
 }
 
 func (h *DefaultSwitchHandler) HandlerGetSwitches(c *gin.Context) {
-	switches, err := h.SwitchService.GetSwitches()
+	switches, err := h.SwitchRepo.GetSwitches()
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get switches", http.StatusInternalServerError))
 		return
@@ -44,7 +47,7 @@ func (h *DefaultSwitchHandler) HandlerEditSwitch(c *gin.Context) {
 		return
 	}
 
-	var _switch database.Switch
+	var _switch models.Switch
 
 	if err := c.BindJSON(&_switch); err != nil {
 		c.Error(errors.NewHTTPError(err, "invalid json", http.StatusBadRequest))
@@ -56,7 +59,7 @@ func (h *DefaultSwitchHandler) HandlerEditSwitch(c *gin.Context) {
 		return
 	}
 
-	if err := h.SwitchService.EditSwitch(&_switch); err != nil {
+	if err := h.SwitchRepo.EditSwitch(&_switch); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to edit switch", http.StatusInternalServerError))
 		return
 	}
@@ -72,7 +75,7 @@ func (h *DefaultSwitchHandler) HandlerCreateSwitch(c *gin.Context) {
 		return
 	}
 
-	var _switch database.Switch
+	var _switch models.Switch
 
 	if err := c.BindJSON(&_switch); err != nil {
 		c.Error(errors.NewHTTPError(err, "invalid json", http.StatusBadRequest))
@@ -86,7 +89,7 @@ func (h *DefaultSwitchHandler) HandlerCreateSwitch(c *gin.Context) {
 
 	_switch.CreatedAt = time.Now().Unix()
 
-	if err := h.SwitchService.CreateSwitch(&_switch); err != nil {
+	if err := h.SwitchRepo.CreateSwitch(&_switch); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to create switch", http.StatusInternalServerError))
 		return
 	}

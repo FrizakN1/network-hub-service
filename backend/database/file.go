@@ -1,158 +1,40 @@
 package database
 
 import (
-	"database/sql"
+	"backend/models"
 	"encoding/base64"
 	"errors"
 	"io/ioutil"
 )
 
-type File struct {
-	ID             int
-	House          AddressElement
-	Node           Node
-	Hardware       Hardware
-	Path           string
-	Name           string
-	UploadAt       int64
-	Data           string
-	InArchive      bool
-	IsPreviewImage bool
+type FileRepository interface {
+	GetHardwareFiles(hardwareID int) ([]models.File, error)
+	GetNodeFiles(nodeID int, onlyImage bool) ([]models.File, error)
+	GetHouseFiles(houseID int) ([]models.File, error)
+	CreateFile(file *models.File, fileFor string) error
+	Delete(file *models.File, key string) error
+	Archive(file *models.File, key string) error
 }
 
-type FileService interface {
-	GetHardwareFiles(hardwareID int) ([]File, error)
-	GetNodeFiles(nodeID int, onlyImage bool) ([]File, error)
-	GetHouseFiles(houseID int) ([]File, error)
-	CreateFile(file *File, fileFor string) error
-	Delete(file *File, key string) error
-	Archive(file *File, key string) error
+type DefaultFileRepository struct {
+	Database Database
 }
 
-type DefaultFileService struct{}
-
-func prepareFile() []string {
-	var e error
-	errorsList := make([]string, 0)
-
-	if query == nil {
-		query = make(map[string]*sql.Stmt)
-	}
-
-	query["CREATE_FILE_HOUSES"], e = Link.Prepare(`
-		INSERT INTO "House_files"(house_id, file_path, file_name, upload_at, in_archive) 
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["CREATE_FILE_HARDWARE"], e = Link.Prepare(`
-		INSERT INTO "Hardware_files"(hardware_id, file_path, file_name, upload_at, in_archive) 
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["CREATE_FILE_NODES"], e = Link.Prepare(`
-		INSERT INTO "Node_files"(node_id, file_path, file_name, upload_at, in_archive, is_preview_image) 
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_HOUSE_FILES"], e = Link.Prepare(`
-		SELECT * FROM "House_files" WHERE house_id = $1
-		ORDER BY upload_at DESC 
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["ARCHIVE_FILE_HOUSES"], e = Link.Prepare(`
-		UPDATE "House_files" SET in_archive = $2 WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["ARCHIVE_FILE_NODES"], e = Link.Prepare(`
-		UPDATE "Node_files" SET in_archive = $2 WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["ARCHIVE_FILE_HARDWARE"], e = Link.Prepare(`
-		UPDATE "Hardware_files" SET in_archive = $2 WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["DELETE_FILE_HOUSES"], e = Link.Prepare(`
-		DELETE FROM "House_files" WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["DELETE_FILE_NODES"], e = Link.Prepare(`
-		DELETE FROM "Node_files" WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_NODE_FILES"], e = Link.Prepare(`
-		SELECT * FROM "Node_files" WHERE node_id = $1 AND is_preview_image = $2
-		ORDER BY upload_at DESC 
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_HARDWARE_FILES"], e = Link.Prepare(`
-		SELECT * FROM "Hardware_files" WHERE hardware_id = $1
-		ORDER BY upload_at DESC
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["DELETE_FILE_HARDWARE"], e = Link.Prepare(`
-		DELETE FROM "Hardware_files" WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	return errorsList
-}
-
-func (fs *DefaultFileService) GetHardwareFiles(hardwareID int) ([]File, error) {
-	stmt, ok := query["GET_HARDWARE_FILES"]
+func (r *DefaultFileRepository) GetHardwareFiles(hardwareID int) ([]models.File, error) {
+	stmt, ok := r.Database.GetQuery("GET_HARDWARE_FILES")
 	if !ok {
-		err := errors.New("запрос GET_HARDWARE_FILES не подготовлен")
-		//utils.Logger.Printlnogger.Println(err)
-		return nil, err
+		return nil, errors.New("запрос GET_HARDWARE_FILES не подготовлен")
 	}
 
 	rows, err := stmt.Query(hardwareID)
 	if err != nil {
-		//utils.Logger.Printlnogger.Println(err)
 		return nil, err
 	}
 	defer rows.Close()
 
-	var files []File
+	var files []models.File
 	for rows.Next() {
-		var file File
+		var file models.File
 
 		err = rows.Scan(
 			&file.ID,
@@ -163,7 +45,6 @@ func (fs *DefaultFileService) GetHardwareFiles(hardwareID int) ([]File, error) {
 			&file.InArchive,
 		)
 		if err != nil {
-			//utils.Logger.Printlnogger.Println(err)
 			return nil, err
 		}
 
@@ -171,7 +52,6 @@ func (fs *DefaultFileService) GetHardwareFiles(hardwareID int) ([]File, error) {
 
 		fileData, err = ioutil.ReadFile(file.Path)
 		if err != nil {
-			//utils.Logger.Printlnogger.Println(err)
 			return nil, err
 		}
 
@@ -183,24 +63,21 @@ func (fs *DefaultFileService) GetHardwareFiles(hardwareID int) ([]File, error) {
 	return files, nil
 }
 
-func (fs *DefaultFileService) GetNodeFiles(nodeID int, onlyImage bool) ([]File, error) {
-	stmt, ok := query["GET_NODE_FILES"]
+func (r *DefaultFileRepository) GetNodeFiles(nodeID int, onlyImage bool) ([]models.File, error) {
+	stmt, ok := r.Database.GetQuery("GET_NODE_FILES")
 	if !ok {
-		err := errors.New("запрос GET_NODE_FILES не подготовлен")
-		//utils.Logger.Printlnogger.Println(err)
-		return nil, err
+		return nil, errors.New("запрос GET_NODE_FILES не подготовлен")
 	}
 
 	rows, err := stmt.Query(nodeID, onlyImage)
 	if err != nil {
-		//utils.Logger.Printlnogger.Println(err)
 		return nil, err
 	}
 	defer rows.Close()
 
-	var files []File
+	var files []models.File
 	for rows.Next() {
-		var file File
+		var file models.File
 
 		err = rows.Scan(
 			&file.ID,
@@ -212,7 +89,6 @@ func (fs *DefaultFileService) GetNodeFiles(nodeID int, onlyImage bool) ([]File, 
 			&file.IsPreviewImage,
 		)
 		if err != nil {
-			//utils.Logger.Printlnogger.Println(err)
 			return nil, err
 		}
 
@@ -220,7 +96,6 @@ func (fs *DefaultFileService) GetNodeFiles(nodeID int, onlyImage bool) ([]File, 
 
 		fileData, err = ioutil.ReadFile(file.Path)
 		if err != nil {
-			//utils.Logger.Printlnogger.Println(err)
 			return nil, err
 		}
 
@@ -232,24 +107,21 @@ func (fs *DefaultFileService) GetNodeFiles(nodeID int, onlyImage bool) ([]File, 
 	return files, nil
 }
 
-func (fs *DefaultFileService) GetHouseFiles(houseID int) ([]File, error) {
-	stmt, ok := query["GET_HOUSE_FILES"]
+func (r *DefaultFileRepository) GetHouseFiles(houseID int) ([]models.File, error) {
+	stmt, ok := r.Database.GetQuery("GET_HOUSE_FILES")
 	if !ok {
-		err := errors.New("запрос GET_HOUSE_FILES не подготовлен")
-		//utils.Logger.Printlnogger.Println(err)
-		return nil, err
+		return nil, errors.New("запрос GET_HOUSE_FILES не подготовлен")
 	}
 
 	rows, err := stmt.Query(houseID)
 	if err != nil {
-		//utils.Logger.Printlnogger.Println(err)
 		return nil, err
 	}
 	defer rows.Close()
 
-	var files []File
+	var files []models.File
 	for rows.Next() {
-		var file File
+		var file models.File
 
 		err = rows.Scan(
 			&file.ID,
@@ -260,7 +132,6 @@ func (fs *DefaultFileService) GetHouseFiles(houseID int) ([]File, error) {
 			&file.InArchive,
 		)
 		if err != nil {
-			//utils.Logger.Printlnogger.Println(err)
 			return nil, err
 		}
 
@@ -268,7 +139,6 @@ func (fs *DefaultFileService) GetHouseFiles(houseID int) ([]File, error) {
 
 		fileData, err = ioutil.ReadFile(file.Path)
 		if err != nil {
-			//utils.Logger.Printlnogger.Println(err)
 			return nil, err
 		}
 
@@ -280,12 +150,10 @@ func (fs *DefaultFileService) GetHouseFiles(houseID int) ([]File, error) {
 	return files, nil
 }
 
-func (fs *DefaultFileService) CreateFile(file *File, fileFor string) error {
-	stmt, ok := query["CREATE_FILE_"+fileFor]
+func (r *DefaultFileRepository) CreateFile(file *models.File, fileFor string) error {
+	stmt, ok := r.Database.GetQuery("CREATE_FILE_" + fileFor)
 	if !ok {
-		err := "запрос CREATE_FILE_" + fileFor + " не подготовлен"
-		//utils.Logger.Printlnogger.Println(err)
-		return errors.New(err)
+		return errors.New("запрос CREATE_FILE_" + fileFor + " не подготовлен")
 	}
 
 	var err error
@@ -322,7 +190,6 @@ func (fs *DefaultFileService) CreateFile(file *File, fileFor string) error {
 	}
 
 	if err != nil {
-		//utils.Logger.Printlnogger.Println(err)
 		return err
 	}
 
@@ -330,7 +197,6 @@ func (fs *DefaultFileService) CreateFile(file *File, fileFor string) error {
 
 	fileData, err = ioutil.ReadFile(file.Path)
 	if err != nil {
-		//utils.Logger.Printlnogger.Println(err)
 		return err
 	}
 
@@ -339,36 +205,30 @@ func (fs *DefaultFileService) CreateFile(file *File, fileFor string) error {
 	return nil
 }
 
-func (fs *DefaultFileService) Delete(file *File, key string) error {
-	stmt, ok := query["DELETE_FILE_"+key]
+func (r *DefaultFileRepository) Delete(file *models.File, key string) error {
+	stmt, ok := r.Database.GetQuery("DELETE_FILE_" + key)
 	if !ok {
-		err := "запрос DELETE_FILE_" + key + " не подготовлен"
-		//utils.Logger.Printlnogger.Println(err)
-		return errors.New(err)
+		return errors.New("запрос DELETE_FILE_" + key + " не подготовлен")
 	}
 
 	_, err := stmt.Exec(file.ID)
 	if err != nil {
-		//utils.Logger.Printlnogger.Println(err)
 		return err
 	}
 
 	return nil
 }
 
-func (fs *DefaultFileService) Archive(file *File, key string) error {
-	stmt, ok := query["ARCHIVE_FILE_"+key]
+func (r *DefaultFileRepository) Archive(file *models.File, key string) error {
+	stmt, ok := r.Database.GetQuery("ARCHIVE_FILE_" + key)
 	if !ok {
-		err := "запрос ARCHIVE_FILE_" + key + " не подготовлен"
-		//utils.Logger.Printlnogger.Println(err)
-		return errors.New(err)
+		return errors.New("запрос ARCHIVE_FILE_" + key + " не подготовлен")
 	}
 
 	file.InArchive = !file.InArchive
 
 	_, err := stmt.Exec(file.ID, file.InArchive)
 	if err != nil {
-		//utils.Logger.Printlnogger.Println(err)
 		return err
 	}
 
@@ -376,15 +236,10 @@ func (fs *DefaultFileService) Archive(file *File, key string) error {
 
 	fileData, err = ioutil.ReadFile(file.Path)
 	if err != nil {
-		//utils.Logger.Printlnogger.Println(err)
 		return err
 	}
 
 	file.Data = base64.StdEncoding.EncodeToString(fileData)
 
 	return nil
-}
-
-func NewFileService() FileService {
-	return &DefaultFileService{}
 }

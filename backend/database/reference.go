@@ -1,133 +1,24 @@
 package database
 
 import (
-	"database/sql"
+	"backend/models"
 	"errors"
 )
 
-type Reference struct {
-	ID             int
-	Name           string
-	Value          string
-	TranslateValue string
-	CreatedAt      int64
+type ReferenceRepository interface {
+	EditReferenceRecord(referenceRecord *models.Reference, reference string) error
+	CreateReferenceRecord(referenceRecord *models.Reference, reference string) error
+	GetReferenceRecords(reference string) ([]models.Reference, error)
 }
 
-type ReferenceService interface {
-	EditReferenceRecord(referenceRecord *Reference, reference string) error
-	CreateReferenceRecord(referenceRecord *Reference, reference string) error
-	GetReferenceRecords(reference string) ([]Reference, error)
+type DefaultReferenceRepository struct {
+	Database Database
 }
 
-type DefaultReferenceService struct{}
-
-var query map[string]*sql.Stmt
-
-func prepareReferences() []string {
-	var e error
-	errorsList := make([]string, 0)
-
-	if query == nil {
-		query = make(map[string]*sql.Stmt)
-	}
-
-	query["GET_OWNERS"], e = Link.Prepare(`
-		SELECT * FROM "Node_owner"
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_NODE_TYPES"], e = Link.Prepare(`
-		SELECT * FROM "Node_type"
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_HARDWARE_TYPES"], e = Link.Prepare(`
-		SELECT * FROM "Hardware_type" ORDER BY id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["GET_OPERATION_MODES"], e = Link.Prepare(`
-		SELECT * FROM "Operation_mode" ORDER BY id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["CREATE_OWNERS"], e = Link.Prepare(`
-		INSERT INTO "Node_owner"(name, created_at) VALUES ($1, $2)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["EDIT_OWNERS"], e = Link.Prepare(`
-		UPDATE "Node_owner" SET name = $2 WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["CREATE_NODE_TYPES"], e = Link.Prepare(`
-		INSERT INTO "Node_type"(name, created_at) VALUES ($1, $2)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["EDIT_NODE_TYPES"], e = Link.Prepare(`
-		UPDATE "Node_type" SET name = $2 WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["CREATE_HARDWARE_TYPES"], e = Link.Prepare(`
-		INSERT INTO "Hardware_type"(value, translate_value, created_at) VALUES ($1, $2, $3)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["EDIT_HARDWARE_TYPES"], e = Link.Prepare(`
-		UPDATE "Hardware_type" SET value = $2, translate_value = $3 WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["CREATE_OPERATION_MODES"], e = Link.Prepare(`
-		INSERT INTO "Operation_mode"(value, translate_value, created_at) VALUES ($1, $2, $3)
-		RETURNING id
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	query["EDIT_OPERATION_MODES"], e = Link.Prepare(`
-		UPDATE "Operation_mode" SET value = $2, translate_value = $3 WHERE id = $1
-    `)
-	if e != nil {
-		errorsList = append(errorsList, e.Error())
-	}
-
-	return errorsList
-}
-
-func (rs *DefaultReferenceService) EditReferenceRecord(referenceRecord *Reference, reference string) error {
-	stmt, ok := query["EDIT_"+reference]
+func (r *DefaultReferenceRepository) EditReferenceRecord(referenceRecord *models.Reference, reference string) error {
+	stmt, ok := r.Database.GetQuery("EDIT_" + reference)
 	if !ok {
-		err := errors.New("запрос EDIT_" + reference + " не подготовлен")
-		////utils.Logger.Println(err)
-		return err
+		return errors.New("запрос EDIT_" + reference + " не подготовлен")
 	}
 
 	var err error
@@ -139,19 +30,16 @@ func (rs *DefaultReferenceService) EditReferenceRecord(referenceRecord *Referenc
 	}
 
 	if err != nil {
-		////utils.Logger.Println(err)
 		return err
 	}
 
 	return nil
 }
 
-func (rs *DefaultReferenceService) CreateReferenceRecord(referenceRecord *Reference, reference string) error {
-	stmt, ok := query["CREATE_"+reference]
+func (r *DefaultReferenceRepository) CreateReferenceRecord(referenceRecord *models.Reference, reference string) error {
+	stmt, ok := r.Database.GetQuery("CREATE_" + reference)
 	if !ok {
-		err := errors.New("запрос CREATE_" + reference + " не подготовлен")
-		////utils.Logger.Println(err)
-		return err
+		return errors.New("запрос CREATE_" + reference + " не подготовлен")
 	}
 
 	if reference == "NODE_TYPES" || reference == "OWNERS" {
@@ -159,7 +47,6 @@ func (rs *DefaultReferenceService) CreateReferenceRecord(referenceRecord *Refere
 			referenceRecord.Name,
 			referenceRecord.CreatedAt,
 		).Scan(&referenceRecord.ID); err != nil {
-			////utils.Logger.Println(err)
 			return err
 		}
 	} else {
@@ -168,7 +55,6 @@ func (rs *DefaultReferenceService) CreateReferenceRecord(referenceRecord *Refere
 			referenceRecord.TranslateValue,
 			referenceRecord.CreatedAt,
 		).Scan(&referenceRecord.ID); err != nil {
-			////utils.Logger.Println(err)
 			return err
 		}
 	}
@@ -176,24 +62,21 @@ func (rs *DefaultReferenceService) CreateReferenceRecord(referenceRecord *Refere
 	return nil
 }
 
-func (rs *DefaultReferenceService) GetReferenceRecords(reference string) ([]Reference, error) {
-	stmt, ok := query["GET_"+reference]
+func (r *DefaultReferenceRepository) GetReferenceRecords(reference string) ([]models.Reference, error) {
+	stmt, ok := r.Database.GetQuery("GET_" + reference)
 	if !ok {
-		err := errors.New("запрос GET_" + reference + " не подготовлен")
-		////utils.Logger.Println(err)
-		return nil, err
+		return nil, errors.New("запрос GET_" + reference + " не подготовлен")
 	}
 
 	rows, err := stmt.Query()
 	if err != nil {
-		////utils.Logger.Println(err)
 		return nil, err
 	}
 	defer rows.Close()
 
-	var references []Reference
+	var references []models.Reference
 	for rows.Next() {
-		var _reference Reference
+		var _reference models.Reference
 
 		if reference == "NODE_TYPES" || reference == "OWNERS" {
 			err = rows.Scan(&_reference.ID, &_reference.Name, &_reference.CreatedAt)
@@ -204,7 +87,6 @@ func (rs *DefaultReferenceService) GetReferenceRecords(reference string) ([]Refe
 		}
 
 		if err != nil {
-			////utils.Logger.Println(err)
 			return nil, err
 		}
 

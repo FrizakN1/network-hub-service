@@ -3,6 +3,7 @@ package handlers
 import (
 	"backend/database"
 	"backend/errors"
+	"backend/models"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -16,14 +17,16 @@ type ReferenceHandler interface {
 }
 
 type DefaultReferenceHandler struct {
-	Privilege        Privilege
-	ReferenceService database.ReferenceService
+	Privilege     Privilege
+	ReferenceRepo database.ReferenceRepository
 }
 
-func NewReferenceHandler() ReferenceHandler {
+func NewReferenceHandler(db *database.Database) ReferenceHandler {
 	return &DefaultReferenceHandler{
-		Privilege:        &DefaultPrivilege{},
-		ReferenceService: &database.DefaultReferenceService{},
+		Privilege: &DefaultPrivilege{},
+		ReferenceRepo: &database.DefaultReferenceRepository{
+			Database: *db,
+		},
 	}
 }
 
@@ -35,7 +38,7 @@ func (h *DefaultReferenceHandler) HandlerReferenceRecord(c *gin.Context, isEdit 
 		return
 	}
 
-	var record database.Reference
+	var record models.Reference
 	reference := c.Param("reference")
 
 	if err := c.BindJSON(&record); err != nil {
@@ -51,13 +54,13 @@ func (h *DefaultReferenceHandler) HandlerReferenceRecord(c *gin.Context, isEdit 
 
 	if !isEdit {
 		record.CreatedAt = time.Now().Unix()
-		err := h.ReferenceService.CreateReferenceRecord(&record, strings.ToUpper(reference))
+		err := h.ReferenceRepo.CreateReferenceRecord(&record, strings.ToUpper(reference))
 		if err != nil {
 			c.Error(errors.NewHTTPError(err, fmt.Sprintf("failed to create %s", reference), http.StatusInternalServerError))
 			return
 		}
 	} else {
-		err := h.ReferenceService.EditReferenceRecord(&record, strings.ToUpper(reference))
+		err := h.ReferenceRepo.EditReferenceRecord(&record, strings.ToUpper(reference))
 		if err != nil {
 			c.Error(errors.NewHTTPError(err, "failed to edit reference", http.StatusInternalServerError))
 			return
@@ -70,7 +73,7 @@ func (h *DefaultReferenceHandler) HandlerReferenceRecord(c *gin.Context, isEdit 
 func (h *DefaultReferenceHandler) HandlerGetReference(c *gin.Context) {
 	reference := c.Param("reference")
 
-	records, err := h.ReferenceService.GetReferenceRecords(strings.ToUpper(reference))
+	records, err := h.ReferenceRepo.GetReferenceRecords(strings.ToUpper(reference))
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get references", http.StatusInternalServerError))
 		return

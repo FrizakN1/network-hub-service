@@ -3,6 +3,7 @@ package handlers
 import (
 	"backend/database"
 	"backend/errors"
+	"backend/models"
 	"database/sql"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -22,16 +23,26 @@ type NodeHandler interface {
 }
 
 type DefaultNodeHandler struct {
-	Privilege    Privilege
-	NodeService  database.NodeService
-	EventService database.EventService
+	Privilege Privilege
+	NodeRepo  database.NodeRepository
+	EventRepo database.EventRepository
 }
 
-func NewNodeHandler() NodeHandler {
+func NewNodeHandler(db *database.Database) NodeHandler {
 	return &DefaultNodeHandler{
-		Privilege:    &DefaultPrivilege{},
-		NodeService:  &database.DefaultNodeService{},
-		EventService: &database.DefaultEventService{},
+		Privilege: &DefaultPrivilege{},
+		NodeRepo: &database.DefaultNodeRepository{
+			Database: *db,
+			Counter: &database.DefaultCounter{
+				Database: *db,
+			},
+		},
+		EventRepo: &database.DefaultEventRepository{
+			Database: *db,
+			Counter: &database.DefaultCounter{
+				Database: *db,
+			},
+		},
 	}
 }
 
@@ -49,7 +60,7 @@ func (h *DefaultNodeHandler) HandlerDeleteNode(c *gin.Context) {
 		return
 	}
 
-	if err = h.NodeService.DeleteNode(nodeID); err != nil {
+	if err = h.NodeRepo.DeleteNode(nodeID); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to delete node", http.StatusInternalServerError))
 		return
 	}
@@ -61,7 +72,7 @@ func (h *DefaultNodeHandler) HandlerGetSearchNodes(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	search := c.Query("search")
 
-	nodes, count, err := h.NodeService.GetSearchNodes(search, offset)
+	nodes, count, err := h.NodeRepo.GetSearchNodes(search, offset)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get search nodes", http.StatusInternalServerError))
 		return
@@ -81,14 +92,14 @@ func (h *DefaultNodeHandler) HandlerEditNode(c *gin.Context) {
 		return
 	}
 
-	var node database.Node
+	var node models.Node
 
 	if err := c.BindJSON(&node); err != nil {
 		c.Error(errors.NewHTTPError(err, "invalid json", http.StatusBadRequest))
 		return
 	}
 
-	if !h.NodeService.ValidateNode(node) {
+	if !h.NodeRepo.ValidateNode(node) {
 		c.Error(errors.NewHTTPError(nil, "invalid node data", http.StatusBadRequest))
 		return
 	}
@@ -98,21 +109,21 @@ func (h *DefaultNodeHandler) HandlerEditNode(c *gin.Context) {
 		Valid: true,
 	}
 
-	if err := h.NodeService.EditNode(&node); err != nil {
+	if err := h.NodeRepo.EditNode(&node); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to edit node", http.StatusInternalServerError))
 		return
 	}
 
-	event := database.Event{
-		Address:     database.Address{House: database.AddressElement{ID: node.Address.House.ID}},
-		Node:        &database.Node{ID: node.ID},
+	event := models.Event{
+		Address:     models.Address{House: models.AddressElement{ID: node.Address.House.ID}},
+		Node:        &models.Node{ID: node.ID},
 		Hardware:    nil,
 		UserId:      session.User.Id,
 		Description: fmt.Sprintf("Изменение узла: %s", node.Name),
 		CreatedAt:   time.Now().Unix(),
 	}
 
-	if err := h.EventService.CreateEvent(event); err != nil {
+	if err := h.EventRepo.CreateEvent(event); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to delete node", http.StatusInternalServerError))
 	}
 
@@ -127,27 +138,27 @@ func (h *DefaultNodeHandler) HandlerCreateNode(c *gin.Context) {
 		return
 	}
 
-	var node database.Node
+	var node models.Node
 
 	if err := c.BindJSON(&node); err != nil {
 		c.Error(errors.NewHTTPError(err, "invalid json", http.StatusBadRequest))
 		return
 	}
 
-	if !h.NodeService.ValidateNode(node) {
+	if !h.NodeRepo.ValidateNode(node) {
 		c.Error(errors.NewHTTPError(nil, "invalid node data", http.StatusBadRequest))
 		return
 	}
 
 	node.CreatedAt = time.Now().Unix()
 
-	if err := h.NodeService.CreateNode(&node); err != nil {
+	if err := h.NodeRepo.CreateNode(&node); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to create node", http.StatusInternalServerError))
 		return
 	}
 
-	event := database.Event{
-		Address:     database.Address{House: database.AddressElement{ID: node.Address.House.ID}},
+	event := models.Event{
+		Address:     models.Address{House: models.AddressElement{ID: node.Address.House.ID}},
 		Node:        nil,
 		Hardware:    nil,
 		UserId:      session.User.Id,
@@ -155,7 +166,7 @@ func (h *DefaultNodeHandler) HandlerCreateNode(c *gin.Context) {
 		CreatedAt:   time.Now().Unix(),
 	}
 
-	if err := h.EventService.CreateEvent(event); err != nil {
+	if err := h.EventRepo.CreateEvent(event); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to create event", http.StatusInternalServerError))
 	}
 
@@ -165,7 +176,7 @@ func (h *DefaultNodeHandler) HandlerCreateNode(c *gin.Context) {
 func (h *DefaultNodeHandler) HandlerGetNode(c *gin.Context) {
 	var (
 		err  error
-		node database.Node
+		node models.Node
 	)
 
 	node.ID, err = strconv.Atoi(c.Param("id"))
@@ -174,7 +185,7 @@ func (h *DefaultNodeHandler) HandlerGetNode(c *gin.Context) {
 		return
 	}
 
-	if err = h.NodeService.GetNode(&node); err != nil {
+	if err = h.NodeRepo.GetNode(&node); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get node", http.StatusInternalServerError))
 		return
 	}
@@ -195,7 +206,7 @@ func (h *DefaultNodeHandler) HandlerGetHouseNodes(c *gin.Context) {
 		return
 	}
 
-	nodes, count, err := h.NodeService.GetHouseNodes(houseID, offset)
+	nodes, count, err := h.NodeRepo.GetHouseNodes(houseID, offset)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get nodes", http.StatusInternalServerError))
 		return
@@ -214,7 +225,7 @@ func (h *DefaultNodeHandler) HandlerGetNodes(c *gin.Context) {
 		return
 	}
 
-	nodes, count, err := h.NodeService.GetNodes(offset)
+	nodes, count, err := h.NodeRepo.GetNodes(offset)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get nodes", http.StatusInternalServerError))
 		return

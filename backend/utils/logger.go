@@ -9,7 +9,6 @@ import (
 
 type Logger interface {
 	Println(v ...any)
-	//PrintlnWithCaller(err error, skip int)
 }
 
 func InitLogger() Logger {

@@ -3,6 +3,7 @@ package handlers
 import (
 	"backend/database"
 	"backend/errors"
+	"backend/models"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"image"
@@ -27,20 +28,37 @@ type FileHandler interface {
 }
 
 type DefaultFileHandler struct {
-	Privilege       Privilege
-	FileService     database.FileService
-	EventService    database.EventService
-	NodeService     database.NodeService
-	HardwareService database.HardwareService
+	Privilege    Privilege
+	FileRepo     database.FileRepository
+	EventRepo    database.EventRepository
+	NodeRepo     database.NodeRepository
+	HardwareRepo database.HardwareRepository
 }
 
-func NewFileHandler() FileHandler {
+func NewFileHandler(db *database.Database) FileHandler {
 	return &DefaultFileHandler{
-		Privilege:       &DefaultPrivilege{},
-		FileService:     &database.DefaultFileService{},
-		EventService:    &database.DefaultEventService{},
-		NodeService:     &database.DefaultNodeService{},
-		HardwareService: &database.DefaultHardwareService{},
+		Privilege: &DefaultPrivilege{},
+		FileRepo: &database.DefaultFileRepository{
+			Database: *db,
+		},
+		EventRepo: &database.DefaultEventRepository{
+			Database: *db,
+			Counter: &database.DefaultCounter{
+				Database: *db,
+			},
+		},
+		NodeRepo: &database.DefaultNodeRepository{
+			Database: *db,
+			Counter: &database.DefaultCounter{
+				Database: *db,
+			},
+		},
+		HardwareRepo: &database.DefaultHardwareRepository{
+			Database: *db,
+			Counter: &database.DefaultCounter{
+				Database: *db,
+			},
+		},
 	}
 }
 
@@ -51,7 +69,7 @@ func (h *DefaultFileHandler) HandlerGetHardwareFiles(c *gin.Context) {
 		return
 	}
 
-	files, err := h.FileService.GetHardwareFiles(hardwareID)
+	files, err := h.FileRepo.GetHardwareFiles(hardwareID)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get files", http.StatusInternalServerError))
 		return
@@ -67,7 +85,7 @@ func (h *DefaultFileHandler) HandlerGetNodeImages(c *gin.Context) {
 		return
 	}
 
-	files, err := h.FileService.GetNodeFiles(nodeID, true)
+	files, err := h.FileRepo.GetNodeFiles(nodeID, true)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get files", http.StatusInternalServerError))
 		return
@@ -83,7 +101,7 @@ func (h *DefaultFileHandler) HandlerGetNodeFiles(c *gin.Context) {
 		return
 	}
 
-	files, err := h.FileService.GetNodeFiles(nodeID, false)
+	files, err := h.FileRepo.GetNodeFiles(nodeID, false)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get files", http.StatusInternalServerError))
 		return
@@ -99,7 +117,7 @@ func (h *DefaultFileHandler) HandlerGetHouseFiles(c *gin.Context) {
 		return
 	}
 
-	files, err := h.FileService.GetHouseFiles(houseID)
+	files, err := h.FileRepo.GetHouseFiles(houseID)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get files", http.StatusInternalServerError))
 		return
@@ -116,10 +134,10 @@ func (h *DefaultFileHandler) HandlerUploadFile(c *gin.Context) {
 		return
 	}
 	var (
-		uploadFile database.File
+		uploadFile models.File
 		err        error
 		fileFor    = c.PostForm("type")
-		event      database.Event
+		event      models.Event
 	)
 
 	if fileFor == "houses" {
@@ -129,8 +147,8 @@ func (h *DefaultFileHandler) HandlerUploadFile(c *gin.Context) {
 			return
 		}
 
-		event = database.Event{
-			Address:  database.Address{House: database.AddressElement{ID: uploadFile.House.ID}},
+		event = models.Event{
+			Address:  models.Address{House: models.AddressElement{ID: uploadFile.House.ID}},
 			Node:     nil,
 			Hardware: nil,
 		}
@@ -141,14 +159,14 @@ func (h *DefaultFileHandler) HandlerUploadFile(c *gin.Context) {
 			return
 		}
 
-		if err = h.NodeService.GetNode(&uploadFile.Node); err != nil {
+		if err = h.NodeRepo.GetNode(&uploadFile.Node); err != nil {
 			c.Error(errors.NewHTTPError(err, "failed to get node", http.StatusInternalServerError))
 			return
 		}
 
-		event = database.Event{
-			Address:  database.Address{House: database.AddressElement{ID: uploadFile.Node.Address.House.ID}},
-			Node:     &database.Node{ID: uploadFile.Node.ID},
+		event = models.Event{
+			Address:  models.Address{House: models.AddressElement{ID: uploadFile.Node.Address.House.ID}},
+			Node:     &models.Node{ID: uploadFile.Node.ID},
 			Hardware: nil,
 		}
 	} else {
@@ -158,15 +176,15 @@ func (h *DefaultFileHandler) HandlerUploadFile(c *gin.Context) {
 			return
 		}
 
-		if err = h.HardwareService.GetHardwareByID(&uploadFile.Hardware); err != nil {
+		if err = h.HardwareRepo.GetHardwareByID(&uploadFile.Hardware); err != nil {
 			c.Error(errors.NewHTTPError(err, "failed to get hardware", http.StatusInternalServerError))
 			return
 		}
 
-		event = database.Event{
-			Address:  database.Address{House: database.AddressElement{ID: uploadFile.Hardware.Node.Address.House.ID}},
-			Node:     &database.Node{ID: uploadFile.Hardware.Node.ID},
-			Hardware: &database.Hardware{ID: uploadFile.Hardware.ID},
+		event = models.Event{
+			Address:  models.Address{House: models.AddressElement{ID: uploadFile.Hardware.Node.Address.House.ID}},
+			Node:     &models.Node{ID: uploadFile.Hardware.Node.ID},
+			Hardware: &models.Hardware{ID: uploadFile.Hardware.ID},
 		}
 	}
 
@@ -244,7 +262,7 @@ func (h *DefaultFileHandler) HandlerUploadFile(c *gin.Context) {
 		}
 	}
 
-	err = h.FileService.CreateFile(&uploadFile, strings.ToUpper(fileFor))
+	err = h.FileRepo.CreateFile(&uploadFile, strings.ToUpper(fileFor))
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to create file db", http.StatusInternalServerError))
 		return
@@ -254,7 +272,7 @@ func (h *DefaultFileHandler) HandlerUploadFile(c *gin.Context) {
 	event.Description = fmt.Sprintf("Загрузка файла: %s", uploadFile.Name)
 	event.CreatedAt = time.Now().Unix()
 
-	if err = h.EventService.CreateEvent(event); err != nil {
+	if err = h.EventRepo.CreateEvent(event); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to create event", http.StatusInternalServerError))
 	}
 
@@ -278,8 +296,8 @@ func (h *DefaultFileHandler) HandlerFile(c *gin.Context) {
 
 	var (
 		key   string
-		file  database.File
-		event database.Event
+		file  models.File
+		event models.Event
 	)
 
 	err := c.BindJSON(&file)
@@ -291,41 +309,41 @@ func (h *DefaultFileHandler) HandlerFile(c *gin.Context) {
 	if file.House.ID > 0 {
 		key = "HOUSES"
 
-		event = database.Event{
-			Address:  database.Address{House: database.AddressElement{ID: file.House.ID}},
+		event = models.Event{
+			Address:  models.Address{House: models.AddressElement{ID: file.House.ID}},
 			Node:     nil,
 			Hardware: nil,
 		}
 	} else if file.Node.ID > 0 {
 		key = "NODES"
 
-		if err = h.NodeService.GetNode(&file.Node); err != nil {
+		if err = h.NodeRepo.GetNode(&file.Node); err != nil {
 			c.Error(errors.NewHTTPError(err, "failed to get node", http.StatusInternalServerError))
 			return
 		}
 
-		event = database.Event{
-			Address:  database.Address{House: database.AddressElement{ID: file.Node.Address.House.ID}},
-			Node:     &database.Node{ID: file.Node.ID},
+		event = models.Event{
+			Address:  models.Address{House: models.AddressElement{ID: file.Node.Address.House.ID}},
+			Node:     &models.Node{ID: file.Node.ID},
 			Hardware: nil,
 		}
 	} else if file.Hardware.ID > 0 {
 		key = "HARDWARE"
 
-		if err = h.HardwareService.GetHardwareByID(&file.Hardware); err != nil {
+		if err = h.HardwareRepo.GetHardwareByID(&file.Hardware); err != nil {
 			c.Error(errors.NewHTTPError(err, "failed to get hardware", http.StatusInternalServerError))
 			return
 		}
 
-		event = database.Event{
-			Address:  database.Address{House: database.AddressElement{ID: file.Hardware.Node.Address.House.ID}},
-			Node:     &database.Node{ID: file.Hardware.Node.ID},
-			Hardware: &database.Hardware{ID: file.Hardware.ID},
+		event = models.Event{
+			Address:  models.Address{House: models.AddressElement{ID: file.Hardware.Node.Address.House.ID}},
+			Node:     &models.Node{ID: file.Hardware.Node.ID},
+			Hardware: &models.Hardware{ID: file.Hardware.ID},
 		}
 	}
 
 	if action == "archive" {
-		err = h.FileService.Archive(&file, key)
+		err = h.FileRepo.Archive(&file, key)
 
 		if file.InArchive {
 			event.Description = fmt.Sprintf("Перемещение файла %s в архив", file.Name)
@@ -341,7 +359,7 @@ func (h *DefaultFileHandler) HandlerFile(c *gin.Context) {
 			return
 		}
 
-		err = h.FileService.Delete(&file, key)
+		err = h.FileRepo.Delete(&file, key)
 	}
 
 	if err != nil {
@@ -352,7 +370,7 @@ func (h *DefaultFileHandler) HandlerFile(c *gin.Context) {
 	event.UserId = session.User.Id
 	event.CreatedAt = time.Now().Unix()
 
-	if err = h.EventService.CreateEvent(event); err != nil {
+	if err = h.EventRepo.CreateEvent(event); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to create event", http.StatusInternalServerError))
 	}
 
