@@ -1,7 +1,6 @@
 package database
 
 import (
-	"backend/utils"
 	"database/sql"
 	"fmt"
 	_ "github.com/lib/pq"
@@ -21,22 +20,22 @@ func Connection() {
 		os.Getenv("DB_NAME")))
 	if err != nil {
 		fmt.Println(err)
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return
 	}
 
 	if err = Link.Ping(); err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return
 	}
 
 	if err = goose.SetDialect("postgres"); err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return
 	}
 
 	if err = goose.Up(Link, "migrations"); err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return
 	}
 
@@ -53,7 +52,7 @@ func Connection() {
 	if len(errorsList) > 0 {
 		for _, i := range errorsList {
 			fmt.Println(i)
-			utils.Logger.Println(i)
+			//utils.Logger.Println(i)
 		}
 	}
 

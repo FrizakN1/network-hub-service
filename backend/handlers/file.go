@@ -1,14 +1,15 @@
-package router
+package handlers
 
 import (
 	"backend/database"
-	"backend/utils"
+	"backend/errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"image"
 	"image/jpeg"
 	"image/png"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -17,12 +18,12 @@ import (
 )
 
 type FileHandler interface {
-	handlerGetHardwareFiles(c *gin.Context)
-	handlerGetNodeImages(c *gin.Context)
-	handlerGetNodeFiles(c *gin.Context)
-	handlerGetHouseFiles(c *gin.Context)
-	handlerUploadFile(c *gin.Context)
-	handlerFile(c *gin.Context)
+	HandlerGetHardwareFiles(c *gin.Context)
+	HandlerGetNodeImages(c *gin.Context)
+	HandlerGetNodeFiles(c *gin.Context)
+	HandlerGetHouseFiles(c *gin.Context)
+	HandlerUploadFile(c *gin.Context)
+	HandlerFile(c *gin.Context)
 }
 
 type DefaultFileHandler struct {
@@ -43,79 +44,75 @@ func NewFileHandler() FileHandler {
 	}
 }
 
-func (h *DefaultFileHandler) handlerGetHardwareFiles(c *gin.Context) {
+func (h *DefaultFileHandler) HandlerGetHardwareFiles(c *gin.Context) {
 	hardwareID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 		return
 	}
 
 	files, err := h.FileService.GetHardwareFiles(hardwareID)
 	if err != nil {
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get files", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, files)
+	c.JSON(http.StatusOK, files)
 }
 
-func (h *DefaultFileHandler) handlerGetNodeImages(c *gin.Context) {
+func (h *DefaultFileHandler) HandlerGetNodeImages(c *gin.Context) {
 	nodeID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 		return
 	}
 
 	files, err := h.FileService.GetNodeFiles(nodeID, true)
 	if err != nil {
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get files", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, files)
+	c.JSON(http.StatusOK, files)
 }
 
-func (h *DefaultFileHandler) handlerGetNodeFiles(c *gin.Context) {
+func (h *DefaultFileHandler) HandlerGetNodeFiles(c *gin.Context) {
 	nodeID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 		return
 	}
 
 	files, err := h.FileService.GetNodeFiles(nodeID, false)
 	if err != nil {
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get files", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, files)
+	c.JSON(http.StatusOK, files)
 }
 
-func (h *DefaultFileHandler) handlerGetHouseFiles(c *gin.Context) {
+func (h *DefaultFileHandler) HandlerGetHouseFiles(c *gin.Context) {
 	houseID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 		return
 	}
 
 	files, err := h.FileService.GetHouseFiles(houseID)
 	if err != nil {
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get files", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, files)
+	c.JSON(http.StatusOK, files)
 }
 
-func (h *DefaultFileHandler) handlerUploadFile(c *gin.Context) {
+func (h *DefaultFileHandler) HandlerUploadFile(c *gin.Context) {
 	session, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
-		c.JSON(403, nil)
+		c.Error(errors.NewHTTPError(nil, "forbidden", http.StatusForbidden))
 		return
 	}
 	var (
@@ -127,6 +124,10 @@ func (h *DefaultFileHandler) handlerUploadFile(c *gin.Context) {
 
 	if fileFor == "houses" {
 		uploadFile.House.ID, err = strconv.Atoi(c.PostForm("id"))
+		if err != nil {
+			c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
+			return
+		}
 
 		event = database.Event{
 			Address:  database.Address{House: database.AddressElement{ID: uploadFile.House.ID}},
@@ -135,10 +136,14 @@ func (h *DefaultFileHandler) handlerUploadFile(c *gin.Context) {
 		}
 	} else if fileFor == "nodes" {
 		uploadFile.Node.ID, err = strconv.Atoi(c.PostForm("id"))
+		if err != nil {
+			c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
+			return
+		}
 
 		if err = h.NodeService.GetNode(&uploadFile.Node); err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
+			c.Error(errors.NewHTTPError(err, "failed to get node", http.StatusInternalServerError))
+			return
 		}
 
 		event = database.Event{
@@ -148,10 +153,14 @@ func (h *DefaultFileHandler) handlerUploadFile(c *gin.Context) {
 		}
 	} else {
 		uploadFile.Hardware.ID, err = strconv.Atoi(c.PostForm("id"))
+		if err != nil {
+			c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
+			return
+		}
 
 		if err = h.HardwareService.GetHardwareByID(&uploadFile.Hardware); err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
+			c.Error(errors.NewHTTPError(err, "failed to get hardware", http.StatusInternalServerError))
+			return
 		}
 
 		event = database.Event{
@@ -160,16 +169,10 @@ func (h *DefaultFileHandler) handlerUploadFile(c *gin.Context) {
 			Hardware: &database.Hardware{ID: uploadFile.Hardware.ID},
 		}
 	}
-	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
-		return
-	}
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get file", http.StatusBadRequest))
 		return
 	}
 
@@ -179,8 +182,7 @@ func (h *DefaultFileHandler) handlerUploadFile(c *gin.Context) {
 
 	srcFile, err := file.Open()
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to open file", http.StatusBadRequest))
 		return
 	}
 	defer srcFile.Close()
@@ -196,16 +198,16 @@ func (h *DefaultFileHandler) handlerUploadFile(c *gin.Context) {
 		// Декодируем изображение
 		img, format, err = image.Decode(srcFile)
 		if err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
+			c.Error(errors.NewHTTPError(err, "failed to decode image", http.StatusBadRequest))
 			return
 		}
+
+		_, _ = srcFile.Seek(0, io.SeekStart)
 	}
 
 	dstFile, err := os.Create(uploadFile.Path)
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to create file", http.StatusInternalServerError))
 		return
 	}
 	defer dstFile.Close()
@@ -221,15 +223,13 @@ func (h *DefaultFileHandler) handlerUploadFile(c *gin.Context) {
 			err = encoder.Encode(dstFile, img)
 		}
 		if err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
+			c.Error(errors.NewHTTPError(err, "failed to compress image", http.StatusInternalServerError))
 			return
 		}
 	} else {
 		_, err = io.Copy(dstFile, srcFile)
 		if err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
+			c.Error(errors.NewHTTPError(err, "failed to copy file", http.StatusInternalServerError))
 			return
 		}
 	}
@@ -239,16 +239,14 @@ func (h *DefaultFileHandler) handlerUploadFile(c *gin.Context) {
 	if fileFor == "nodes" {
 		uploadFile.IsPreviewImage, err = strconv.ParseBool(c.PostForm("onlyImage"))
 		if err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
+			c.Error(errors.NewHTTPError(err, "failed to parse param(onlyImage) to bool", http.StatusBadRequest))
 			return
 		}
 	}
 
 	err = h.FileService.CreateFile(&uploadFile, strings.ToUpper(fileFor))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to create file db", http.StatusInternalServerError))
 		return
 	}
 
@@ -257,24 +255,24 @@ func (h *DefaultFileHandler) handlerUploadFile(c *gin.Context) {
 	event.CreatedAt = time.Now().Unix()
 
 	if err = h.EventService.CreateEvent(event); err != nil {
-		utils.Logger.Println(err)
+		c.Error(errors.NewHTTPError(err, "failed to create event", http.StatusInternalServerError))
 	}
 
-	c.JSON(200, uploadFile)
+	c.JSON(http.StatusOK, uploadFile)
 }
 
-func (h *DefaultFileHandler) handlerFile(c *gin.Context) {
+func (h *DefaultFileHandler) HandlerFile(c *gin.Context) {
 	session, isAdmin, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	action := c.Param("action")
 
 	if action == "delete" && !isAdmin {
-		c.JSON(403, nil)
+		c.Error(errors.NewHTTPError(nil, "forbidden", http.StatusForbidden))
 		return
 	}
 
 	if action == "archive" && !isOperatorOrHigher {
-		c.JSON(403, nil)
+		c.Error(errors.NewHTTPError(nil, "forbidden", http.StatusForbidden))
 		return
 	}
 
@@ -286,8 +284,7 @@ func (h *DefaultFileHandler) handlerFile(c *gin.Context) {
 
 	err := c.BindJSON(&file)
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "invalid json", http.StatusBadRequest))
 		return
 	}
 
@@ -303,8 +300,7 @@ func (h *DefaultFileHandler) handlerFile(c *gin.Context) {
 		key = "NODES"
 
 		if err = h.NodeService.GetNode(&file.Node); err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
+			c.Error(errors.NewHTTPError(err, "failed to get node", http.StatusInternalServerError))
 			return
 		}
 
@@ -317,8 +313,7 @@ func (h *DefaultFileHandler) handlerFile(c *gin.Context) {
 		key = "HARDWARE"
 
 		if err = h.HardwareService.GetHardwareByID(&file.Hardware); err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
+			c.Error(errors.NewHTTPError(err, "failed to get hardware", http.StatusInternalServerError))
 			return
 		}
 
@@ -342,8 +337,7 @@ func (h *DefaultFileHandler) handlerFile(c *gin.Context) {
 
 		err = os.Remove(file.Path)
 		if err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
+			c.Error(errors.NewHTTPError(err, "failed to remove file", http.StatusInternalServerError))
 			return
 		}
 
@@ -351,8 +345,7 @@ func (h *DefaultFileHandler) handlerFile(c *gin.Context) {
 	}
 
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, fmt.Sprintf("failed to %s file", action), http.StatusInternalServerError))
 		return
 	}
 
@@ -360,8 +353,8 @@ func (h *DefaultFileHandler) handlerFile(c *gin.Context) {
 	event.CreatedAt = time.Now().Unix()
 
 	if err = h.EventService.CreateEvent(event); err != nil {
-		utils.Logger.Println(err)
+		c.Error(errors.NewHTTPError(err, "failed to create event", http.StatusInternalServerError))
 	}
 
-	c.JSON(200, file)
+	c.JSON(http.StatusOK, file)
 }

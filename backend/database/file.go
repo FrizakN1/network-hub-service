@@ -1,7 +1,6 @@
 package database
 
 import (
-	"backend/utils"
 	"database/sql"
 	"encoding/base64"
 	"errors"
@@ -140,13 +139,13 @@ func (fs *DefaultFileService) GetHardwareFiles(hardwareID int) ([]File, error) {
 	stmt, ok := query["GET_HARDWARE_FILES"]
 	if !ok {
 		err := errors.New("запрос GET_HARDWARE_FILES не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return nil, err
 	}
 
 	rows, err := stmt.Query(hardwareID)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -164,7 +163,7 @@ func (fs *DefaultFileService) GetHardwareFiles(hardwareID int) ([]File, error) {
 			&file.InArchive,
 		)
 		if err != nil {
-			utils.Logger.Println(err)
+			//utils.Logger.Printlnogger.Println(err)
 			return nil, err
 		}
 
@@ -172,7 +171,7 @@ func (fs *DefaultFileService) GetHardwareFiles(hardwareID int) ([]File, error) {
 
 		fileData, err = ioutil.ReadFile(file.Path)
 		if err != nil {
-			utils.Logger.Println(err)
+			//utils.Logger.Printlnogger.Println(err)
 			return nil, err
 		}
 
@@ -188,13 +187,13 @@ func (fs *DefaultFileService) GetNodeFiles(nodeID int, onlyImage bool) ([]File, 
 	stmt, ok := query["GET_NODE_FILES"]
 	if !ok {
 		err := errors.New("запрос GET_NODE_FILES не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return nil, err
 	}
 
 	rows, err := stmt.Query(nodeID, onlyImage)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -213,7 +212,7 @@ func (fs *DefaultFileService) GetNodeFiles(nodeID int, onlyImage bool) ([]File, 
 			&file.IsPreviewImage,
 		)
 		if err != nil {
-			utils.Logger.Println(err)
+			//utils.Logger.Printlnogger.Println(err)
 			return nil, err
 		}
 
@@ -221,7 +220,7 @@ func (fs *DefaultFileService) GetNodeFiles(nodeID int, onlyImage bool) ([]File, 
 
 		fileData, err = ioutil.ReadFile(file.Path)
 		if err != nil {
-			utils.Logger.Println(err)
+			//utils.Logger.Printlnogger.Println(err)
 			return nil, err
 		}
 
@@ -237,13 +236,13 @@ func (fs *DefaultFileService) GetHouseFiles(houseID int) ([]File, error) {
 	stmt, ok := query["GET_HOUSE_FILES"]
 	if !ok {
 		err := errors.New("запрос GET_HOUSE_FILES не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return nil, err
 	}
 
 	rows, err := stmt.Query(houseID)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -261,7 +260,7 @@ func (fs *DefaultFileService) GetHouseFiles(houseID int) ([]File, error) {
 			&file.InArchive,
 		)
 		if err != nil {
-			utils.Logger.Println(err)
+			//utils.Logger.Printlnogger.Println(err)
 			return nil, err
 		}
 
@@ -269,7 +268,7 @@ func (fs *DefaultFileService) GetHouseFiles(houseID int) ([]File, error) {
 
 		fileData, err = ioutil.ReadFile(file.Path)
 		if err != nil {
-			utils.Logger.Println(err)
+			//utils.Logger.Printlnogger.Println(err)
 			return nil, err
 		}
 
@@ -285,7 +284,7 @@ func (fs *DefaultFileService) CreateFile(file *File, fileFor string) error {
 	stmt, ok := query["CREATE_FILE_"+fileFor]
 	if !ok {
 		err := "запрос CREATE_FILE_" + fileFor + " не подготовлен"
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return errors.New(err)
 	}
 
@@ -323,7 +322,7 @@ func (fs *DefaultFileService) CreateFile(file *File, fileFor string) error {
 	}
 
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return err
 	}
 
@@ -331,7 +330,7 @@ func (fs *DefaultFileService) CreateFile(file *File, fileFor string) error {
 
 	fileData, err = ioutil.ReadFile(file.Path)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return err
 	}
 
@@ -344,13 +343,13 @@ func (fs *DefaultFileService) Delete(file *File, key string) error {
 	stmt, ok := query["DELETE_FILE_"+key]
 	if !ok {
 		err := "запрос DELETE_FILE_" + key + " не подготовлен"
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return errors.New(err)
 	}
 
 	_, err := stmt.Exec(file.ID)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return err
 	}
 
@@ -361,7 +360,7 @@ func (fs *DefaultFileService) Archive(file *File, key string) error {
 	stmt, ok := query["ARCHIVE_FILE_"+key]
 	if !ok {
 		err := "запрос ARCHIVE_FILE_" + key + " не подготовлен"
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return errors.New(err)
 	}
 
@@ -369,7 +368,7 @@ func (fs *DefaultFileService) Archive(file *File, key string) error {
 
 	_, err := stmt.Exec(file.ID, file.InArchive)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return err
 	}
 
@@ -377,7 +376,7 @@ func (fs *DefaultFileService) Archive(file *File, key string) error {
 
 	fileData, err = ioutil.ReadFile(file.Path)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return err
 	}
 

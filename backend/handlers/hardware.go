@@ -1,24 +1,25 @@
-package router
+package handlers
 
 import (
 	"backend/database"
-	"backend/utils"
+	"backend/errors"
 	"database/sql"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"net/http"
 	"strconv"
 	"time"
 )
 
 type HardwareHandler interface {
-	handlerGetHardwareByID(c *gin.Context)
-	handlerEditHardware(c *gin.Context)
-	handlerCreateHardware(c *gin.Context)
-	handlerGetSearchHardware(c *gin.Context)
-	handlerGetNodeHardware(c *gin.Context)
-	handlerGetHouseHardware(c *gin.Context)
-	handlerGetHardware(c *gin.Context)
-	handlerDeleteHardware(c *gin.Context)
+	HandlerGetHardwareByID(c *gin.Context)
+	HandlerEditHardware(c *gin.Context)
+	HandlerCreateHardware(c *gin.Context)
+	HandlerGetSearchHardware(c *gin.Context)
+	HandlerGetNodeHardware(c *gin.Context)
+	HandlerGetHouseHardware(c *gin.Context)
+	HandlerGetHardware(c *gin.Context)
+	HandlerDeleteHardware(c *gin.Context)
 }
 
 type DefaultHardwareHandler struct {
@@ -35,31 +36,29 @@ func NewHardwareHandler() HardwareHandler {
 	}
 }
 
-func (h *DefaultHardwareHandler) handlerDeleteHardware(c *gin.Context) {
+func (h *DefaultHardwareHandler) HandlerDeleteHardware(c *gin.Context) {
 	_, isAdmin, _ := h.Privilege.getPrivilege(c)
 
 	if !isAdmin {
-		c.JSON(403, nil)
+		c.Error(errors.NewHTTPError(nil, "forbidden", http.StatusForbidden))
 		return
 	}
 
 	hardwareID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 		return
 	}
 
 	if err = h.HardwareService.DeleteHardware(hardwareID); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to delete hardware", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, true)
+	c.JSON(http.StatusOK, true)
 }
 
-func (h *DefaultHardwareHandler) handlerGetHardwareByID(c *gin.Context) {
+func (h *DefaultHardwareHandler) HandlerGetHardwareByID(c *gin.Context) {
 	var (
 		err      error
 		hardware database.Hardware
@@ -67,46 +66,42 @@ func (h *DefaultHardwareHandler) handlerGetHardwareByID(c *gin.Context) {
 
 	hardware.ID, err = strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse param(id)", http.StatusBadRequest))
 		return
 	}
 
 	if err = h.HardwareService.GetHardwareByID(&hardware); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get hardware", http.StatusBadRequest))
 		return
 	}
 
-	c.JSON(200, hardware)
+	c.JSON(http.StatusOK, hardware)
 }
 
-func (h *DefaultHardwareHandler) handlerEditHardware(c *gin.Context) {
+func (h *DefaultHardwareHandler) HandlerEditHardware(c *gin.Context) {
 	session, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
-		c.JSON(403, nil)
+		c.Error(errors.NewHTTPError(nil, "forbidden", http.StatusForbidden))
 		return
 	}
 
 	var hardware database.Hardware
 
 	if err := c.BindJSON(&hardware); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "invalid json", http.StatusBadRequest))
 		return
 	}
 
 	if !h.HardwareService.ValidateHardware(hardware) {
-		c.JSON(400, nil)
+		c.Error(errors.NewHTTPError(nil, "invalid hardware data", http.StatusBadRequest))
 		return
 	}
 
 	hardware.UpdatedAt = sql.NullInt64{Int64: time.Now().Unix(), Valid: true}
 
 	if err := h.HardwareService.EditHardware(&hardware); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to edit hardware", http.StatusInternalServerError))
 		return
 	}
 
@@ -120,38 +115,36 @@ func (h *DefaultHardwareHandler) handlerEditHardware(c *gin.Context) {
 	}
 
 	if err := h.EventService.CreateEvent(event); err != nil {
-		utils.Logger.Println(err)
+		c.Error(errors.NewHTTPError(err, "failed to create event", http.StatusInternalServerError))
 	}
 
-	c.JSON(200, hardware)
+	c.JSON(http.StatusOK, hardware)
 }
 
-func (h *DefaultHardwareHandler) handlerCreateHardware(c *gin.Context) {
+func (h *DefaultHardwareHandler) HandlerCreateHardware(c *gin.Context) {
 	session, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
-		c.JSON(403, nil)
+		c.Error(errors.NewHTTPError(nil, "forbidden", http.StatusForbidden))
 		return
 	}
 
 	var hardware database.Hardware
 
 	if err := c.BindJSON(&hardware); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "invalid json", http.StatusBadRequest))
 		return
 	}
 
 	if !h.HardwareService.ValidateHardware(hardware) {
-		c.JSON(400, nil)
+		c.Error(errors.NewHTTPError(nil, "invalid hardware data", http.StatusBadRequest))
 		return
 	}
 
 	hardware.CreatedAt = time.Now().Unix()
 
 	if err := h.HardwareService.CreateHardware(&hardware); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to create hardware", http.StatusInternalServerError))
 		return
 	}
 
@@ -165,106 +158,96 @@ func (h *DefaultHardwareHandler) handlerCreateHardware(c *gin.Context) {
 	}
 
 	if err := h.EventService.CreateEvent(event); err != nil {
-		utils.Logger.Println(err)
+		c.Error(errors.NewHTTPError(err, "failed to create event", http.StatusInternalServerError))
 	}
 
-	c.JSON(200, hardware)
+	c.JSON(http.StatusOK, hardware)
 }
 
-func (h *DefaultHardwareHandler) handlerGetSearchHardware(c *gin.Context) {
+func (h *DefaultHardwareHandler) HandlerGetSearchHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse query(offset) to int", http.StatusBadRequest))
 		return
 	}
 	search := c.Query("search")
 
 	hardware, count, err := h.HardwareService.GetSearchHardware(search, offset)
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get search hardware", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"Hardware": hardware,
 		"Count":    count,
 	})
 }
 
-func (h *DefaultHardwareHandler) handlerGetNodeHardware(c *gin.Context) {
+func (h *DefaultHardwareHandler) HandlerGetNodeHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse query(offset) to int", http.StatusBadRequest))
 		return
 	}
 
 	nodeID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 		return
 	}
 
 	hardware, count, err := h.HardwareService.GetNodeHardware(nodeID, offset)
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get hardware", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"Hardware": hardware,
 		"Count":    count,
 	})
 }
 
-func (h *DefaultHardwareHandler) handlerGetHouseHardware(c *gin.Context) {
+func (h *DefaultHardwareHandler) HandlerGetHouseHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse query(offset) to int", http.StatusBadRequest))
 		return
 	}
 
 	houseID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 		return
 	}
 
 	hardware, count, err := h.HardwareService.GetHouseHardware(houseID, offset)
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get hardware", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"Hardware": hardware,
 		"Count":    count,
 	})
 }
 
-func (h *DefaultHardwareHandler) handlerGetHardware(c *gin.Context) {
+func (h *DefaultHardwareHandler) HandlerGetHardware(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse query(offset) to int", http.StatusBadRequest))
 		return
 	}
 
 	hardware, count, err := h.HardwareService.GetHardware(offset)
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get hardware", http.StatusBadRequest))
 		return
 	}
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"Hardware": hardware,
 		"Count":    count,
 	})

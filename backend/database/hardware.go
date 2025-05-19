@@ -1,7 +1,6 @@
 package database
 
 import (
-	"backend/utils"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -227,13 +226,13 @@ func (hs *DefaultHardwareService) DeleteHardware(hardwareID int) error {
 	stmt, ok := query["DELETE_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос DELETE_HARDWARE не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
 	_, err := stmt.Exec(hardwareID)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -244,7 +243,7 @@ func (hs *DefaultHardwareService) GetHardwareByID(hardware *Hardware) error {
 	stmt, ok := query["GET_HARDWARE_BY_ID"]
 	if !ok {
 		err := errors.New("запрос GET_HARDWARE_BY_ID не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -274,7 +273,7 @@ func (hs *DefaultHardwareService) GetHardwareByID(hardware *Hardware) error {
 		&switchName,
 		&hardware.Node.Name,
 	); err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -289,7 +288,7 @@ func (hs *DefaultHardwareService) EditHardware(hardware *Hardware) error {
 	stmt, ok := query["EDIT_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос EDIT_HARDWARE не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -310,7 +309,7 @@ func (hs *DefaultHardwareService) EditHardware(hardware *Hardware) error {
 		hardware.UpdatedAt,
 	)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -321,7 +320,7 @@ func (hs *DefaultHardwareService) CreateHardware(hardware *Hardware) error {
 	stmt, ok := query["CREATE_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос CREATE_HARDWARE не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -341,7 +340,7 @@ func (hs *DefaultHardwareService) CreateHardware(hardware *Hardware) error {
 		hardware.CreatedAt,
 		nil,
 	).Scan(&hardware.ID); err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -352,19 +351,19 @@ func (hs *DefaultHardwareService) GetSearchHardware(search string, offset int) (
 	stmt, ok := query["GET_SEARCH_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос GET_SEARCH_HARDWARE не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	count, err := countRecord("GET_SEARCH_HARDWARE_COUNT", search)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	rows, err := stmt.Query(search, offset)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -398,7 +397,7 @@ func (hs *DefaultHardwareService) GetSearchHardware(search string, offset int) (
 			&switchName,
 			&_hardware.Node.Name,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			utils.Logger.Println(err)
+			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 
@@ -416,19 +415,19 @@ func (hs *DefaultHardwareService) GetNodeHardware(nodeID int, offset int) ([]Har
 	stmt, ok := query["GET_NODE_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос GET_NODE_HARDWARE не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	count, err := countRecord("GET_HOUSE_HARDWARE_COUNT", nodeID)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	rows, err := stmt.Query(nodeID, offset)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -462,7 +461,7 @@ func (hs *DefaultHardwareService) GetNodeHardware(nodeID int, offset int) ([]Har
 			&switchName,
 			&_hardware.Node.Name,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			utils.Logger.Println(err)
+			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 
@@ -480,19 +479,19 @@ func (hs *DefaultHardwareService) GetHouseHardware(houseID int, offset int) ([]H
 	stmt, ok := query["GET_HOUSE_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос GET_HOUSE_HARDWARE не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	count, err := countRecord("GET_HOUSE_HARDWARE_COUNT", houseID)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	rows, err := stmt.Query(houseID, offset)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -526,7 +525,7 @@ func (hs *DefaultHardwareService) GetHouseHardware(houseID int, offset int) ([]H
 			&switchName,
 			&_hardware.Node.Name,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			utils.Logger.Println(err)
+			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 
@@ -544,19 +543,19 @@ func (hs *DefaultHardwareService) GetHardware(offset int) ([]Hardware, int, erro
 	stmt, ok := query["GET_HARDWARE"]
 	if !ok {
 		err := errors.New("запрос GET_HARDWARE не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	count, err := countRecord("GET_HARDWARE_COUNT", nil)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	rows, err := stmt.Query(offset)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -590,7 +589,7 @@ func (hs *DefaultHardwareService) GetHardware(offset int) ([]Hardware, int, erro
 			&switchName,
 			&_hardware.Node.Name,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			utils.Logger.Println(err)
+			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 

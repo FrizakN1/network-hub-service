@@ -1,23 +1,24 @@
-package router
+package handlers
 
 import (
 	"backend/database"
-	"backend/utils"
+	"backend/errors"
 	"database/sql"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"net/http"
 	"strconv"
 	"time"
 )
 
 type NodeHandler interface {
-	handlerGetSearchNodes(c *gin.Context)
-	handlerEditNode(c *gin.Context)
-	handlerCreateNode(c *gin.Context)
-	handlerGetNode(c *gin.Context)
-	handlerGetHouseNodes(c *gin.Context)
-	handlerGetNodes(c *gin.Context)
-	handlerDeleteNode(c *gin.Context)
+	HandlerGetSearchNodes(c *gin.Context)
+	HandlerEditNode(c *gin.Context)
+	HandlerCreateNode(c *gin.Context)
+	HandlerGetNode(c *gin.Context)
+	HandlerGetHouseNodes(c *gin.Context)
+	HandlerGetNodes(c *gin.Context)
+	HandlerDeleteNode(c *gin.Context)
 }
 
 type DefaultNodeHandler struct {
@@ -34,65 +35,61 @@ func NewNodeHandler() NodeHandler {
 	}
 }
 
-func (h *DefaultNodeHandler) handlerDeleteNode(c *gin.Context) {
+func (h *DefaultNodeHandler) HandlerDeleteNode(c *gin.Context) {
 	_, isAdmin, _ := h.Privilege.getPrivilege(c)
 
 	if !isAdmin {
-		c.JSON(403, nil)
+		c.Error(errors.NewHTTPError(nil, "forbidden", http.StatusForbidden))
 		return
 	}
 
 	nodeID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 		return
 	}
 
 	if err = h.NodeService.DeleteNode(nodeID); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to delete node", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, true)
+	c.JSON(http.StatusOK, true)
 }
 
-func (h *DefaultNodeHandler) handlerGetSearchNodes(c *gin.Context) {
+func (h *DefaultNodeHandler) HandlerGetSearchNodes(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	search := c.Query("search")
 
 	nodes, count, err := h.NodeService.GetSearchNodes(search, offset)
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get search nodes", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"Nodes": nodes,
 		"Count": count,
 	})
 }
 
-func (h *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
+func (h *DefaultNodeHandler) HandlerEditNode(c *gin.Context) {
 	session, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
-		c.JSON(403, nil)
+		c.Error(errors.NewHTTPError(nil, "forbidden", http.StatusForbidden))
 		return
 	}
 
 	var node database.Node
 
 	if err := c.BindJSON(&node); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "invalid json", http.StatusBadRequest))
 		return
 	}
 
 	if !h.NodeService.ValidateNode(node) {
-		c.JSON(400, nil)
+		c.Error(errors.NewHTTPError(nil, "invalid node data", http.StatusBadRequest))
 		return
 	}
 
@@ -102,8 +99,7 @@ func (h *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
 	}
 
 	if err := h.NodeService.EditNode(&node); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to edit node", http.StatusInternalServerError))
 		return
 	}
 
@@ -117,38 +113,36 @@ func (h *DefaultNodeHandler) handlerEditNode(c *gin.Context) {
 	}
 
 	if err := h.EventService.CreateEvent(event); err != nil {
-		utils.Logger.Println(err)
+		c.Error(errors.NewHTTPError(err, "failed to delete node", http.StatusInternalServerError))
 	}
 
-	c.JSON(200, node)
+	c.JSON(http.StatusOK, node)
 }
 
-func (h *DefaultNodeHandler) handlerCreateNode(c *gin.Context) {
+func (h *DefaultNodeHandler) HandlerCreateNode(c *gin.Context) {
 	session, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
-		c.JSON(403, nil)
+		c.Error(errors.NewHTTPError(nil, "forbidden", http.StatusForbidden))
 		return
 	}
 
 	var node database.Node
 
 	if err := c.BindJSON(&node); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "invalid json", http.StatusBadRequest))
 		return
 	}
 
 	if !h.NodeService.ValidateNode(node) {
-		c.JSON(400, nil)
+		c.Error(errors.NewHTTPError(nil, "invalid node data", http.StatusBadRequest))
 		return
 	}
 
 	node.CreatedAt = time.Now().Unix()
 
 	if err := h.NodeService.CreateNode(&node); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to create node", http.StatusInternalServerError))
 		return
 	}
 
@@ -162,13 +156,13 @@ func (h *DefaultNodeHandler) handlerCreateNode(c *gin.Context) {
 	}
 
 	if err := h.EventService.CreateEvent(event); err != nil {
-		utils.Logger.Println(err)
+		c.Error(errors.NewHTTPError(err, "failed to create event", http.StatusInternalServerError))
 	}
 
-	c.JSON(200, node)
+	c.JSON(http.StatusOK, node)
 }
 
-func (h *DefaultNodeHandler) handlerGetNode(c *gin.Context) {
+func (h *DefaultNodeHandler) HandlerGetNode(c *gin.Context) {
 	var (
 		err  error
 		node database.Node
@@ -176,64 +170,57 @@ func (h *DefaultNodeHandler) handlerGetNode(c *gin.Context) {
 
 	node.ID, err = strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 		return
 	}
 
 	if err = h.NodeService.GetNode(&node); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get node", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, node)
+	c.JSON(http.StatusOK, node)
 }
 
-func (h *DefaultNodeHandler) handlerGetHouseNodes(c *gin.Context) {
+func (h *DefaultNodeHandler) HandlerGetHouseNodes(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse query(offset) to int", http.StatusBadRequest))
 		return
 	}
 
 	houseID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 		return
 	}
 
 	nodes, count, err := h.NodeService.GetHouseNodes(houseID, offset)
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get nodes", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"Nodes": nodes,
 		"Count": count,
 	})
 }
 
-func (h *DefaultNodeHandler) handlerGetNodes(c *gin.Context) {
+func (h *DefaultNodeHandler) HandlerGetNodes(c *gin.Context) {
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to parse query(offset) to int", http.StatusBadRequest))
 		return
 	}
 
 	nodes, count, err := h.NodeService.GetNodes(offset)
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get nodes", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"Nodes": nodes,
 		"Count": count,
 	})

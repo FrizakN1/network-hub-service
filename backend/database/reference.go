@@ -1,7 +1,6 @@
 package database
 
 import (
-	"backend/utils"
 	"database/sql"
 	"errors"
 )
@@ -127,7 +126,7 @@ func (rs *DefaultReferenceService) EditReferenceRecord(referenceRecord *Referenc
 	stmt, ok := query["EDIT_"+reference]
 	if !ok {
 		err := errors.New("запрос EDIT_" + reference + " не подготовлен")
-		utils.Logger.Println(err)
+		////utils.Logger.Println(err)
 		return err
 	}
 
@@ -140,7 +139,7 @@ func (rs *DefaultReferenceService) EditReferenceRecord(referenceRecord *Referenc
 	}
 
 	if err != nil {
-		utils.Logger.Println(err)
+		////utils.Logger.Println(err)
 		return err
 	}
 
@@ -151,7 +150,7 @@ func (rs *DefaultReferenceService) CreateReferenceRecord(referenceRecord *Refere
 	stmt, ok := query["CREATE_"+reference]
 	if !ok {
 		err := errors.New("запрос CREATE_" + reference + " не подготовлен")
-		utils.Logger.Println(err)
+		////utils.Logger.Println(err)
 		return err
 	}
 
@@ -160,7 +159,7 @@ func (rs *DefaultReferenceService) CreateReferenceRecord(referenceRecord *Refere
 			referenceRecord.Name,
 			referenceRecord.CreatedAt,
 		).Scan(&referenceRecord.ID); err != nil {
-			utils.Logger.Println(err)
+			////utils.Logger.Println(err)
 			return err
 		}
 	} else {
@@ -169,7 +168,7 @@ func (rs *DefaultReferenceService) CreateReferenceRecord(referenceRecord *Refere
 			referenceRecord.TranslateValue,
 			referenceRecord.CreatedAt,
 		).Scan(&referenceRecord.ID); err != nil {
-			utils.Logger.Println(err)
+			////utils.Logger.Println(err)
 			return err
 		}
 	}
@@ -181,13 +180,13 @@ func (rs *DefaultReferenceService) GetReferenceRecords(reference string) ([]Refe
 	stmt, ok := query["GET_"+reference]
 	if !ok {
 		err := errors.New("запрос GET_" + reference + " не подготовлен")
-		utils.Logger.Println(err)
+		////utils.Logger.Println(err)
 		return nil, err
 	}
 
 	rows, err := stmt.Query()
 	if err != nil {
-		utils.Logger.Println(err)
+		////utils.Logger.Println(err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -205,7 +204,7 @@ func (rs *DefaultReferenceService) GetReferenceRecords(reference string) ([]Refe
 		}
 
 		if err != nil {
-			utils.Logger.Println(err)
+			////utils.Logger.Println(err)
 			return nil, err
 		}
 

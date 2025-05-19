@@ -1,7 +1,6 @@
 package database
 
 import (
-	"backend/utils"
 	"database/sql"
 	"errors"
 )
@@ -84,13 +83,13 @@ func (ss *DefaultSwitchService) GetSwitches() ([]Switch, error) {
 	stmt, ok := query["GET_SWITCHES"]
 	if !ok {
 		err := errors.New("запрос GET_SWITCHES не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, err
 	}
 
 	rows, err := stmt.Query()
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -128,7 +127,7 @@ func (ss *DefaultSwitchService) GetSwitches() ([]Switch, error) {
 			&operationModeValue,
 			&operationModeTranslateValue,
 		); err != nil {
-			utils.Logger.Println(err)
+			//utils.Logger.Println(err)
 			return nil, err
 		}
 
@@ -150,7 +149,7 @@ func (ss *DefaultSwitchService) EditSwitch(_switch *Switch) error {
 	stmt, ok := query["EDIT_SWITCH"]
 	if !ok {
 		err := errors.New("запрос EDIT_SWITCH не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -182,7 +181,7 @@ func (ss *DefaultSwitchService) EditSwitch(_switch *Switch) error {
 		_switch.MacOID,
 	)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -193,7 +192,7 @@ func (ss *DefaultSwitchService) CreateSwitch(_switch *Switch) error {
 	stmt, ok := query["CREATE_SWITCH"]
 	if !ok {
 		err := errors.New("запрос CREATE_SWITCH не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -224,7 +223,7 @@ func (ss *DefaultSwitchService) CreateSwitch(_switch *Switch) error {
 		_switch.CreatedAt,
 		_switch.MacOID,
 	).Scan(&_switch.ID); err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 

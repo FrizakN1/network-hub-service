@@ -1,16 +1,18 @@
-package router
+package handlers
 
 import (
 	"backend/database"
-	"backend/utils"
+	"backend/errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"net/http"
 	"strings"
 	"time"
 )
 
 type ReferenceHandler interface {
-	handleReferenceRecord(c *gin.Context, isEdit bool)
-	handlerGetReference(c *gin.Context)
+	HandlerReferenceRecord(c *gin.Context, isEdit bool)
+	HandlerGetReference(c *gin.Context)
 }
 
 type DefaultReferenceHandler struct {
@@ -25,11 +27,11 @@ func NewReferenceHandler() ReferenceHandler {
 	}
 }
 
-func (h *DefaultReferenceHandler) handleReferenceRecord(c *gin.Context, isEdit bool) {
+func (h *DefaultReferenceHandler) HandlerReferenceRecord(c *gin.Context, isEdit bool) {
 	_, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
-		c.JSON(403, nil)
+		c.Error(errors.NewHTTPError(nil, "forbidden", http.StatusForbidden))
 		return
 	}
 
@@ -37,14 +39,13 @@ func (h *DefaultReferenceHandler) handleReferenceRecord(c *gin.Context, isEdit b
 	reference := c.Param("reference")
 
 	if err := c.BindJSON(&record); err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(nil, "invalid json data", http.StatusBadRequest))
 		return
 	}
 
 	if ((reference == "node_types" || reference == "owners") && record.Name == "") ||
 		((reference == "hardware_types" || reference == "operation_modes") && record.Value == "" && record.TranslateValue == "") {
-		c.JSON(400, nil)
+		c.Error(errors.NewHTTPError(nil, fmt.Sprintf("invalid %s data", reference), http.StatusBadRequest))
 		return
 	}
 
@@ -52,31 +53,28 @@ func (h *DefaultReferenceHandler) handleReferenceRecord(c *gin.Context, isEdit b
 		record.CreatedAt = time.Now().Unix()
 		err := h.ReferenceService.CreateReferenceRecord(&record, strings.ToUpper(reference))
 		if err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
+			c.Error(errors.NewHTTPError(err, fmt.Sprintf("failed to create %s", reference), http.StatusInternalServerError))
 			return
 		}
 	} else {
 		err := h.ReferenceService.EditReferenceRecord(&record, strings.ToUpper(reference))
 		if err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
+			c.Error(errors.NewHTTPError(err, "failed to edit reference", http.StatusInternalServerError))
 			return
 		}
 	}
 
-	c.JSON(200, record)
+	c.JSON(http.StatusOK, record)
 }
 
-func (h *DefaultReferenceHandler) handlerGetReference(c *gin.Context) {
+func (h *DefaultReferenceHandler) HandlerGetReference(c *gin.Context) {
 	reference := c.Param("reference")
 
 	records, err := h.ReferenceService.GetReferenceRecords(strings.ToUpper(reference))
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get references", http.StatusInternalServerError))
 		return
 	}
 
-	c.JSON(200, records)
+	c.JSON(http.StatusOK, records)
 }

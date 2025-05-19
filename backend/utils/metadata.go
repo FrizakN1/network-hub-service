@@ -1,4 +1,4 @@
-package router
+package utils
 
 import (
 	"context"
@@ -7,15 +7,15 @@ import (
 )
 
 type Metadata interface {
-	setAuthorizationHeader(c *gin.Context) context.Context
+	SetAuthorizationHeader(c *gin.Context) context.Context
 }
 type DefaultMetadata struct{}
 
-func (m *DefaultMetadata) setAuthorizationHeader(c *gin.Context) context.Context {
+func (m *DefaultMetadata) SetAuthorizationHeader(c *gin.Context) context.Context {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
 		c.JSON(401, gin.H{"error": "authorization header missing"})
-		return nil
+		return context.Background()
 	}
 
 	md := metadata.New(map[string]string{

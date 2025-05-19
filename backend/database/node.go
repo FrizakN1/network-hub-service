@@ -1,7 +1,6 @@
 package database
 
 import (
-	"backend/utils"
 	"database/sql"
 	"errors"
 )
@@ -194,13 +193,13 @@ func (ns *DefaultNodeService) DeleteNode(nodeID int) error {
 	stmt, ok := query["DELETE_NODE"]
 	if !ok {
 		err := errors.New("запрос DELETE_NODE не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
 	_, err := stmt.Exec(nodeID)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -211,19 +210,19 @@ func (ns *DefaultNodeService) GetSearchNodes(search string, offset int) ([]Node,
 	stmt, ok := query["GET_SEARCH_NODES"]
 	if !ok {
 		err := errors.New("запрос GET_SEARCH_NODES не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	count, err := countRecord("GET_SEARCH_NODES_COUNT", search)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	rows, err := stmt.Query(search, offset)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -260,7 +259,7 @@ func (ns *DefaultNodeService) GetSearchNodes(search string, offset int) ([]Node,
 			&node.Owner.Name,
 			&parentName,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			utils.Logger.Println(err)
+			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 
@@ -278,7 +277,7 @@ func (ns *DefaultNodeService) EditNode(node *Node) error {
 	stmt, ok := query["EDIT_NODE"]
 	if !ok {
 		err := errors.New("запрос EDIT_NODE не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -303,7 +302,7 @@ func (ns *DefaultNodeService) EditNode(node *Node) error {
 		node.Address.House.ID,
 	)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -314,7 +313,7 @@ func (ns *DefaultNodeService) CreateNode(node *Node) error {
 	stmt, ok := query["CREATE_NODE"]
 	if !ok {
 		err := errors.New("запрос CREATE_NODE не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -338,7 +337,7 @@ func (ns *DefaultNodeService) CreateNode(node *Node) error {
 		node.CreatedAt,
 		node.UpdatedAt,
 	).Scan(&node.ID); err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -349,7 +348,7 @@ func (ns *DefaultNodeService) GetNode(node *Node) error {
 	stmt, ok := query["GET_NODE"]
 	if !ok {
 		err := errors.New("запрос GET_NODE не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -381,7 +380,7 @@ func (ns *DefaultNodeService) GetNode(node *Node) error {
 		&node.Owner.Name,
 		&parentName,
 	); err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -396,19 +395,19 @@ func (ns *DefaultNodeService) GetHouseNodes(houseID int, offset int) ([]Node, in
 	stmt, ok := query["GET_HOUSE_NODES"]
 	if !ok {
 		err := errors.New("запрос GET_HOUSE_NODES не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	count, err := countRecord("GET_HOUSE_NODES_COUNT", houseID)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	rows, err := stmt.Query(houseID, offset)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -445,7 +444,7 @@ func (ns *DefaultNodeService) GetHouseNodes(houseID int, offset int) ([]Node, in
 			&node.Owner.Name,
 			&parentName,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			utils.Logger.Println(err)
+			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 
@@ -463,19 +462,19 @@ func (ns *DefaultNodeService) GetNodes(offset int) ([]Node, int, error) {
 	stmt, ok := query["GET_NODES"]
 	if !ok {
 		err := errors.New("запрос GET_NODES не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	count, err := countRecord("GET_NODES_COUNT", nil)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 
 	rows, err := stmt.Query(offset)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -512,7 +511,7 @@ func (ns *DefaultNodeService) GetNodes(offset int) ([]Node, int, error) {
 			&node.Owner.Name,
 			&parentName,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			utils.Logger.Println(err)
+			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 

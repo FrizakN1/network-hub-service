@@ -1,34 +1,36 @@
-package router
+package handlers
 
 import (
 	"backend/database"
+	"backend/errors"
 	"backend/proto/userpb"
 	"backend/utils"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"net/http"
 	"strconv"
 	"strings"
 )
 
 type EventHandler interface {
-	handlerGetEvents(c *gin.Context, from string)
+	HandlerGetEvents(c *gin.Context, from string)
 }
 
 type DefaultEventHandler struct {
 	EventService database.EventService
 	UserService  userpb.UserServiceClient
-	Metadata     Metadata
+	Metadata     utils.Metadata
 }
 
 func NewEventHandler(userClient *userpb.UserServiceClient) EventHandler {
 	return &DefaultEventHandler{
 		EventService: &database.DefaultEventService{},
 		UserService:  *userClient,
-		Metadata:     &DefaultMetadata{},
+		Metadata:     &utils.DefaultMetadata{},
 	}
 }
 
-func (h *DefaultEventHandler) handlerGetEvents(c *gin.Context, from string) {
+func (h *DefaultEventHandler) HandlerGetEvents(c *gin.Context, from string) {
 	id := 0
 	var err error
 
@@ -37,16 +39,14 @@ func (h *DefaultEventHandler) handlerGetEvents(c *gin.Context, from string) {
 
 		id, err = strconv.Atoi(c.Param("id"))
 		if err != nil {
-			utils.Logger.Println(err)
-			handlerError(c, err, 400)
+			c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 			return
 		}
 	}
 
 	events, count, err := h.EventService.GetEvents(from, id)
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 400)
+		c.Error(errors.NewHTTPError(err, "failed to get events", http.StatusInternalServerError))
 		return
 	}
 
@@ -60,12 +60,11 @@ func (h *DefaultEventHandler) handlerGetEvents(c *gin.Context, from string) {
 		userIds = append(userIds, userID)
 	}
 
-	ctx := h.Metadata.setAuthorizationHeader(c)
+	ctx := h.Metadata.SetAuthorizationHeader(c)
 
 	userResp, err := h.UserService.GetUsersByIds(ctx, &userpb.GetUsersByIdsRequest{Ids: userIds})
 	if err != nil {
-		utils.Logger.Println(err)
-		handlerError(c, err, 500)
+		c.Error(errors.NewHTTPError(err, "failed to get users", http.StatusInternalServerError))
 		return
 	}
 
@@ -78,7 +77,7 @@ func (h *DefaultEventHandler) handlerGetEvents(c *gin.Context, from string) {
 		events[i].User = usersMap[events[i].UserId]
 	}
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"Events": events,
 		"Count":  count,
 	})

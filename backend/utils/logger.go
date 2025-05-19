@@ -7,16 +7,29 @@ import (
 	"time"
 )
 
-var Logger *log.Logger
+type Logger interface {
+	Println(v ...any)
+	//PrintlnWithCaller(err error, skip int)
+}
 
-func InitLogger() {
-	currentDate := time.Now().String()[0:10]
+func InitLogger() Logger {
+	logDir := "logs"
 
-	loggerFile, e := os.OpenFile("logs/"+currentDate+".log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-	if e != nil {
-		fmt.Println(e)
-		return
+	_, err := os.Stat(logDir)
+	if os.IsNotExist(err) {
+		if err = os.Mkdir(logDir, os.ModePerm); err != nil {
+			fmt.Println("ошибка создания папки logs:", err)
+			return log.Default()
+		}
 	}
 
-	Logger = log.New(loggerFile, "", log.Ldate|log.Ltime|log.Lshortfile)
+	currentDate := time.Now().String()[0:10]
+
+	loggerFile, e := os.OpenFile(fmt.Sprintf("%s/%s.log", logDir, currentDate), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if e != nil {
+		fmt.Println(e)
+		return log.Default()
+	}
+
+	return log.New(loggerFile, "", log.Ldate|log.Ltime)
 }

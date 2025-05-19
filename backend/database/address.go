@@ -1,7 +1,6 @@
 package database
 
 import (
-	"backend/utils"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -177,7 +176,7 @@ func (as *DefaultAddressService) GetHouses(offset int) ([]Address, int, error) {
 	stmt, ok := query["GET_HOUSES"]
 	if !ok {
 		err := "запрос не подготовлен"
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, errors.New(err)
 	}
 
@@ -188,7 +187,7 @@ func (as *DefaultAddressService) GetHouses(offset int) ([]Address, int, error) {
 
 	rows, err := stmt.Query(offset)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -211,7 +210,7 @@ func (as *DefaultAddressService) GetHouses(offset int) ([]Address, int, error) {
 			&address.HardwareAmount,
 		)
 		if err != nil {
-			utils.Logger.Println(err)
+			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 
@@ -225,7 +224,7 @@ func (as *DefaultAddressService) GetHouse(address *Address) error {
 	stmt, ok := query["GET_HOUSE"]
 	if !ok {
 		err := "запрос не подготовлен"
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return errors.New(err)
 	}
 
@@ -240,7 +239,7 @@ func (as *DefaultAddressService) GetHouse(address *Address) error {
 		&address.House.Type.ShortName,
 	)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return err
 	}
 
@@ -251,7 +250,7 @@ func countSuggestions(streetPart, housePart string) (int, error) {
 	stmt, ok := query["GET_SUGGESTIONS_COUNT"]
 	if !ok {
 		err := "запрос не подготовлен"
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return 0, errors.New(err)
 	}
 
@@ -260,7 +259,7 @@ func countSuggestions(streetPart, housePart string) (int, error) {
 	var count int
 	err := row.Scan(&count)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return 0, err
 	}
 
@@ -273,7 +272,7 @@ func (as *DefaultAddressService) GetSuggestions(search string, offset int, limit
 	stmt, ok := query["GET_SUGGESTIONS"]
 	if !ok {
 		err := "запрос GET_SUGGESTIONS не подготовлен"
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, errors.New(err)
 	}
 
@@ -289,7 +288,7 @@ func (as *DefaultAddressService) GetSuggestions(search string, offset int, limit
 
 	rows, err := stmt.Query(streetPart, housePart, offset, limit)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -310,7 +309,7 @@ func (as *DefaultAddressService) GetSuggestions(search string, offset int, limit
 			&address.HardwareAmount,
 		)
 		if err != nil {
-			utils.Logger.Println(err)
+			//utils.Logger.Println(err)
 			return nil, 0, err
 		}
 
@@ -362,7 +361,7 @@ func countRecord(key string, param interface{}) (int, error) {
 	stmt, ok := query[key]
 	if !ok {
 		err := errors.New("запрос " + key + " не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return 0, err
 	}
 
@@ -375,7 +374,7 @@ func countRecord(key string, param interface{}) (int, error) {
 
 	var count int
 	if err := row.Scan(&count); err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Println(err)
 		return 0, err
 	}
 
@@ -392,16 +391,16 @@ func LoadAddressElementTypeMap(m map[string]map[string]bool) {
 		stmt, ok := query[key]
 		if !ok {
 			fmt.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
-			utils.Logger.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
+			//utils.Logger.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
 			return
 		}
 
 		rows, e := stmt.Query()
 		if e != nil {
 			fmt.Println(e)
-			utils.Logger.Println(e)
+			//utils.Logger.Println(e)
 			fmt.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
-			utils.Logger.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
+			//utils.Logger.Println("ошибка загрузки перечислений, необходимо остановить работу сервера и обратиться к разработчику")
 			return
 		}
 
@@ -417,7 +416,7 @@ func LoadAddressElementTypeMap(m map[string]map[string]bool) {
 				&addressElementType.ShortName,
 			)
 			if e != nil {
-				utils.Logger.Println(e)
+				//utils.Logger.Println(e)
 				fmt.Println(e)
 				return
 			}

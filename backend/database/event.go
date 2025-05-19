@@ -2,7 +2,6 @@ package database
 
 import (
 	"backend/proto/userpb"
-	"backend/utils"
 	"database/sql"
 	"errors"
 )
@@ -194,7 +193,7 @@ func (s *DefaultEventService) CreateEvent(event Event) error {
 	stmt, ok := query["CREATE_EVENT"]
 	if !ok {
 		err := errors.New("запрос CREATE_EVENT не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return err
 	}
 
@@ -218,7 +217,7 @@ func (s *DefaultEventService) CreateEvent(event Event) error {
 		event.CreatedAt,
 	)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return err
 	}
 
@@ -235,7 +234,7 @@ func (s *DefaultEventService) GetEvents(from string, id int) ([]Event, int, erro
 	stmt, ok := query[key]
 	if !ok {
 		err := errors.New("запрос " + key + " не подготовлен")
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return nil, 0, err
 	}
 
@@ -251,7 +250,7 @@ func (s *DefaultEventService) GetEvents(from string, id int) ([]Event, int, erro
 	}
 
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -282,7 +281,7 @@ func (s *DefaultEventService) GetEvents(from string, id int) ([]Event, int, erro
 			&nodeName,
 			&hardwareTypeTranslateValue,
 		); err != nil {
-			utils.Logger.Println(err)
+			//utils.Logger.Printlnogger.Println(err)
 			return nil, 0, err
 		}
 
@@ -299,7 +298,7 @@ func (s *DefaultEventService) GetEvents(from string, id int) ([]Event, int, erro
 
 	count, err := countRecord(key+"_COUNT", countParam)
 	if err != nil {
-		utils.Logger.Println(err)
+		//utils.Logger.Printlnogger.Println(err)
 		return nil, 0, err
 	}
 
