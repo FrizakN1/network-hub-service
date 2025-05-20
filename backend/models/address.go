@@ -21,4 +21,6 @@ type Address struct {
 	FileAmount     int
 	NodeAmount     int
 	HardwareAmount int
+	RoofType       Reference
+	WiringType     Reference
 }

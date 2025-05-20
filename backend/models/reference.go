@@ -1,9 +1,8 @@
 package models
 
 type Reference struct {
-	ID             int
-	Name           string
-	Value          string
-	TranslateValue string
-	CreatedAt      int64
+	ID        int
+	Key       string
+	Value     string
+	CreatedAt int64
 }

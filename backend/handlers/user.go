@@ -50,7 +50,7 @@ func InitUserClient() userpb.UserServiceClient {
 	return userClient
 }
 
-func (h DefaultUserHandler) HandlerGetUsers(c *gin.Context) {
+func (h *DefaultUserHandler) HandlerGetUsers(c *gin.Context) {
 	_, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
@@ -69,7 +69,7 @@ func (h DefaultUserHandler) HandlerGetUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, res.Users)
 }
 
-func (h DefaultUserHandler) HandlerCreateUser(c *gin.Context) {
+func (h *DefaultUserHandler) HandlerCreateUser(c *gin.Context) {
 	_, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
@@ -95,7 +95,7 @@ func (h DefaultUserHandler) HandlerCreateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-func (h DefaultUserHandler) HandlerEditUser(c *gin.Context) {
+func (h *DefaultUserHandler) HandlerEditUser(c *gin.Context) {
 	_, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {
@@ -121,7 +121,7 @@ func (h DefaultUserHandler) HandlerEditUser(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-func (h DefaultUserHandler) HandlerChangeUserStatus(c *gin.Context) {
+func (h *DefaultUserHandler) HandlerChangeUserStatus(c *gin.Context) {
 	_, _, isOperatorOrHigher := h.Privilege.getPrivilege(c)
 
 	if !isOperatorOrHigher {

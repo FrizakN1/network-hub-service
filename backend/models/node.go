@@ -17,4 +17,5 @@ type Node struct {
 	CreatedAt   int64
 	UpdatedAt   sql.NullInt64
 	IsDelete    bool
+	IsPassive   bool
 }
