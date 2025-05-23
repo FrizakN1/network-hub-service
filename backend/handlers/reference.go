@@ -46,8 +46,19 @@ func (h *DefaultReferenceHandler) HandlerReferenceRecord(c *gin.Context, isEdit 
 		return
 	}
 
-	if ((reference == "node_types" || reference == "owners") && record.Name == "") ||
-		((reference == "hardware_types" || reference == "operation_modes") && record.Value == "" && record.TranslateValue == "") {
+	var isValid bool
+
+	switch reference {
+	case "node_types", "owners", "roof_types", "wiring_types":
+		isValid = record.Value != ""
+	case "hardware_types", "operation_modes":
+		isValid = record.Key != "" && record.Value != ""
+	default:
+		c.Error(errors.NewHTTPError(nil, fmt.Sprintf("reference is unsupported (%s)", reference), http.StatusBadRequest))
+		return
+	}
+
+	if !isValid {
 		c.Error(errors.NewHTTPError(nil, fmt.Sprintf("invalid %s data", reference), http.StatusBadRequest))
 		return
 	}

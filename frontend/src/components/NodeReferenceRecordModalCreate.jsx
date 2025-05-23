@@ -38,10 +38,10 @@ const NodeReferenceRecordModalCreate = ({action, setState, returnRecord, editRec
         }
 
         let body = {
-            Name: name.Value
+            Value: name.Value
         }
 
-        if (action === "edit") {body = {...editRecord, Name: name.Value}}
+        if (action === "edit") {body = {...editRecord, ...body}}
 
         FetchRequest(action === "create" ? "POST" : "PUT", `/references/${reference}`, body)
             .then(response => {

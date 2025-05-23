@@ -148,8 +148,8 @@ const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
             {user.role.key !== "user" && canCreate && <>
                 {modalCreate && <HardwareModalCreate action={"create"} setState={setModalCreate} returnHardware={handlerAddHardware}/>}
                 {modalEdit.State && <HardwareModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editHardware={modalEdit.EditHardware} returnHardware={handlerEditHardware}/>}
-                <div className="contain">
-                    <button className="add-hardware" onClick={() => setModalCreate(true)}>
+                <div className="buttons">
+                    <button onClick={() => setModalCreate(true)}>
                         <FontAwesomeIcon icon={faPlus}/> Добавить оборудование
                     </button>
                 </div>
@@ -172,11 +172,11 @@ const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
                     {isLoaded && hardware.map((_hardware, index) => (
                         <tr key={index} className={index % 2 === 0 ? 'row-type-1' : 'row-type-2'}>
                             <td>{_hardware.ID}</td>
-                            <td>{_hardware.Type.TranslateValue}</td>
+                            <td>{_hardware.Type.Value}</td>
                             {type !== "node" && <td>{_hardware.Node.Name}</td>}
                             {type !== "house" && <td>{`${_hardware.Node.Address.Street.Type.ShortName} ${_hardware.Node.Address.Street.Name}, ${_hardware.Node.Address.House.Type.ShortName} ${_hardware.Node.Address.House.Name}`}</td>}
-                            <td>{_hardware.Type.Value === "switch" ? _hardware.Switch.Name : "-"}</td>
-                            <td>{_hardware.Type.Value === "switch" && _hardware.IpAddress.Valid ? _hardware.IpAddress.String : "-"}</td>
+                            <td>{_hardware.Type.Key === "switch" ? _hardware.Switch.Name : "-"}</td>
+                            <td>{_hardware.Type.Key === "switch" && _hardware.IpAddress.Valid ? _hardware.IpAddress.String : "-"}</td>
                             <td>
                                 <FontAwesomeIcon icon={faEye} className="eye" title="Просмотр" onClick={() => navigate(`/hardware/view/${_hardware.ID}`)}/>
                                 {user.role.key !== "user" &&<FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditHardware: _hardware})}/>}

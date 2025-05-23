@@ -30,6 +30,10 @@ const NodeViewPage = () => {
                     <div className="info">
                         <div className="column">
                             <div className="block">
+                                <span>Тип узла</span>
+                                <p>{!node.IsPassive ? "Активный" : "Пассивный"}</p>
+                            </div>
+                            <div className="block">
                                 <span>Наименование узла</span>
                                 <p>{node.Name}</p>
                             </div>
@@ -37,17 +41,19 @@ const NodeViewPage = () => {
                                 <span>Адрес узла</span>
                                 <p>{`${node.Address.Street.Type.ShortName} ${node.Address.Street.Name}, ${node.Address.House.Type.ShortName} ${node.Address.House.Name}`}</p>
                             </div>
-                            <div className="block">
-                                <span>Тип узла</span>
-                                <p>{node.Type.Name}</p>
-                            </div>
-                            <div className="block">
-                                <span>Родительский узел</span>
-                                {node.Parent != null ? <Link to={`/nodes/view/${node.Parent.ID}`}><p>{node.Parent.Name}</p></Link> : <p>-</p>}
-                            </div>
+                            {!node.IsPassive && <>
+                                <div className="block">
+                                    <span>Тип активного узла</span>
+                                    <p>{node.Type?.Value || "-"}</p>
+                                </div>
+                                <div className="block">
+                                    <span>Родительский узел</span>
+                                    {node.Parent != null ? <Link to={`/nodes/view/${node.Parent.ID}`}><p>{node.Parent.Name}</p></Link> : <p>-</p>}
+                                </div>
+                            </>}
                             <div className="block">
                                 <span>Владелец узла</span>
-                                <p>{node.Owner.Name}</p>
+                                <p>{node.Owner.Value}</p>
                             </div>
                             <div className="block">
                                 <span>Район узла</span>
@@ -87,7 +93,7 @@ const NodeViewPage = () => {
                 <div className="tabs">
                     <div className={activeTab === 1 ? "tab active" : "tab"} onClick={() => setActiveTab(1)}>Изображения</div>
                     <div className={activeTab === 2 ? "tab active" : "tab"} onClick={() => setActiveTab(2)}>Файлы</div>
-                    <div className={activeTab === 3 ? "tab active" : "tab"} onClick={() => setActiveTab(3)}>Оборудование</div>
+                    {isLoaded && !node.IsPassive && <div className={activeTab === 3 ? "tab active" : "tab"} onClick={() => setActiveTab(3)}>Оборудование</div>}
                     <div className={activeTab === 4 ? "tab active" : "tab"} onClick={() => setActiveTab(4)}>События</div>
                 </div>
             </div>

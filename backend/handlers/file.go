@@ -43,21 +43,12 @@ func NewFileHandler(db *database.Database) FileHandler {
 		},
 		EventRepo: &database.DefaultEventRepository{
 			Database: *db,
-			Counter: &database.DefaultCounter{
-				Database: *db,
-			},
 		},
 		NodeRepo: &database.DefaultNodeRepository{
 			Database: *db,
-			Counter: &database.DefaultCounter{
-				Database: *db,
-			},
 		},
 		HardwareRepo: &database.DefaultHardwareRepository{
 			Database: *db,
-			Counter: &database.DefaultCounter{
-				Database: *db,
-			},
 		},
 	}
 }

@@ -423,16 +423,17 @@ section.login {
   display: flex;
   align-items: center;
   flex-direction: column;
+  gap: 20px;
 }
 
-.users .buttons, .references .buttons {
+.buttons {
   width: 80%;
   display: flex;
   justify-content: right;
-  margin-bottom: 20px;
+  /*margin-bottom: 20px;*/
 }
 
-.users .buttons button, .references .buttons button {
+.buttons button {
   color: #ffffff;
   border-radius: 3px;
   padding: 8px 15px;
@@ -441,6 +442,11 @@ section.login {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.info .buttons {
+  padding: 20px 20px 0 0;
+  width: 100%;
 }
 
 /*.contain table {*/
@@ -1002,17 +1008,17 @@ nav div button {
   margin-right: 5px;
 }
 
-.contain .add-node, .contain .add-hardware {
-  display: flex;
-  gap: 5px;
-  justify-content: center;
-  align-items: center;
-  color: #ffffff;
-  font-size: 18px;
-  padding: 25px 0;
-  width: 80%;
-  background-color: rgb(37,147,184);
-}
+/*.contain .add-node, .contain .add-hardware {*/
+/*  display: flex;*/
+/*  gap: 5px;*/
+/*  justify-content: center;*/
+/*  align-items: center;*/
+/*  color: #ffffff;*/
+/*  font-size: 18px;*/
+/*  padding: 25px 0;*/
+/*  width: 80%;*/
+/*  background-color: rgb(37,147,184);*/
+/*}*/
 
 .references .contain {
   width: 100%;
@@ -1082,6 +1088,15 @@ label.checkbox input[type="checkbox"]:checked + span:after {
   margin-bottom: 20px;
 }
 
+.info.column {
+  flex-direction: column;
+}
+
+.info .row {
+  display: flex;
+  width: 100%;
+}
+
 .info .column {
   width: 50%;
   display: flex;
@@ -1101,6 +1116,7 @@ label.checkbox input[type="checkbox"]:checked + span:after {
   border: 1px solid rgb(37,147,184);
   border-radius: 8px;
   font-size: 20px;
+  display: flex;
 }
 
 .info .block a {

@@ -64,7 +64,7 @@ const SwitchesPage = () => {
                         {switches.map((record, index) => (
                             <tr key={"record"+index} className={index % 2 === 0 ? 'row-type-1' : 'row-type-2'}>
                                 <td>{record.ID}</td>
-                                <td>{record.Name || record.TranslateValue}</td>
+                                <td>{record.Name}</td>
                                 <td>{new Date(record.CreatedAt * 1000).toLocaleString().slice(0, 17)}</td>
                                 <td>
                                     {user.role.key !== "user" && <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditSwitch: record})}/>}

@@ -19,7 +19,7 @@ type DefaultSwitchRepository struct {
 func (r *DefaultSwitchRepository) GetSwitches() ([]models.Switch, error) {
 	stmt, ok := r.Database.GetQuery("GET_SWITCHES")
 	if !ok {
-		return nil, errors.New("запрос GET_SWITCHES не подготовлен")
+		return nil, errors.New("query GET_SWITCHES is not prepare")
 	}
 
 	rows, err := stmt.Query()
@@ -32,10 +32,10 @@ func (r *DefaultSwitchRepository) GetSwitches() ([]models.Switch, error) {
 
 	for rows.Next() {
 		var (
-			operationModeID             sql.NullInt64
-			operationModeValue          sql.NullString
-			operationModeTranslateValue sql.NullString
-			_switch                     models.Switch
+			operationModeID    sql.NullInt64
+			operationModeKey   sql.NullString
+			operationModeValue sql.NullString
+			_switch            models.Switch
 		)
 		if err = rows.Scan(
 			&_switch.ID,
@@ -58,17 +58,17 @@ func (r *DefaultSwitchRepository) GetSwitches() ([]models.Switch, error) {
 			&_switch.UptimeOID,
 			&_switch.CreatedAt,
 			&_switch.MacOID,
+			&operationModeKey,
 			&operationModeValue,
-			&operationModeTranslateValue,
 		); err != nil {
 			return nil, err
 		}
 
 		if operationModeID.Valid {
 			_switch.OperationMode = models.Reference{
-				ID:             int(operationModeID.Int64),
-				Value:          operationModeValue.String,
-				TranslateValue: operationModeTranslateValue.String,
+				ID:    int(operationModeID.Int64),
+				Key:   operationModeKey.String,
+				Value: operationModeValue.String,
 			}
 		}
 
@@ -81,7 +81,7 @@ func (r *DefaultSwitchRepository) GetSwitches() ([]models.Switch, error) {
 func (r *DefaultSwitchRepository) EditSwitch(_switch *models.Switch) error {
 	stmt, ok := r.Database.GetQuery("EDIT_SWITCH")
 	if !ok {
-		return errors.New("запрос EDIT_SWITCH не подготовлен")
+		return errors.New("query EDIT_SWITCH is not prepare")
 	}
 
 	var operationModeID interface{}
@@ -121,7 +121,7 @@ func (r *DefaultSwitchRepository) EditSwitch(_switch *models.Switch) error {
 func (r *DefaultSwitchRepository) CreateSwitch(_switch *models.Switch) error {
 	stmt, ok := r.Database.GetQuery("CREATE_SWITCH")
 	if !ok {
-		return errors.New("запрос CREATE_SWITCH не подготовлен")
+		return errors.New("query CREATE_SWITCH is not prepare")
 	}
 
 	var operationModeID interface{}

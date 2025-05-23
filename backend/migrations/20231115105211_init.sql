@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS "Node" (
     id serial PRIMARY KEY,
     parent_id integer,
     house_id integer NOT NULL,
-    type_id integer NOT NULL,
+    type_id integer,
     owner_id integer NOT NULL,
     name character varying(255) NOT NULL,
     zone character varying(255),

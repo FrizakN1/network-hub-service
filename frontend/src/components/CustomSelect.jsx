@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useState} from "react";
 
 const CustomSelect = ({placeholder, value, values, setValue}) => {
     const [isOlenList, setIsOpenList] = useState(false)
@@ -14,7 +14,7 @@ const CustomSelect = ({placeholder, value, values, setValue}) => {
             {isOlenList &&
                 <ul className="list">
                     {values.map((_value, index) => (
-                        <li key={"role"+index} onClick={() => handlerSelectValue(_value)}>{_value?.TranslateValue || _value?.Name}</li>
+                        <li key={"role"+index} onClick={() => handlerSelectValue(_value)}>{_value?.Value || _value?.Name || _value?.value}</li>
                     ))}
                 </ul>
             }

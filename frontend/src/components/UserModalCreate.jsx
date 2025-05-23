@@ -7,22 +7,22 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
     const validateDebounceTimer = useRef(0)
     const [roles, setRoles] = useState([])
     const [fields, setFields] = useState({
-        Login: "",
-        Name: "",
-        Password: "",
-        PasswordConfirm: "",
-        Role: {
-            Id: 0,
-            Key: "",
-            Value: "",
+        login: "",
+        name: "",
+        password: "",
+        passwordConfirm: "",
+        role: {
+            id: 0,
+            key: "",
+            value: "",
         },
     })
     const [validation, setValidation] = useState({
-        Login: true,
-        Name: true,
-        Password: true,
-        PasswordConfirm: true,
-        Role: true,
+        login: true,
+        name: true,
+        password: true,
+        passwordConfirm: true,
+        role: true,
     })
 
     const handlerModalCreateClose = (e) => {
@@ -35,9 +35,9 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
         if (action === "edit") {
             setFields(prevState => ({
                 ...prevState,
-                Login: editUser.Login,
-                Role: editUser.Role,
-                Name: editUser.Name,
+                login: editUser.login,
+                role: editUser.role,
+                name: editUser.name,
             }))
         }
     }, [action, editUser]);
@@ -56,18 +56,18 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
         let isValid
 
         switch (name) {
-            case "Name":
-            case "Login":
+            case "name":
+            case "login":
                 isValid = value.trim().length > 0
                 break
-            case "Password":
+            case "password":
                 isValid = action === "create" ? value.trim().length > 5 : value.trim().length === 0 || value.trim().length > 5
                 break
-            case "PasswordConfirm":
-                isValid = fields.Password === value
+            case "passwordConfirm":
+                isValid = fields.password === value
                 break
-            case "Role":
-                isValid = value.ID > 0
+            case "role":
+                isValid = value.id > 0
                 break
             default: isValid = true
         }
@@ -88,17 +88,17 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
     }
 
     const handlerSelectRole = (role) => {
-        setFields(prevState => ({...prevState, Role: role}))
+        setFields(prevState => ({...prevState, role: role}))
     }
 
     const checkChange = (field) => {
         switch (field) {
-            case "Login":
-            case "Name":
-            case "Password":
+            case "login":
+            case "name":
+            case "password":
                 return fields[field] !== editUser[field]
-            case "Role":
-                return fields.Role.Id !== editUser.Role.Id
+            case "role":
+                return fields.role.id !== editUser.role.id
             default: return false
         }
     }
@@ -128,10 +128,10 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
         }
 
         let body = {
-            RoleId: fields.Role.ID,
-            Login: fields.Login,
-            Name: fields.Name,
-            Password: fields.Password,
+            role_id: fields.role.id,
+            login: fields.login,
+            name: fields.name,
+            password: fields.password,
         }
 
         if (action === "edit") {body = {...editUser, ...body}}
@@ -139,7 +139,8 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
         FetchRequest(action === "create" ? "POST" : "PUT", `/users`, body)
             .then(response => {
                 if (response.success && response.data != null) {
-                    returnUser(response.data)
+                    let isActive = action === "edit" ? editUser.is_active : true
+                    returnUser({...editUser, ...fields, ...response.data, is_active: isActive})
                     setState(false)
                 }
             })
@@ -152,28 +153,28 @@ const UserModalCreate = ({action, setState, returnUser, editUser}) => {
                 <div className="fields">
                     <label>
                         <span>ФИО</span>
-                        <input type="text" name="Name" value={fields.Name} onChange={handlerChange}/>
-                        {!validation.Name && <InputErrorDescription text={"Поле не может быть пустым"}/>}
+                        <input type="text" name="name" value={fields.name} onChange={handlerChange}/>
+                        {!validation.name && <InputErrorDescription text={"Поле не может быть пустым"}/>}
                     </label>
                     <label>
                         <span>Логин</span>
-                        <input type="text" name="Login" value={fields.Login} onChange={handlerChange}/>
-                        {!validation.Login && <InputErrorDescription text={"Поле не может быть пустым"}/>}
+                        <input type="text" name="login" value={fields.login} onChange={handlerChange}/>
+                        {!validation.login && <InputErrorDescription text={"Поле не может быть пустым"}/>}
                     </label>
                     <label>
                         <span>Пароль</span>
-                        <input type="password" name="Password" value={fields.Password} onChange={handlerChange}/>
-                        {!validation.Password && <InputErrorDescription text={"Пароль должен состоять минимум из 6 символов"}/>}
+                        <input type="password" name="password" value={fields.password} onChange={handlerChange}/>
+                        {!validation.password && <InputErrorDescription text={"Пароль должен состоять минимум из 6 символов"}/>}
                     </label>
                     <label>
                         <span>Подтверждение пароля</span>
-                        <input type="password" name="PasswordConfirm" value={fields.PasswordConfirm} onChange={handlerChange}/>
-                        {!validation.PasswordConfirm && <InputErrorDescription text={"Пароль не совпадает"}/>}
+                        <input type="password" name="passwordConfirm" value={fields.passwordConfirm} onChange={handlerChange}/>
+                        {!validation.passwordConfirm && <InputErrorDescription text={"Пароль не совпадает"}/>}
                     </label>
                     <label>
                         <span>Роль</span>
-                        <CustomSelect placeholder="Выбрать" value={fields.Role.TranslateValue} values={roles} setValue={handlerSelectRole}/>
-                        {!validation.Role && <InputErrorDescription text={"Поле не может быть пустым"}/>}
+                        <CustomSelect placeholder="Выбрать" value={fields.role.value} values={roles} setValue={handlerSelectRole}/>
+                        {!validation.role && <InputErrorDescription text={"Поле не может быть пустым"}/>}
                     </label>
 
                     <div className="buttons">

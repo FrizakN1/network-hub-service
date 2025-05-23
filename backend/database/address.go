@@ -2,6 +2,7 @@ package database
 
 import (
 	"backend/models"
+	"database/sql"
 	"errors"
 	"fmt"
 	"regexp"
@@ -12,23 +13,32 @@ type AddressRepository interface {
 	GetHouses(offset int) ([]models.Address, int, error)
 	GetHouse(addresr *models.Address) error
 	GetSuggestions(search string, offset int, limit int) ([]models.Address, int, error)
+	SetHouseParams(address *models.Address) error
 }
 
 type DefaultAddressRepository struct {
 	addressElementTypeMap map[string]map[string]struct{}
 	Database              Database
-	Counter               Counter
+}
+
+func (r *DefaultAddressRepository) SetHouseParams(address *models.Address) error {
+	stmt, ok := r.Database.GetQuery("SET_HOUSE_PARAMS")
+	if !ok {
+		return errors.New("query SET_HOUSE_PARAMS is not prepare")
+	}
+
+	_, err := stmt.Exec(address.House.ID, address.RoofType.ID, address.WiringType.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *DefaultAddressRepository) GetHouses(offset int) ([]models.Address, int, error) {
 	stmt, ok := r.Database.GetQuery("GET_HOUSES")
 	if !ok {
-		return nil, 0, errors.New("запрос GET_HOUSES не подготовлен")
-	}
-
-	count, err := r.Counter.countRecords("GET_HOUSES_COUNT", nil)
-	if err != nil {
-		return nil, 0, err
+		return nil, 0, errors.New("query GET_HOUSES is not prepare")
 	}
 
 	rows, err := stmt.Query(offset)
@@ -38,6 +48,7 @@ func (r *DefaultAddressRepository) GetHouses(offset int) ([]models.Address, int,
 	defer rows.Close()
 
 	var addresses []models.Address
+	var count int
 
 	for rows.Next() {
 		var address models.Address
@@ -53,6 +64,7 @@ func (r *DefaultAddressRepository) GetHouses(offset int) ([]models.Address, int,
 			&address.FileAmount,
 			&address.NodeAmount,
 			&address.HardwareAmount,
+			&count,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -67,10 +79,15 @@ func (r *DefaultAddressRepository) GetHouses(offset int) ([]models.Address, int,
 func (r *DefaultAddressRepository) GetHouse(address *models.Address) error {
 	stmt, ok := r.Database.GetQuery("GET_HOUSE")
 	if !ok {
-		return errors.New("запрос GET_HOUSE не подготовлен")
+		return errors.New("query GET_HOUSE is not prepare")
 	}
 
 	row := stmt.QueryRow(address.House.ID)
+
+	var roofID sql.NullInt16
+	var roofValue sql.NullString
+	var wiringID sql.NullInt16
+	var wiringValue sql.NullString
 
 	err := row.Scan(
 		&address.Street.Name,
@@ -79,9 +96,27 @@ func (r *DefaultAddressRepository) GetHouse(address *models.Address) error {
 		&address.House.Name,
 		&address.House.Type.ID,
 		&address.House.Type.ShortName,
+		&roofID,
+		&roofValue,
+		&wiringID,
+		&wiringValue,
 	)
 	if err != nil {
 		return err
+	}
+
+	if roofID.Valid {
+		address.RoofType = models.Reference{
+			ID:    int(roofID.Int16),
+			Value: roofValue.String,
+		}
+	}
+
+	if wiringID.Valid {
+		address.WiringType = models.Reference{
+			ID:    int(wiringID.Int16),
+			Value: wiringValue.String,
+		}
 	}
 
 	return nil
@@ -92,18 +127,10 @@ func (r *DefaultAddressRepository) GetSuggestions(search string, offset int, lim
 
 	stmt, ok := r.Database.GetQuery("GET_SUGGESTIONS")
 	if !ok {
-		return nil, 0, errors.New("запрос GET_SUGGESTIONS не подготовлен")
+		return nil, 0, errors.New("query GET_SUGGESTIONS is not prepare")
 	}
 
-	var count int
 	var err error
-
-	if limit > 10 {
-		count, err = r.Counter.countRecords("GET_SUGGESTIONS_COUNT", []interface{}{streetPart, housePart})
-		if err != nil {
-			return nil, 0, err
-		}
-	}
 
 	rows, err := stmt.Query(streetPart, housePart, offset, limit)
 	if err != nil {
@@ -112,6 +139,8 @@ func (r *DefaultAddressRepository) GetSuggestions(search string, offset int, lim
 	defer rows.Close()
 
 	var addresses []models.Address
+	var count int
+
 	for rows.Next() {
 		var address models.Address
 		err = rows.Scan(
@@ -125,6 +154,7 @@ func (r *DefaultAddressRepository) GetSuggestions(search string, offset int, lim
 			&address.FileAmount,
 			&address.NodeAmount,
 			&address.HardwareAmount,
+			&count,
 		)
 		if err != nil {
 			return nil, 0, err

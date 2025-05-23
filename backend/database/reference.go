@@ -3,6 +3,7 @@ package database
 import (
 	"backend/models"
 	"errors"
+	"fmt"
 )
 
 type ReferenceRepository interface {
@@ -18,17 +19,21 @@ type DefaultReferenceRepository struct {
 func (r *DefaultReferenceRepository) EditReferenceRecord(referenceRecord *models.Reference, reference string) error {
 	stmt, ok := r.Database.GetQuery("EDIT_" + reference)
 	if !ok {
-		return errors.New("запрос EDIT_" + reference + " не подготовлен")
+		return errors.New("query EDIT_" + reference + " is not prepare")
 	}
 
-	var err error
+	var params []interface{}
 
-	if reference == "NODE_TYPES" || reference == "OWNERS" {
-		_, err = stmt.Exec(referenceRecord.ID, referenceRecord.Name)
-	} else if reference == "HARDWARE_TYPES" || reference == "OPERATION_MODES" {
-		_, err = stmt.Exec(referenceRecord.ID, referenceRecord.Value, referenceRecord.TranslateValue)
+	switch reference {
+	case "NODE_TYPES", "OWNERS", "ROOF_TYPE", "WIRING_TYPE":
+		params = []interface{}{referenceRecord.ID, referenceRecord.Value}
+	case "HARDWARE_TYPES", "OPERATION_MODES":
+		params = []interface{}{referenceRecord.ID, referenceRecord.Key, referenceRecord.Value}
+	default:
+		return fmt.Errorf("reference is unsupported (%s)", reference)
 	}
 
+	_, err := stmt.Exec(params...)
 	if err != nil {
 		return err
 	}
@@ -39,24 +44,22 @@ func (r *DefaultReferenceRepository) EditReferenceRecord(referenceRecord *models
 func (r *DefaultReferenceRepository) CreateReferenceRecord(referenceRecord *models.Reference, reference string) error {
 	stmt, ok := r.Database.GetQuery("CREATE_" + reference)
 	if !ok {
-		return errors.New("запрос CREATE_" + reference + " не подготовлен")
+		return errors.New("query CREATE_" + reference + " is not prepare")
 	}
 
-	if reference == "NODE_TYPES" || reference == "OWNERS" {
-		if err := stmt.QueryRow(
-			referenceRecord.Name,
-			referenceRecord.CreatedAt,
-		).Scan(&referenceRecord.ID); err != nil {
-			return err
-		}
-	} else {
-		if err := stmt.QueryRow(
-			referenceRecord.Value,
-			referenceRecord.TranslateValue,
-			referenceRecord.CreatedAt,
-		).Scan(&referenceRecord.ID); err != nil {
-			return err
-		}
+	var params []interface{}
+
+	switch reference {
+	case "NODE_TYPES", "OWNERS", "ROOF_TYPES", "WIRING_TYPES":
+		params = []interface{}{referenceRecord.Value, referenceRecord.CreatedAt}
+	case "HARDWARE_TYPES", "OPERATION_MODES":
+		params = []interface{}{referenceRecord.Key, referenceRecord.Value, referenceRecord.CreatedAt}
+	default:
+		return fmt.Errorf("reference is unsupported (%s)", reference)
+	}
+
+	if err := stmt.QueryRow(params...).Scan(&referenceRecord.ID); err != nil {
+		return err
 	}
 
 	return nil
@@ -65,7 +68,7 @@ func (r *DefaultReferenceRepository) CreateReferenceRecord(referenceRecord *mode
 func (r *DefaultReferenceRepository) GetReferenceRecords(reference string) ([]models.Reference, error) {
 	stmt, ok := r.Database.GetQuery("GET_" + reference)
 	if !ok {
-		return nil, errors.New("запрос GET_" + reference + " не подготовлен")
+		return nil, errors.New("query GET_" + reference + " is not prepare")
 	}
 
 	rows, err := stmt.Query()
@@ -75,22 +78,24 @@ func (r *DefaultReferenceRepository) GetReferenceRecords(reference string) ([]mo
 	defer rows.Close()
 
 	var references []models.Reference
-	for rows.Next() {
-		var _reference models.Reference
 
-		if reference == "NODE_TYPES" || reference == "OWNERS" {
-			err = rows.Scan(&_reference.ID, &_reference.Name, &_reference.CreatedAt)
-		} else if reference == "HARDWARE_TYPES" || reference == "OPERATION_MODES" {
-			err = rows.Scan(&_reference.ID, &_reference.Value, &_reference.TranslateValue, &_reference.CreatedAt)
-		} else if reference == "ROLES" {
-			err = rows.Scan(&_reference.ID, &_reference.Value, &_reference.TranslateValue)
+	for rows.Next() {
+		var ref models.Reference
+
+		switch reference {
+		case "NODE_TYPES", "OWNERS", "ROOF_TYPES", "WIRING_TYPES":
+			err = rows.Scan(&ref.ID, &ref.Value, &ref.CreatedAt)
+		case "HARDWARE_TYPES", "OPERATION_MODES":
+			err = rows.Scan(&ref.ID, &ref.Key, &ref.Value, &ref.CreatedAt)
+		default:
+			return nil, fmt.Errorf("reference is unsupported (%s)", reference)
 		}
 
 		if err != nil {
 			return nil, err
 		}
 
-		references = append(references, _reference)
+		references = append(references, ref)
 	}
 
 	return references, nil

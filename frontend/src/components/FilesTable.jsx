@@ -118,6 +118,7 @@ const FilesTable = ({type}) => {
             case "application/zip":
             case "application/x-7z-compressed":
             case "application/x-tar":
+            case "application/vnd.rar":
                 icon = <FontAwesomeIcon icon={faFileZipper} />; break
             case "image/png":
             case "image/jpeg":

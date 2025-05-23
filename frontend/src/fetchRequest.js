@@ -32,6 +32,11 @@ const FetchRequest = async (method, url, body = null) => {
 
         const data = await response.json();
 
+        if (response.status === 400 || response.status === 500) {
+            console.error(data.error)
+            return { success: false }
+        }
+
         return { success: true, data };
     } catch (error) {
         console.error(error)

@@ -6,6 +6,12 @@ const ReferencesPage = () => {
         <section className="references">
             <div className="contain">
                 <div className="list">
+                    <Link to="/references/roof_types">
+                        Типы крыши
+                    </Link>
+                    <Link to="/references/wiring_types">
+                        Типы разводки
+                    </Link>
                     <Link to="/references/node_types">
                         Типы узлов
                     </Link>

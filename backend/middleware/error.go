@@ -4,7 +4,6 @@ import (
 	httpErrors "backend/errors"
 	"errors"
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
 )
 
@@ -14,7 +13,6 @@ func (m *DefaultMiddleware) ErrorMiddleware() gin.HandlerFunc {
 
 		if len(c.Errors) > 0 {
 			for _, err := range c.Errors {
-				log.Println(err)
 				m.Logger.Println(err)
 
 				var httpErr *httpErrors.HTTPError

@@ -37,7 +37,7 @@ const HardwareViewPage = () => {
                             </div>
                             <div className="block">
                                 <span>Тип оборудования</span>
-                                <p>{hardware.Type.TranslateValue}</p>
+                                <p>{hardware.Type.Value}</p>
                             </div>
                             <div className="block textarea">
                                 <span>Описание</span>
@@ -47,15 +47,15 @@ const HardwareViewPage = () => {
                         <div className="column">
                             <div className="block">
                                 <span>Модель</span>
-                                <p>{hardware.Type.Value === "switch" && hardware.Switch.ID !== 0 ? hardware.Switch.Name : "-"}</p>
+                                <p>{hardware.Type.Key === "switch" && hardware.Switch.ID !== 0 ? hardware.Switch.Name : "-"}</p>
                             </div>
                             <div className="block">
                                 <span>IP адрес</span>
-                                <p>{hardware.Type.Value === "switch" && hardware.IpAddress.Valid ? hardware.IpAddress.String : "-"}</p>
+                                <p>{hardware.Type.Key === "switch" && hardware.IpAddress.Valid ? hardware.IpAddress.String : "-"}</p>
                             </div>
                             <div className="block">
                                 <span>Управляющий VLAN</span>
-                                <p>{hardware.Type.Value === "switch" && hardware.MgmtVlan.Valid ? hardware.MgmtVlan.String : "-"}</p>
+                                <p>{hardware.Type.Key === "switch" && hardware.MgmtVlan.Valid ? hardware.MgmtVlan.String : "-"}</p>
                             </div>
                             <div className="block">
                                 <span>Дата создания</span>

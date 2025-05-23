@@ -13,6 +13,7 @@ type AddressHandler interface {
 	HandlerGetHouses(c *gin.Context)
 	HandlerGetHouse(c *gin.Context)
 	HandlerGetSuggestions(c *gin.Context)
+	HandlerSetHouseParams(c *gin.Context)
 }
 
 type DefaultAddressHandler struct {
@@ -22,9 +23,6 @@ type DefaultAddressHandler struct {
 func NewAddressHandler(db *database.Database) AddressHandler {
 	addressRepo := &database.DefaultAddressRepository{
 		Database: *db,
-		Counter: &database.DefaultCounter{
-			Database: *db,
-		},
 	}
 
 	addressRepo.LoadAddressElementTypeMap()
@@ -32,6 +30,29 @@ func NewAddressHandler(db *database.Database) AddressHandler {
 	return &DefaultAddressHandler{
 		AddressRepo: addressRepo,
 	}
+}
+
+func (h *DefaultAddressHandler) HandlerSetHouseParams(c *gin.Context) {
+	var address models.Address
+	var err error
+
+	if err = c.BindJSON(&address); err != nil {
+		c.Error(errors.NewHTTPError(err, "invalid json", http.StatusBadRequest))
+		return
+	}
+
+	address.House.ID, err = strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
+		return
+	}
+
+	if err = h.AddressRepo.SetHouseParams(&address); err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to set house params", http.StatusInternalServerError))
+		return
+	}
+
+	c.JSON(http.StatusOK, address)
 }
 
 func (h *DefaultAddressHandler) HandlerGetHouses(c *gin.Context) {

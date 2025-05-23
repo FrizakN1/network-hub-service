@@ -33,15 +33,9 @@ func NewNodeHandler(db *database.Database) NodeHandler {
 		Privilege: &DefaultPrivilege{},
 		NodeRepo: &database.DefaultNodeRepository{
 			Database: *db,
-			Counter: &database.DefaultCounter{
-				Database: *db,
-			},
 		},
 		EventRepo: &database.DefaultEventRepository{
 			Database: *db,
-			Counter: &database.DefaultCounter{
-				Database: *db,
-			},
 		},
 	}
 }
@@ -69,14 +63,69 @@ func (h *DefaultNodeHandler) HandlerDeleteNode(c *gin.Context) {
 }
 
 func (h *DefaultNodeHandler) HandlerGetSearchNodes(c *gin.Context) {
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to parse query(offset) to int", http.StatusBadRequest))
+		return
+	}
+
+	onlyActive, err := strconv.ParseBool(c.DefaultQuery("only_active", "false"))
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to parse query(only_active) to bool", http.StatusBadRequest))
+		return
+	}
+
 	search := c.Query("search")
 
-	nodes, count, err := h.NodeRepo.GetSearchNodes(search, offset)
+	nodes, count, err := h.NodeRepo.GetSearchNodes(search, offset, onlyActive)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get search nodes", http.StatusInternalServerError))
 		return
 	}
+	//ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	//defer cancel()
+	//
+	//var wg sync.WaitGroup
+	//var nodes []models.Node
+	//var count int
+	//var errChan = make(chan *errors.HTTPError)
+	//
+	//wg.Add(2)
+	//
+	//go func() {
+	//	defer wg.Done()
+	//
+	//	var e error
+	//	nodes, e = h.NodeRepo.GetSearchNodes(search, offset)
+	//	if e != nil {
+	//		errChan <- errors.NewHTTPError(e, "failed to get search nodes", http.StatusInternalServerError)
+	//	}
+	//	errChan <- nil
+	//}()
+	//
+	//go func() {
+	//	defer wg.Done()
+	//
+	//	var e error
+	//	count, e = h.Counter.CountRecords(ctx, "SEARCH_NODES", []interface{}{search})
+	//	if e != nil {
+	//		errChan <- errors.NewHTTPError(e, "failed to get count search nodes", http.StatusInternalServerError)
+	//	}
+	//	errChan <- nil
+	//}()
+	//
+	//go func() {
+	//	wg.Wait()
+	//	close(errChan)
+	//}()
+	//
+	//for e := range errChan {
+	//	if e != nil {
+	//		cancel()
+	//		c.Error(e)
+	//		return
+	//	}
+	//}
 
 	c.JSON(http.StatusOK, gin.H{
 		"Nodes": nodes,
@@ -205,8 +254,7 @@ func (h *DefaultNodeHandler) HandlerGetHouseNodes(c *gin.Context) {
 		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 		return
 	}
-
-	nodes, count, err := h.NodeRepo.GetHouseNodes(houseID, offset)
+	nodes, count, err := h.NodeRepo.GetNodes(offset, false, houseID)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get nodes", http.StatusInternalServerError))
 		return
@@ -225,7 +273,13 @@ func (h *DefaultNodeHandler) HandlerGetNodes(c *gin.Context) {
 		return
 	}
 
-	nodes, count, err := h.NodeRepo.GetNodes(offset)
+	onlyActive, err := strconv.ParseBool(c.DefaultQuery("only_active", "false"))
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to parse query(only_active) to bool", http.StatusBadRequest))
+		return
+	}
+
+	nodes, count, err := h.NodeRepo.GetNodes(offset, onlyActive, 0)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get nodes", http.StatusInternalServerError))
 		return

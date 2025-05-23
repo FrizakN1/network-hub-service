@@ -2,15 +2,15 @@ import React, {useEffect, useRef, useState} from "react";
 import InputErrorDescription from "./InputErrorDescription";
 import FetchRequest from "../fetchRequest";
 
-const HardwareReferenceRecordModalCreate = ({setState, action, reference, returnRecord, editRecord}) => {
+const ReferenceRecordModalCreate = ({setState, action, reference, returnRecord, editRecord, withKey}) => {
     const validateDebounceTimer = useRef(0)
     const [fields, setFields] = useState({
-        Value: "",
-        TranslateValue: ""
+        Key: "",
+        Value: ""
     })
     const [validation, setValidation] = useState({
-        Value: true,
-        TranslateValue: true
+        Key: true,
+        Value: true
     })
 
     const handlerModalCreateClose = (e) => {
@@ -22,14 +22,16 @@ const HardwareReferenceRecordModalCreate = ({setState, action, reference, return
     useEffect(() => {
         if (action === "edit") {
             setFields({
+                Key: editRecord.Key,
                 Value: editRecord.Value,
-                TranslateValue: editRecord.TranslateValue,
             })
         }
     }, [action]);
 
     const validateField = (name, value) => {
         let isValid = value.trim() !== ""
+
+        if (name === "Key") isValid = isValid || !withKey
 
         setValidation((prevValidation) => ({ ...prevValidation, [name]: isValid }));
 
@@ -88,18 +90,27 @@ const HardwareReferenceRecordModalCreate = ({setState, action, reference, return
     return (
         <div className={"modal-window"} onMouseDown={handlerModalCreateClose}>
             <div className="form">
-                <h2>{action === "create" ? reference === "hardware_type" ? "Создание типа оборудования" : "Создание режима работы" : reference === "hardware_type" ? "Изменение типа оборудования" : "Изменение режима работы"}</h2>
+                <h2>
+                    {reference === "hardware_types" && <>{action === "create" ? "Создание типа оборудования" : "Изменение типа оборудования"}</>}
+                    {reference === "operation_modes" && <>{action === "create" ? "Создание режима работы" : "Изменение режима работы"}</>}
+                    {reference === "node_types" && <>{action === "create" ? "Создание типа узла" : "Изменение типа узла"}</>}
+                    {reference === "owners" && <>{action === "create" ? "Создание владельца" : "Изменение владельца"}</>}
+                    {reference === "roof_types" && <>{action === "create" ? "Создание типа крыши" : "Изменение типа крыши"}</>}
+                    {reference === "wiring_types" && <>{action === "create" ? "Создание типа разводки" : "Изменение типа разводки"}</>}
+                </h2>
                 <div className="fields">
-                    <label>
-                        <span>Ключ</span>
-                        <input type="text" name="Value" value={fields.Value} onChange={handlerChange}/>
-                        {!validation.Value && <InputErrorDescription text={"Поле не может быть пустым"}/>}
-                    </label>
+                    {withKey &&
+                        <label>
+                            <span>Ключ</span>
+                            <input type="text" name="Key" value={fields.Key} onChange={handlerChange}/>
+                            {!validation.Key && <InputErrorDescription text={"Поле не может быть пустым"}/>}
+                        </label>
+                    }
 
                     <label>
                         <span>Значение</span>
-                        <input type="text" name="TranslateValue" value={fields.TranslateValue} onChange={handlerChange}/>
-                        {!validation.TranslateValue && <InputErrorDescription text={"Поле не может быть пустым"}/>}
+                        <input type="text" name="Value" value={fields.Value} onChange={handlerChange}/>
+                        {!validation.Value && <InputErrorDescription text={"Поле не может быть пустым"}/>}
                     </label>
 
                     <div className="buttons">
@@ -113,4 +124,4 @@ const HardwareReferenceRecordModalCreate = ({setState, action, reference, return
     )
 }
 
-export default HardwareReferenceRecordModalCreate
+export default ReferenceRecordModalCreate

@@ -4,6 +4,7 @@ import (
 	"backend/models"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io/ioutil"
 )
 
@@ -23,7 +24,7 @@ type DefaultFileRepository struct {
 func (r *DefaultFileRepository) GetHardwareFiles(hardwareID int) ([]models.File, error) {
 	stmt, ok := r.Database.GetQuery("GET_HARDWARE_FILES")
 	if !ok {
-		return nil, errors.New("запрос GET_HARDWARE_FILES не подготовлен")
+		return nil, errors.New("query GET_HARDWARE_FILES is not prepare")
 	}
 
 	rows, err := stmt.Query(hardwareID)
@@ -66,7 +67,7 @@ func (r *DefaultFileRepository) GetHardwareFiles(hardwareID int) ([]models.File,
 func (r *DefaultFileRepository) GetNodeFiles(nodeID int, onlyImage bool) ([]models.File, error) {
 	stmt, ok := r.Database.GetQuery("GET_NODE_FILES")
 	if !ok {
-		return nil, errors.New("запрос GET_NODE_FILES не подготовлен")
+		return nil, errors.New("query GET_NODE_FILES is not prepare")
 	}
 
 	rows, err := stmt.Query(nodeID, onlyImage)
@@ -110,7 +111,7 @@ func (r *DefaultFileRepository) GetNodeFiles(nodeID int, onlyImage bool) ([]mode
 func (r *DefaultFileRepository) GetHouseFiles(houseID int) ([]models.File, error) {
 	stmt, ok := r.Database.GetQuery("GET_HOUSE_FILES")
 	if !ok {
-		return nil, errors.New("запрос GET_HOUSE_FILES не подготовлен")
+		return nil, errors.New("query GET_HOUSE_FILES is not prepare")
 	}
 
 	rows, err := stmt.Query(houseID)
@@ -153,49 +154,48 @@ func (r *DefaultFileRepository) GetHouseFiles(houseID int) ([]models.File, error
 func (r *DefaultFileRepository) CreateFile(file *models.File, fileFor string) error {
 	stmt, ok := r.Database.GetQuery("CREATE_FILE_" + fileFor)
 	if !ok {
-		return errors.New("запрос CREATE_FILE_" + fileFor + " не подготовлен")
+		return errors.New("query CREATE_FILE_" + fileFor + " is not prepare")
 	}
 
-	var err error
+	var params []interface{}
 
 	switch fileFor {
 	case "NODES":
-		err = stmt.QueryRow(
+		params = []interface{}{
 			file.Node.ID,
 			file.Path,
 			file.Name,
 			file.UploadAt,
 			file.InArchive,
 			file.IsPreviewImage,
-		).Scan(&file.ID)
-		break
+		}
 	case "HOUSES":
-		err = stmt.QueryRow(
+		params = []interface{}{
 			file.House.ID,
 			file.Path,
 			file.Name,
 			file.UploadAt,
 			file.InArchive,
-		).Scan(&file.ID)
-		break
+		}
 	case "HARDWARE":
-		err = stmt.QueryRow(
+		params = []interface{}{
 			file.Hardware.ID,
 			file.Path,
 			file.Name,
 			file.UploadAt,
 			file.InArchive,
-		).Scan(&file.ID)
-		break
+		}
+	default:
+		return fmt.Errorf("type is unsupported (%s)", fileFor)
 	}
 
-	if err != nil {
+	if err := stmt.QueryRow(params...).Scan(&file.ID); err != nil {
 		return err
 	}
 
 	var fileData []byte
 
-	fileData, err = ioutil.ReadFile(file.Path)
+	fileData, err := ioutil.ReadFile(file.Path)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (r *DefaultFileRepository) CreateFile(file *models.File, fileFor string) er
 func (r *DefaultFileRepository) Delete(file *models.File, key string) error {
 	stmt, ok := r.Database.GetQuery("DELETE_FILE_" + key)
 	if !ok {
-		return errors.New("запрос DELETE_FILE_" + key + " не подготовлен")
+		return errors.New("query DELETE_FILE_" + key + " is not prepare")
 	}
 
 	_, err := stmt.Exec(file.ID)
@@ -222,7 +222,7 @@ func (r *DefaultFileRepository) Delete(file *models.File, key string) error {
 func (r *DefaultFileRepository) Archive(file *models.File, key string) error {
 	stmt, ok := r.Database.GetQuery("ARCHIVE_FILE_" + key)
 	if !ok {
-		return errors.New("запрос ARCHIVE_FILE_" + key + " не подготовлен")
+		return errors.New("query ARCHIVE_FILE_" + key + " is not prepare")
 	}
 
 	file.InArchive = !file.InArchive

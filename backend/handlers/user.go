@@ -19,6 +19,7 @@ type UserHandler interface {
 	HandlerCreateUser(c *gin.Context)
 	HandlerChangeUserStatus(c *gin.Context)
 	HandlerGetUsers(c *gin.Context)
+	GetRoles(c *gin.Context)
 }
 
 type DefaultUserHandler struct {
@@ -92,7 +93,10 @@ func (h *DefaultUserHandler) HandlerCreateUser(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{
+		"created_at": res.CreatedAt,
+		"id":         res.UserId,
+	})
 }
 
 func (h *DefaultUserHandler) HandlerEditUser(c *gin.Context) {
@@ -118,7 +122,7 @@ func (h *DefaultUserHandler) HandlerEditUser(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{"updated_at": res.UpdatedAt})
 }
 
 func (h *DefaultUserHandler) HandlerChangeUserStatus(c *gin.Context) {
@@ -143,5 +147,17 @@ func (h *DefaultUserHandler) HandlerChangeUserStatus(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{"is_active": res.IsActive})
+}
+
+func (h *DefaultUserHandler) GetRoles(c *gin.Context) {
+	ctx := h.Metadata.SetAuthorizationHeader(c)
+
+	res, err := h.UserService.GetRoles(ctx, &userpb.Empty{})
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to get roles", http.StatusInternalServerError))
+		return
+	}
+
+	c.JSON(http.StatusOK, res.Roles)
 }

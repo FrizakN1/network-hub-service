@@ -79,6 +79,7 @@ const UploadFile = ({returnFile, type, onlyImage = false}) => {
                     "application/zip",
                     "application/x-7z-compressed",
                     "application/x-tar",
+                    "application/vnd.rar",
                     "image/png",
                     "image/jpeg"
                 ]
@@ -102,6 +103,7 @@ const UploadFile = ({returnFile, type, onlyImage = false}) => {
                             case "application/zip":
                             case "application/x-7z-compressed":
                             case "application/x-tar":
+                            case "application/vnd.rar":
                                 icon = <FontAwesomeIcon icon={faFileZipper} />; break
                             case "image/png":
                             case "image/jpeg":

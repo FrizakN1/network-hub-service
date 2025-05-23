@@ -7,7 +7,7 @@ const SwitchModalCreate = ({action, setState, returnSwitch, editSwitch}) => {
     const validateDebounceTimer = useRef(0)
     const [fields, setFields] = useState({
         Name: "",
-        OperationMode: {ID: 0, Value: "", TranslateValue: ""},
+        OperationMode: {ID: 0, Key: "", Value: ""},
         CommunityRead: "",
         CommunityWrite: "",
         PortAmount: 0,
@@ -190,7 +190,7 @@ const SwitchModalCreate = ({action, setState, returnSwitch, editSwitch}) => {
                         <div className="column">
                             <label>
                                 <span>Режим работы</span>
-                                <CustomSelect placeholder="Выбрать" value={fields.OperationMode.TranslateValue} values={operationModes} setValue={handlerSelectOperationMode}/>
+                                <CustomSelect placeholder="Выбрать" value={fields.OperationMode.Value} values={operationModes} setValue={handlerSelectOperationMode}/>
                             </label>
                             <label>
                                 <span>SNMP-комьюнити (только чтение)</span>
@@ -242,13 +242,13 @@ const SwitchModalCreate = ({action, setState, returnSwitch, editSwitch}) => {
                                 <span>VLAN OID</span>
                                 <input type="text" name="VlanOID" value={fields.VlanOID} onChange={handlerChange}/>
                             </label>
-                            {fields.OperationMode.Value === "dlink" &&
+                            {fields.OperationMode.Key === "dlink" &&
                                 <label>
                                     <span>Untagged порты OID</span>
                                     <input type="text" name="PortUntaggedOID" value={fields.PortUntaggedOID} onChange={handlerChange}/>
                                 </label>
                             }
-                            {fields.OperationMode.Value === "eltex" && <>
+                            {fields.OperationMode.Key === "eltex" && <>
                                 <label>
                                     <span>Статус батареи OID</span>
                                     <input type="text" name="BatteryStatusOID" value={fields.BatteryStatusOID} onChange={handlerChange}/>

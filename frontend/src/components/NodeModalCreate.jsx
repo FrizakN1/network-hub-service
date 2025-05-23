@@ -3,10 +3,9 @@ import InputErrorDescription from "./InputErrorDescription";
 import CustomSelect from "./CustomSelect";
 import ModalSelectTable from "./ModalSelectTable";
 import FetchRequest from "../fetchRequest";
-import {useParams} from "react-router-dom";
 import SearchInput from "./SearchInput";
 
-const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress = null}) => {
+const NodeModalCreate = ({action, setState, editNodeID, returnNode, defaultAddress = null}) => {
     const validateDebounceTimer = useRef(0)
     const [modalSelectTable, setModalSelectTable] = useState({
         State: false,
@@ -16,8 +15,8 @@ const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress
     })
     const [fields, setFields] = useState({
         Parent: {ID: 0, Name: ""},
-        Type: {ID: 0, Name: ""},
-        Owner: {ID: 0, Name: ""},
+        Type: {ID: 0, Value: ""},
+        Owner: {ID: 0, Value: ""},
         HouseID: 0,
         Address: {
             Street: {
@@ -35,6 +34,7 @@ const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress
         Supply: "",
         Access: "",
         Description: "",
+        IsPassive: false
     })
     const [validation, setValidation] = useState({
         Parent: true,
@@ -46,6 +46,7 @@ const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress
     const [generalNode, setGeneralNode] = useState(false)
     const [nodeTypes, setNodeTypes] = useState([])
     const [owners, setOwners] = useState([])
+    const [editNode, setEditNode] = useState({})
 
     const handlerModalCreateClose = (e) => {
         if (e.target.className === "modal-window") {
@@ -71,24 +72,46 @@ const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress
 
     useEffect(() => {
         if (action === "edit") {
-            setGeneralNode(editNode.Parent == null)
+            FetchRequest("GET", `/nodes/${editNodeID}`)
+                .then(response => {
+                    if (response.success) {
+                        setEditNode(response.data)
 
-            setFields({
-                Parent: editNode.Parent != null ? editNode.Parent : {ID: 0, Name: ""},
-                Address: editNode.Address,
-                Type: editNode.Type,
-                Owner: editNode.Owner,
-                Name: editNode.Name,
-                Zone: editNode.Zone.String,
-                Placement: editNode.Placement.String,
-                Supply: editNode.Supply.String,
-                Access: editNode.Access.String,
-                Description: editNode.Description.String,
-            })
+                        setGeneralNode(response.data.Parent == null)
+                        
+                        setFields({
+                            Parent: response.data.Parent != null ? response.data.Parent : {ID: 0, Name: ""},
+                            Address: response.data.Address,
+                            Type: response.data.Type != null ? response.data.Type : {ID: 0, Value: ""},
+                            Owner: response.data.Owner,
+                            Name: response.data.Name,
+                            Zone: response.data.Zone.String,
+                            Placement: response.data.Placement.String,
+                            Supply: response.data.Supply.String,
+                            Access: response.data.Access.String,
+                            Description: response.data.Description.String,
+                            IsPassive: response.data.IsPassive
+                        })
+                    }
+                })
+            //console.log(editNode)
+            // setFields({
+            //     Parent: editNode.Parent != null ? editNode.Parent : {ID: 0, Name: ""},
+            //     Address: editNode.Address,
+            //     Type: editNode.Type != null ? editNode.Type : {ID: 0, Value: ""},
+            //     Owner: editNode.Owner,
+            //     Name: editNode.Name,
+            //     Zone: editNode.Zone.String,
+            //     Placement: editNode.Placement.String,
+            //     Supply: editNode.Supply.String,
+            //     Access: editNode.Access.String,
+            //     Description: editNode.Description.String,
+            //     IsPassive: editNode.IsPassive
+            // })
         } else if (defaultAddress != null) {
             setFields(prevState => ({...prevState, Address: defaultAddress}))
         }
-    }, [action, editNode, defaultAddress]);
+    }, [action, editNodeID, defaultAddress]);
 
     const validateField = (name, value) => {
         let isValid = true
@@ -98,11 +121,13 @@ const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress
                 isValid = value.trim().length > 0
                 break
             case "Type":
+                isValid = value.ID > 0 || fields.IsPassive
+                break
             case "Owner":
                 isValid = value.ID > 0
                 break
             case "Parent":
-                isValid = generalNode || value.ID > 0
+                isValid = generalNode || fields.IsPassive || value.ID > 0
                 break
             case "Address":
                 isValid = value.House.ID > 0
@@ -134,8 +159,10 @@ const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress
             case "Supply":
             case "Access":
             case "Description":
+            case "IsPassive":
                 return fields[field] !== editNode[field]
             case "Type":
+                return fields.IsPassive || (editNode.Type != null ? fields.Type.ID !== editNode[field].ID : fields.Type !== editNode.Type)
             case "Owner":
                 return fields[field].ID !== editNode[field].ID
             case "Parent":
@@ -171,9 +198,9 @@ const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress
         }
 
         let body = {
-            Parent: generalNode ? null : fields.Parent,
+            Parent: generalNode || fields.IsPassive ? null : fields.Parent,
             Address: fields.Address,
-            Type: fields.Type,
+            Type: fields.IsPassive ? null : fields.Type,
             Owner: fields.Owner,
             Name: fields.Name,
             Zone: {String: fields.Zone, Valid: fields.Zone !== ""},
@@ -181,6 +208,7 @@ const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress
             Supply: {String: fields.Supply, Valid: fields.Supply !== ""},
             Access: {String: fields.Access, Valid: fields.Access !== ""},
             Description: {String: fields.Description, Valid: fields.Description !== ""},
+            IsPassive: fields.IsPassive,
         }
 
         if (action === "edit") {body = {...editNode, ...body}}
@@ -223,22 +251,29 @@ const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress
                     </label>
                    <div className="row">
                        <div className="column">
-                           <label>
-                               <span>Родительский узел</span>
-                               <div className="select-field" onClick={() => setModalSelectTable({State: true, Uri: "", Type: "node", SelectRecord: handlerSelectParent})}>{fields.Parent.Name === "" ? "Выбрать..." : fields.Parent.Name}</div>
-                               {!validation.Parent && <InputErrorDescription text={"Поле не может быть пустым"}/>}
-                           </label>
-
                            <label className="checkbox">
-                               <input type="checkbox" checked={generalNode} onChange={() => setGeneralNode(prevState => !prevState)}/>
-                               <span>Все свое мужское ставлю, что у этого узла нет родителя, а не потому что мне лень</span>
+                               <input type="checkbox" name="IsPassive" checked={fields.IsPassive} onChange={() => setFields(prevState => ({...prevState, IsPassive: !prevState.IsPassive}))}/>
+                               <span>Узел пассивный</span>
                            </label>
 
-                           <label>
-                               <span>Тип узла</span>
-                               <CustomSelect placeholder="Выбрать" value={fields.Type.Name} values={nodeTypes} setValue={handlerSelectNodeType}/>
-                               {!validation.Type && <InputErrorDescription text={"Поле не может быть пустым"}/>}
-                           </label>
+                           {!fields.IsPassive && <>
+                               <label>
+                                   <span>Родительский узел</span>
+                                   <div className="select-field" onClick={() => setModalSelectTable({State: true, Uri: "", Type: "node", SelectRecord: handlerSelectParent})}>{fields.Parent.Name === "" ? "Выбрать..." : fields.Parent.Name}</div>
+                                   {!validation.Parent && <InputErrorDescription text={"Поле не может быть пустым"}/>}
+                               </label>
+
+                               <label className="checkbox">
+                                   <input type="checkbox" checked={generalNode} onChange={() => setGeneralNode(prevState => !prevState)}/>
+                                   <span>Все свое мужское ставлю, что у этого узла нет родителя, а не потому что мне лень</span>
+                               </label>
+
+                               <label>
+                                   <span>Тип узла</span>
+                                   <CustomSelect placeholder="Выбрать" value={fields.Type.Value} values={nodeTypes} setValue={handlerSelectNodeType}/>
+                                   {!validation.Type && <InputErrorDescription text={"Поле не может быть пустым"}/>}
+                               </label>
+                           </>}
                            {/*<label>*/}
                            {/*    <span>Тип узла</span>*/}
                            {/*    <div className="select-field" onClick={() => setModalSelectTable({State: true, Uri: "/get_node_types", Type: "node_type", SelectRecord: handlerSelectNodeType})}>{fields.Type.Name === "" ? "Выбрать..." : fields.Type.Name}</div>*/}
@@ -247,7 +282,7 @@ const NodeModalCreate = ({action, setState, editNode, returnNode, defaultAddress
 
                            <label>
                                <span>Владелец узла</span>
-                               <CustomSelect placeholder="Выбрать" value={fields.Owner.Name} values={owners} setValue={handlerSelectOwner}/>
+                               <CustomSelect placeholder="Выбрать" value={fields.Owner.Value} values={owners} setValue={handlerSelectOwner}/>
                                {!validation.Owner && <InputErrorDescription text={"Поле не может быть пустым"}/>}
                            </label>
                            {/*<label>*/}

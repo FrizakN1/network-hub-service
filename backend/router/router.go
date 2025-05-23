@@ -19,7 +19,7 @@ func Initialization(db *database.Database) *gin.Engine {
 	handlerSwitch := handlers.NewSwitchHandler(db)
 	handlerReference := handlers.NewReferenceHandler(db)
 	handlerNode := handlers.NewNodeHandler(db)
-	handleHardware := handlers.NewHardwareHandler(db)
+	handlerHardware := handlers.NewHardwareHandler(db)
 	handlerFile := handlers.NewFileHandler(db)
 	handlerEvent := handlers.NewEventHandler(&userService, db)
 	handlerAuth := handlers.NewAuthHandler(&userService)
@@ -45,6 +45,7 @@ func Initialization(db *database.Database) *gin.Engine {
 		users.POST("", handlerUser.HandlerCreateUser)
 		users.PUT("", handlerUser.HandlerEditUser)
 		users.PATCH("/:id/status", handlerUser.HandlerChangeUserStatus)
+		users.GET("/roles", handlerUser.GetRoles)
 	}
 
 	nodes := routerAPI.Group("/nodes")
@@ -54,7 +55,7 @@ func Initialization(db *database.Database) *gin.Engine {
 		nodes.GET("/search", handlerNode.HandlerGetSearchNodes)
 		nodes.GET("/:id/files", handlerFile.HandlerGetNodeFiles)
 		nodes.GET("/:id/images", handlerFile.HandlerGetNodeImages)
-		nodes.GET("/:id/hardware", handleHardware.HandlerGetNodeHardware)
+		nodes.GET("/:id/hardware", handlerHardware.HandlerGetNodeHardware)
 		nodes.POST("", handlerNode.HandlerCreateNode)
 		nodes.PUT("", handlerNode.HandlerEditNode)
 		nodes.GET("/:id/events/:type", func(c *gin.Context) {
@@ -70,24 +71,25 @@ func Initialization(db *database.Database) *gin.Engine {
 		houses.GET("/search", handlerAddress.HandlerGetSuggestions)
 		houses.GET("/:id/files", handlerFile.HandlerGetHouseFiles)
 		houses.GET("/:id/nodes", handlerNode.HandlerGetHouseNodes)
-		houses.GET("/:id/hardware", handleHardware.HandlerGetHouseHardware)
+		houses.GET("/:id/hardware", handlerHardware.HandlerGetHouseHardware)
 		houses.GET("/:id/events/:type", func(c *gin.Context) {
 			handlerEvent.HandlerGetEvents(c, "HOUSE")
 		})
+		houses.POST("/:id/params", handlerAddress.HandlerSetHouseParams)
 	}
 
 	hardware := routerAPI.Group("/hardware")
 	{
-		hardware.GET("", handleHardware.HandlerGetHardware)
-		hardware.GET("/search", handleHardware.HandlerGetSearchHardware)
-		hardware.GET("/:id", handleHardware.HandlerGetHardwareByID)
+		hardware.GET("", handlerHardware.HandlerGetHardware)
+		hardware.GET("/search", handlerHardware.HandlerGetSearchHardware)
+		hardware.GET("/:id", handlerHardware.HandlerGetHardwareByID)
 		hardware.GET("/:id/files", handlerFile.HandlerGetHardwareFiles)
-		hardware.POST("", handleHardware.HandlerCreateHardware)
-		hardware.PUT("", handleHardware.HandlerEditHardware)
+		hardware.POST("", handlerHardware.HandlerCreateHardware)
+		hardware.PUT("", handlerHardware.HandlerEditHardware)
 		hardware.GET("/:id/events/:type", func(c *gin.Context) {
 			handlerEvent.HandlerGetEvents(c, "HARDWARE")
 		})
-		hardware.DELETE("/:id", handleHardware.HandlerDeleteHardware)
+		hardware.DELETE("/:id", handlerHardware.HandlerDeleteHardware)
 	}
 
 	switches := routerAPI.Group("/switches")

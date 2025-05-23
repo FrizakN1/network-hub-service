@@ -23,7 +23,6 @@ const ResultPage = () => {
 
             FetchRequest("GET", `/houses/search?${params.toString()}`, null)
                 .then(response => {
-                    console.log(response)
                     if (response.success) {
                         if (response.data != null) {
                             setAddresses(response.data?.Addresses || [])

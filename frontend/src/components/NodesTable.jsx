@@ -16,7 +16,7 @@ import NodeModalCreate from "./NodeModalCreate";
 import {useNavigate} from "react-router-dom";
 import AuthContext from "../context/AuthContext";
 
-const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNode, defaultAddress}) => {
+const NodesTable = ({houseID = 0, canCreate = false, action, selectFunction, selectNode, defaultAddress}) => {
     const searchDebounceTimer = useRef(0)
     const [nodes, setNodes] = useState([])
     const [isLoaded, setIsLoaded] = useState(false)
@@ -28,7 +28,7 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
     const [modalCreate, setModalCreate] = useState(false)
     const [modalEdit, setModalEdit] = useState({
         State: false,
-        EditNode: {}
+        EditNodeID: 0
     })
     const navigate = useNavigate()
     const { user } = useContext(AuthContext)
@@ -41,6 +41,7 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
         let uri = "/nodes"
         let params = new URLSearchParams({
             offset: String((currentPage-1)*20),
+            only_active: String(action === "select"),
         })
 
         if (value.length > 0) {
@@ -48,8 +49,8 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
             uri = "/nodes/search"
         }
 
-        if (id > 0) {
-            uri = `/houses/${id}/nodes`
+        if (houseID > 0) {
+            uri = `/houses/${houseID}/nodes`
         }
 
         FetchRequest("GET", `${uri}?${params.toString()}`, null)
@@ -151,24 +152,24 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
         <div className="contain nodes">
             {user.role.key !== "user" && canCreate && <>
                 {modalCreate && <NodeModalCreate action={"create"} setState={setModalCreate} returnNode={handlerAddNode} defaultAddress={defaultAddress}/>}
-                {modalEdit.State && <NodeModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editNode={modalEdit.EditNode} returnNode={handlerEditNode}/>}
-                <div className="contain">
-                    <button className="add-node" onClick={() => setModalCreate(true)}>
+                {modalEdit.State && <NodeModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editNodeID={modalEdit.EditNodeID} returnNode={handlerEditNode}/>}
+                <div className="buttons">
+                    <button onClick={() => setModalCreate(true)}>
                         <FontAwesomeIcon icon={faPlus}/> Добавить узел
                     </button>
                 </div>
             </>}
-            {id === 0 && <input className="search" placeholder={"Поиск..."} type="text" value={search} onChange={handlerSearch}/>}
+            {houseID === 0 && <input className="search" placeholder={"Поиск..."} type="text" value={search} onChange={handlerSearch}/>}
             {nodes.length > 0 ?
                 <table>
                     <thead>
                     <tr className={"row-type-2"}>
                         <th>ID</th>
                         <th>Название</th>
-                        {id > 0 ? "" : <th>Адрес</th>}
-                        <th>Тип</th>
+                        {houseID > 0 ? "" : <th>Адрес</th>}
                         <th>Владелец</th>
                         <th>Район</th>
+                        <th>Тип</th>
                         <th></th>
                     </tr>
                     </thead>
@@ -177,10 +178,10 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
                         <tr key={index} className={index % 2 === 0 ? 'row-type-1' : 'row-type-2'}>
                             <td>{node.ID}</td>
                             <td>{node.Name}</td>
-                            {id > 0 ? "" : <td>{`${node.Address.Street.Type.ShortName} ${node.Address.Street.Name}, ${node.Address.House.Type.ShortName} ${node.Address.House.Name}`}</td>}
-                            <td>{node.Type.Name}</td>
-                            <td>{node.Owner.Name}</td>
+                            {houseID > 0 ? "" : <td>{`${node.Address.Street.Type.ShortName} ${node.Address.Street.Name}, ${node.Address.House.Type.ShortName} ${node.Address.House.Name}`}</td>}
+                            <td>{node.Owner.Value}</td>
                             <td>{node.Zone.String}</td>
+                            <td>{node.IsPassive ? <span className="bg-red">Пассивный</span> : <span className="bg-green">Активный</span>}</td>
                             {action === "select" ?
                                 <td>
                                     <FontAwesomeIcon icon={selectNode?.ID === node.ID ? faCircleDot : faCircle} title="Выбрать" onClick={() => selectFunction(node)}/>
@@ -188,7 +189,7 @@ const NodesTable = ({id = 0, canCreate = false, action, selectFunction, selectNo
                             :
                                 <td>
                                     <FontAwesomeIcon icon={faEye} className="eye" title="Просмотр" onClick={() => navigate(`/nodes/view/${node.ID}`)}/>
-                                    {user.role.key !== "user" && <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditNode: node})}/>}
+                                    {user.role.key !== "user" && <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditNodeID: node.ID})}/>}
                                     {user.role.key === "admin" && <FontAwesomeIcon icon={faTrash} className="delete" title="Удалить" onClick={() => handlerDeleteNode(node.ID)}/>}
                                 </td>
                             }

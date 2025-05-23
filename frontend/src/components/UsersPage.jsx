@@ -29,12 +29,11 @@ const UsersPage = () => {
     }, []);
 
     const changeUserStatus = (userID) => {
-        FetchRequest("PATCH", `/users/${userID}/status`, {ID: Number(userID)})
+        FetchRequest("PATCH", `/users/${userID}/status`, {user_id: Number(userID)})
             .then(response => {
-                console.log(response)
                 if (response.success && response.data != null) {
                     setUsers(prevState => prevState.map(user =>
-                        user.ID === response.data.ID ? {...user, IsActive: response.data} : user
+                        user.id === userID ? {...user, is_active: response.data.is_active} : user
                     ))
                 }
             })
@@ -45,7 +44,7 @@ const UsersPage = () => {
     }
 
     const handlerEditUser = (user) => {
-        setUsers(prevState => prevState.map(_user => user.ID === _user.ID ? user : _user))
+        setUsers(prevState => prevState.map(_user => user.id === _user.id ? user : _user))
     }
 
     return (
@@ -84,7 +83,7 @@ const UsersPage = () => {
                                 <td>
                                     {/*<FontAwesomeIcon icon={faEye} title="Просмотр" />*/}
                                     <FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditUser: user})}/>
-                                    {!user.IsActive ?
+                                    {!user.is_active ?
                                         <FontAwesomeIcon icon={faCircleCheck} className="eye" title="Разаблокировать" onClick={() => changeUserStatus(user.id)}/>
                                         :
                                         <FontAwesomeIcon icon={faBan} className="delete" title="Заблокировать" onClick={() => changeUserStatus(user.id)}/>

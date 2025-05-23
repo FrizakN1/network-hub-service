@@ -36,6 +36,8 @@ function App() {
                     <Route path="node_types/" element={<ReferencePage reference={"node_types"} />} />
                     <Route path="hardware_types/" element={<ReferencePage reference={"hardware_types"} />} />
                     <Route path="operation_modes/" element={<ReferencePage reference={"operation_modes"} />} />
+                    <Route path="roof_types/" element={<ReferencePage reference={"roof_types"} />} />
+                    <Route path="wiring_types/" element={<ReferencePage reference={"wiring_types"} />} />
                 </Route>
                 <Route path="/switches/" element={<PrivateRoute />}>
                     <Route path="" element={<SwitchesPage />} />

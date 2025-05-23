@@ -8,7 +8,7 @@ const HardwareModalCreate = ({action, setState, returnHardware, editHardware}) =
     const validateDebounceTimer = useRef(0)
     const [fields, setFields] = useState({
         Node: {ID: 0, Name: ""},
-        Type: {ID: 0, Value: "", TranslateValue: ""},
+        Type: {ID: 0, Key: "", Value: ""},
         Switch: {ID: 0, Name: ""},
         IpAddress: "",
         MgmtVlan: "",
@@ -76,10 +76,10 @@ const HardwareModalCreate = ({action, setState, returnHardware, editHardware}) =
                 isValid = value.ID !== 0
                 break
             case "Switch":
-                isValid = fields.Type.Value !== "switch" || value.ID !== 0
+                isValid = fields.Type.Key !== "switch" || value.ID !== 0
                 break
             case "IpAddress":
-                isValid = fields.Type.Value !== "switch" || value.trim() !== ""
+                isValid = fields.Type.Key !== "switch" || value.trim() !== ""
                 break
             default: isValid = true
         }
@@ -174,10 +174,10 @@ const HardwareModalCreate = ({action, setState, returnHardware, editHardware}) =
                     </label>
                     <label>
                         <span>Тип оборудования</span>
-                        <CustomSelect placeholder="Выбрать" value={fields.Type.TranslateValue} values={hardwareTypes} setValue={handlerSelectHardware}/>
+                        <CustomSelect placeholder="Выбрать" value={fields.Type.Value} values={hardwareTypes} setValue={handlerSelectHardware}/>
                         {!validation.Type && <InputErrorDescription text={"Поле не может быть пустым"}/>}
                     </label>
-                    {fields.Type.Value === "switch" && <>
+                    {fields.Type.Key === "switch" && <>
                         <label>
                             <span>Модель</span>
                             <CustomSelect placeholder="Выбрать" value={fields.Switch.Name} values={switches} setValue={handlerSelectSwitch}/>

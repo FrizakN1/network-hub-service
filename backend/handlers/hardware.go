@@ -34,15 +34,9 @@ func NewHardwareHandler(db *database.Database) HardwareHandler {
 		Privilege: &DefaultPrivilege{},
 		HardwareRepo: &database.DefaultHardwareRepository{
 			Database: *db,
-			Counter: &database.DefaultCounter{
-				Database: *db,
-			},
 		},
 		EventRepo: &database.DefaultEventRepository{
 			Database: *db,
-			Counter: &database.DefaultCounter{
-				Database: *db,
-			},
 		},
 	}
 }
@@ -121,12 +115,13 @@ func (h *DefaultHardwareHandler) HandlerEditHardware(c *gin.Context) {
 		Node:        &models.Node{ID: hardware.Node.ID},
 		Hardware:    &models.Hardware{ID: hardware.ID},
 		UserId:      session.User.Id,
-		Description: fmt.Sprintf("Изменение оборудования: %s", hardware.Type.TranslateValue),
+		Description: fmt.Sprintf("Изменение оборудования: %s", hardware.Type.Value),
 		CreatedAt:   time.Now().Unix(),
 	}
 
 	if err := h.EventRepo.CreateEvent(event); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to create event", http.StatusInternalServerError))
+		return
 	}
 
 	c.JSON(http.StatusOK, hardware)
@@ -164,7 +159,7 @@ func (h *DefaultHardwareHandler) HandlerCreateHardware(c *gin.Context) {
 		Node:        &models.Node{ID: hardware.Node.ID},
 		Hardware:    nil,
 		UserId:      session.User.Id,
-		Description: fmt.Sprintf("Создание оборудования: %s", hardware.Type.TranslateValue),
+		Description: fmt.Sprintf("Создание оборудования: %s", hardware.Type.Value),
 		CreatedAt:   time.Now().Unix(),
 	}
 
@@ -208,7 +203,7 @@ func (h *DefaultHardwareHandler) HandlerGetNodeHardware(c *gin.Context) {
 		return
 	}
 
-	hardware, count, err := h.HardwareRepo.GetNodeHardware(nodeID, offset)
+	hardware, count, err := h.HardwareRepo.GetHardware(offset, 0, nodeID)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get hardware", http.StatusInternalServerError))
 		return
@@ -233,7 +228,7 @@ func (h *DefaultHardwareHandler) HandlerGetHouseHardware(c *gin.Context) {
 		return
 	}
 
-	hardware, count, err := h.HardwareRepo.GetHouseHardware(houseID, offset)
+	hardware, count, err := h.HardwareRepo.GetHardware(offset, houseID, 0)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get hardware", http.StatusInternalServerError))
 		return
@@ -252,7 +247,7 @@ func (h *DefaultHardwareHandler) HandlerGetHardware(c *gin.Context) {
 		return
 	}
 
-	hardware, count, err := h.HardwareRepo.GetHardware(offset)
+	hardware, count, err := h.HardwareRepo.GetHardware(offset, 0, 0)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get hardware", http.StatusBadRequest))
 		return

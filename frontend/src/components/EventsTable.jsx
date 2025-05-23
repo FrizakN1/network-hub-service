@@ -34,7 +34,6 @@ const EventsTable = ({from = ""}) => {
 
         FetchRequest("GET", `${uri}?${params.toString()}`, null)
             .then(response => {
-                console.log(response)
                 if (response.success) {
                     setEvents(response.data.Events != null ? response.data.Events : [])
                     setCount(response.data.Count)
@@ -134,7 +133,7 @@ const EventsTable = ({from = ""}) => {
                             <td className="col2">{event.Description}</td>
                             <td>{`${event.Address.Street.Type.ShortName} ${event.Address.Street.Name}, ${event.Address.House.Type.ShortName} ${event.Address.House.Name}`}</td>
                             <td>{event.Node != null ? event.Node.Name : "-"}</td>
-                            <td>{event.Hardware != null ? event.Hardware.Type.TranslateValue : "-"}</td>
+                            <td>{event.Hardware != null ? event.Hardware.Type.Value : "-"}</td>
                             <td>{event.User.name}</td>
                             <td>{new Date(event.CreatedAt * 1000).toLocaleString().slice(0, 17)}</td>
                             <td></td>

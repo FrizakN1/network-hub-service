@@ -26,9 +26,6 @@ func NewEventHandler(userClient *userpb.UserServiceClient, db *database.Database
 	return &DefaultEventHandler{
 		EventRepo: &database.DefaultEventRepository{
 			Database: *db,
-			Counter: &database.DefaultCounter{
-				Database: *db,
-			},
 		},
 		UserService: *userClient,
 		Metadata:    &utils.DefaultMetadata{},
@@ -38,6 +35,12 @@ func NewEventHandler(userClient *userpb.UserServiceClient, db *database.Database
 func (h *DefaultEventHandler) HandlerGetEvents(c *gin.Context, from string) {
 	id := 0
 	var err error
+
+	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to parse query(offset) to int", http.StatusBadRequest))
+		return
+	}
 
 	if from != "" {
 		from = fmt.Sprintf("%s_%s", from, strings.ToUpper(c.Param("type")))
@@ -49,7 +52,7 @@ func (h *DefaultEventHandler) HandlerGetEvents(c *gin.Context, from string) {
 		}
 	}
 
-	events, count, err := h.EventRepo.GetEvents(from, id)
+	events, count, err := h.EventRepo.GetEvents(offset, from, id)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get events", http.StatusInternalServerError))
 		return

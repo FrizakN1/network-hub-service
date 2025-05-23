@@ -6,7 +6,7 @@ type Node struct {
 	ID          int
 	Parent      *Node
 	Address     Address
-	Type        Reference
+	Type        *Reference
 	Owner       Reference
 	Name        string
 	Zone        sql.NullString

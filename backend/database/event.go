@@ -8,18 +8,17 @@ import (
 
 type EventRepository interface {
 	CreateEvent(event models.Event) error
-	GetEvents(from string, id int) ([]models.Event, int, error)
+	GetEvents(offset int, from string, id int) ([]models.Event, int, error)
 }
 
 type DefaultEventRepository struct {
 	Database Database
-	Counter  Counter
 }
 
 func (r *DefaultEventRepository) CreateEvent(event models.Event) error {
 	stmt, ok := r.Database.GetQuery("CREATE_EVENT")
 	if !ok {
-		return errors.New("запрос CREATE_EVENT не подготовлен")
+		return errors.New("query CREATE_EVENT is not prepare")
 	}
 
 	var nodeID interface{}
@@ -48,7 +47,7 @@ func (r *DefaultEventRepository) CreateEvent(event models.Event) error {
 	return nil
 }
 
-func (r *DefaultEventRepository) GetEvents(from string, id int) ([]models.Event, int, error) {
+func (r *DefaultEventRepository) GetEvents(offset int, from string, id int) ([]models.Event, int, error) {
 	key := "GET_EVENTS"
 
 	if from != "" {
@@ -57,18 +56,16 @@ func (r *DefaultEventRepository) GetEvents(from string, id int) ([]models.Event,
 
 	stmt, ok := r.Database.GetQuery(key)
 	if !ok {
-		return nil, 0, errors.New("запрос " + key + " не подготовлен")
+		return nil, 0, errors.New("query " + key + " is not prepare")
 	}
 
 	var rows *sql.Rows
 	var err error
-	var countParam []interface{} = nil
 
 	if id > 0 {
-		rows, err = stmt.Query(id)
-		countParam = []interface{}{id}
+		rows, err = stmt.Query(offset, id)
 	} else {
-		rows, err = stmt.Query()
+		rows, err = stmt.Query(offset)
 	}
 	if err != nil {
 		return nil, 0, err
@@ -76,6 +73,7 @@ func (r *DefaultEventRepository) GetEvents(from string, id int) ([]models.Event,
 	defer rows.Close()
 
 	var events []models.Event
+	var count int
 
 	for rows.Next() {
 		var (
@@ -100,6 +98,7 @@ func (r *DefaultEventRepository) GetEvents(from string, id int) ([]models.Event,
 			&event.Address.House.Type.ShortName,
 			&nodeName,
 			&hardwareTypeTranslateValue,
+			&count,
 		); err != nil {
 			return nil, 0, err
 		}
@@ -109,15 +108,10 @@ func (r *DefaultEventRepository) GetEvents(from string, id int) ([]models.Event,
 		}
 
 		if hardwareID.Valid {
-			event.Hardware = &models.Hardware{ID: int(hardwareID.Int64), Type: models.Reference{TranslateValue: hardwareTypeTranslateValue.String}}
+			event.Hardware = &models.Hardware{ID: int(hardwareID.Int64), Type: models.Reference{Value: hardwareTypeTranslateValue.String}}
 		}
 
 		events = append(events, event)
-	}
-
-	count, err := r.Counter.countRecords(key+"_COUNT", countParam)
-	if err != nil {
-		return nil, 0, err
 	}
 
 	return events, count, nil
