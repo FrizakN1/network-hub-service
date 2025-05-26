@@ -4,7 +4,7 @@ import CustomSelect from "./CustomSelect";
 import FetchRequest from "../fetchRequest";
 import ModalSelectTable from "./ModalSelectTable";
 
-const HardwareModalCreate = ({action, setState, returnHardware, editHardware}) => {
+const HardwareModalCreate = ({action, setState, returnHardware, editHardwareID}) => {
     const validateDebounceTimer = useRef(0)
     const [fields, setFields] = useState({
         Node: {ID: 0, Name: ""},
@@ -23,6 +23,7 @@ const HardwareModalCreate = ({action, setState, returnHardware, editHardware}) =
     const [hardwareTypes, setHardwareTypes] = useState([])
     const [switches, setSwitches] = useState([])
     const [modalSelectTable, setModalSelectTable] = useState(false)
+    const [editHardware, setEditHardware] = useState({})
 
     const handlerModalCreateClose = (e) => {
         if (e.target.className === "modal-window") {
@@ -32,16 +33,23 @@ const HardwareModalCreate = ({action, setState, returnHardware, editHardware}) =
 
     useEffect(() => {
         if (action === "edit") {
-            setFields({
-                Node: editHardware.Node,
-                Type: editHardware.Type,
-                Switch: editHardware.Switch,
-                IpAddress: editHardware.IpAddress.String,
-                MgmtVlan: editHardware.MgmtVlan.String,
-                Description: editHardware.Description.String,
-            })
+            FetchRequest("GET", `/hardware/${editHardwareID}`)
+                .then(response => {
+                    if (response.success) {
+                        setEditHardware(response.data)
+
+                        setFields({
+                            Node: response.data.Node,
+                            Type: response.data.Type,
+                            Switch: response.data.Switch,
+                            IpAddress: response.data.IpAddress.String,
+                            MgmtVlan: response.data.MgmtVlan.String,
+                            Description: response.data.Description.String,
+                        })
+                    }
+                })
         }
-    }, [action, editHardware]);
+    }, [action, editHardwareID]);
 
     useEffect(() => {
         FetchRequest("GET", "/switches", null)

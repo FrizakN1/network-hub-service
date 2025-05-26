@@ -18,7 +18,7 @@ const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
     const [modalCreate, setModalCreate] = useState(false)
     const [modalEdit, setModalEdit] = useState({
         State: false,
-        EditHardware: null
+        EditHardwareID: null
     })
     const searchDebounceTimer = useRef(0)
     const [hardware, setHardware] = useState([])
@@ -147,7 +147,7 @@ const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
         <div className="contain hardware">
             {user.role.key !== "user" && canCreate && <>
                 {modalCreate && <HardwareModalCreate action={"create"} setState={setModalCreate} returnHardware={handlerAddHardware}/>}
-                {modalEdit.State && <HardwareModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editHardware={modalEdit.EditHardware} returnHardware={handlerEditHardware}/>}
+                {modalEdit.State && <HardwareModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editHardwareID={modalEdit.EditHardwareID} returnHardware={handlerEditHardware}/>}
                 <div className="buttons">
                     <button onClick={() => setModalCreate(true)}>
                         <FontAwesomeIcon icon={faPlus}/> Добавить оборудование
@@ -179,7 +179,7 @@ const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
                             <td>{_hardware.Type.Key === "switch" && _hardware.IpAddress.Valid ? _hardware.IpAddress.String : "-"}</td>
                             <td>
                                 <FontAwesomeIcon icon={faEye} className="eye" title="Просмотр" onClick={() => navigate(`/hardware/view/${_hardware.ID}`)}/>
-                                {user.role.key !== "user" &&<FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditHardware: _hardware})}/>}
+                                {user.role.key !== "user" &&<FontAwesomeIcon icon={faPen} title="Редактировать" onClick={() => setModalEdit({State: true, EditHardwareID: _hardware.ID})}/>}
                                 {user.role.key === "admin" && <FontAwesomeIcon icon={faTrash} className="delete" title="Удалить" onClick={() => handlerDeleteHardware(_hardware.ID)}/>}
                             </td>
                         </tr>

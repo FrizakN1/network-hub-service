@@ -94,20 +94,6 @@ const NodeModalCreate = ({action, setState, editNodeID, returnNode, defaultAddre
                         })
                     }
                 })
-            //console.log(editNode)
-            // setFields({
-            //     Parent: editNode.Parent != null ? editNode.Parent : {ID: 0, Name: ""},
-            //     Address: editNode.Address,
-            //     Type: editNode.Type != null ? editNode.Type : {ID: 0, Value: ""},
-            //     Owner: editNode.Owner,
-            //     Name: editNode.Name,
-            //     Zone: editNode.Zone.String,
-            //     Placement: editNode.Placement.String,
-            //     Supply: editNode.Supply.String,
-            //     Access: editNode.Access.String,
-            //     Description: editNode.Description.String,
-            //     IsPassive: editNode.IsPassive
-            // })
         } else if (defaultAddress != null) {
             setFields(prevState => ({...prevState, Address: defaultAddress}))
         }
