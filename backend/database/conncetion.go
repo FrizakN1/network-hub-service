@@ -7,7 +7,7 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-func InitDatabase() (Database, error) {
+func InitDatabase(migration string) (Database, error) {
 	d := new(DefaultDatabase)
 
 	if err := d.Connect(); err != nil {
@@ -18,6 +18,18 @@ func InitDatabase() (Database, error) {
 		return nil, err
 	}
 
+	switch migration {
+	case "up":
+		if err := goose.Up(d.db, "migrations"); err != nil {
+			return nil, err
+		}
+	case "down":
+		if err := goose.Down(d.db, "migrations"); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("invalid migration direction: %s. Use 'up' or 'down'", migration)
+	}
 	if err := goose.Up(d.db, "migrations"); err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"backend/database"
 	"backend/router"
+	"flag"
 	"fmt"
 	"github.com/joho/godotenv"
 	"log"
@@ -10,6 +11,9 @@ import (
 )
 
 func main() {
+	migration := flag.String("migration", "up", "Migration direction: up or down")
+	flag.Parse()
+
 	// Загружаем переменные среды
 	if err := godotenv.Load(); err != nil {
 		log.Fatalln(err)
@@ -17,7 +21,7 @@ func main() {
 	}
 
 	// Инициализируем базу данных
-	db, err := database.InitDatabase()
+	db, err := database.InitDatabase(*migration)
 	if err != nil {
 		log.Fatalln(err)
 		return
