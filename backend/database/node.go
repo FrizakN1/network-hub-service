@@ -204,50 +204,6 @@ func (r *DefaultNodeRepository) GetNode(node *models.Node) error {
 	return nil
 }
 
-//func (r *DefaultNodeRepository) GetHouseNodes(houseID int, offset int) ([]models.Node, int, error) {
-//	stmt, ok := r.Database.GetQuery("GET_HOUSE_NODES")
-//	if !ok {
-//		return nil, 0, errors.New("query GET_HOUSE_NODES is not prepare")
-//	}
-//
-//	count, err := r.Counter.countRecords("GET_HOUSE_NODES_COUNT", []interface{}{houseID})
-//	if err != nil {
-//		return nil, 0, err
-//	}
-//
-//	rows, err := stmt.Query(houseID, offset)
-//	if err != nil {
-//		return nil, 0, err
-//	}
-//	defer rows.Close()
-//
-//	var nodes []models.Node
-//
-//	for rows.Next() {
-//		var node models.Node
-//
-//		if err = rows.Scan(
-//			&node.ID,
-//			&node.Address.House.ID,
-//			&node.Owner.ID,
-//			&node.Name,
-//			&node.Zone,
-//			&node.IsPassive,
-//			&node.Address.Street.Name,
-//			&node.Address.Street.Type.ShortName,
-//			&node.Address.House.Name,
-//			&node.Address.House.Type.ShortName,
-//			&node.Owner.Value,
-//		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-//			return nil, 0, err
-//		}
-//
-//		nodes = append(nodes, node)
-//	}
-//
-//	return nodes, count, nil
-//}
-
 func (r *DefaultNodeRepository) GetNodes(offset int, onlyActive bool, houseID int) ([]models.Node, int, error) {
 	stmt, ok := r.Database.GetQuery("GET_NODES")
 	if !ok {
