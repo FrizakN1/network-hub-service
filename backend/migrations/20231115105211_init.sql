@@ -1,16 +1,20 @@
 -- +goose Up
 -- +goose StatementBegin
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE TABLE IF NOT EXISTS "House_type" (
     id serial PRIMARY KEY,
     name character varying(255) NOT NULL,
     short_name character varying(255) NOT NULL
 );
+CREATE INDEX idx_house_type_short_name_trgm ON "House_type" USING GIN (short_name gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS "Street_type" (
     id serial PRIMARY KEY,
     name character varying(255) NOT NULL,
     short_name character varying(255) NOT NULL
 );
+CREATE INDEX idx_street_type_short_name_trgm ON "Street_type" USING GIN (short_name gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS "Street" (
     id serial PRIMARY KEY,
@@ -19,6 +23,8 @@ CREATE TABLE IF NOT EXISTS "Street" (
     fias_id character varying(255),
     FOREIGN KEY (type_id) REFERENCES "Street_type"(id)
 );
+CREATE INDEX idx_street_type_id ON "Street" (type_id);
+CREATE INDEX idx_street_name_trgm ON "Street" USING GIN (name gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS "House" (
     id serial PRIMARY KEY,
@@ -29,6 +35,9 @@ CREATE TABLE IF NOT EXISTS "House" (
     FOREIGN KEY (street_id) REFERENCES "Street"(id),
     FOREIGN KEY (type_id) REFERENCES "House_type"(id)
 );
+CREATE INDEX idx_house_street_id ON "House"(street_id);
+CREATE INDEX idx_house_type_id ON "House"(type_id);
+CREATE INDEX idx_house_name_trgm ON "House" USING GIN (name gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS "House_files" (
     id serial PRIMARY KEY,
@@ -39,18 +48,21 @@ CREATE TABLE IF NOT EXISTS "House_files" (
     in_archive boolean NOT NULL,
     FOREIGN KEY (house_id) REFERENCES "House"(id)
 );
+CREATE INDEX idx_house_files_house_id ON "House_files"(house_id);
 
 CREATE TABLE IF NOT EXISTS "Node_owner" (
     id serial PRIMARY KEY,
     value character varying(255) NOT NULL UNIQUE,
     created_at bigint NOT NULL
 );
+CREATE INDEX idx_node_owner_value_trgm ON "Node_owner" USING GIN (value gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS "Node_type" (
     id serial PRIMARY KEY,
     value character varying(255) NOT NULL UNIQUE,
     created_at bigint NOT NULL
 );
+CREATE INDEX idx_node_type_value_trgm ON "Node_type" USING GIN (value gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS "Node" (
     id serial PRIMARY KEY,
@@ -73,6 +85,12 @@ CREATE TABLE IF NOT EXISTS "Node" (
     FOREIGN KEY (type_id) REFERENCES "Node_type"(id),
     FOREIGN KEY (owner_id) REFERENCES "Node_owner"(id)
 );
+CREATE INDEX idx_node_parent_id ON "Node" (parent_id);
+CREATE INDEX idx_node_house_id ON "Node" (house_id);
+CREATE INDEX idx_node_type_id ON "Node" (type_id);
+CREATE INDEX idx_node_owner_id ON "Node" (owner_id);
+CREATE INDEX idx_node_name_trgm ON "Node" USING GIN (name gin_trgm_ops);
+CREATE INDEX idx_node_zone_trgm ON "Node" USING GIN (zone gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS "Node_files" (
     id serial PRIMARY KEY,
@@ -84,6 +102,7 @@ CREATE TABLE IF NOT EXISTS "Node_files" (
     is_preview_image boolean NOT NULL,
     FOREIGN KEY (node_id) REFERENCES "Node"(id)
 );
+CREATE INDEX idx_node_files_node_id ON "Node_files" (node_id);
 
 CREATE TABLE IF NOT EXISTS "Hardware_type" (
     id serial PRIMARY KEY,
@@ -91,6 +110,7 @@ CREATE TABLE IF NOT EXISTS "Hardware_type" (
     value character varying(255) NOT NULL,
     created_at bigint NOT NULL
 );
+CREATE INDEX idx_hardware_type_value_trgm ON "Hardware_type" USING GIN (value gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS "Operation_mode" (
     id serial PRIMARY KEY,
@@ -98,6 +118,7 @@ CREATE TABLE IF NOT EXISTS "Operation_mode" (
     value character varying(255) NOT NULL,
     created_at bigint NOT NULL
 );
+CREATE INDEX idx_operation_mode_value_trgm ON "Operation_mode" USING GIN (value gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS "Switch" (
     id serial PRIMARY KEY,
@@ -122,6 +143,8 @@ CREATE TABLE IF NOT EXISTS "Switch" (
     mac_oid character varying(255),
     FOREIGN KEY (operation_mode_id) REFERENCES "Operation_mode"(id)
 );
+CREATE INDEX idx_switch_operation_mode_id ON "Switch" (operation_mode_id);
+CREATE INDEX idx_switch_name_trgm ON "Switch" USING GIN (name gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS "Hardware" (
     id serial PRIMARY KEY,
@@ -138,6 +161,10 @@ CREATE TABLE IF NOT EXISTS "Hardware" (
     FOREIGN KEY (type_id) REFERENCES "Hardware_type"(id),
     FOREIGN KEY (switch_id) REFERENCES "Switch"(id)
 );
+CREATE INDEX idx_hardware_node_id ON "Hardware" (node_id);
+CREATE INDEX idx_hardware_type_id ON "Hardware" (type_id);
+CREATE INDEX idx_hardware_switch_id ON "Hardware" (switch_id);
+CREATE INDEX idx_hardware_id_address_trgm ON "Hardware" USING GIN (ip_address gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS "Hardware_files" (
     id serial PRIMARY KEY,
@@ -148,6 +175,7 @@ CREATE TABLE IF NOT EXISTS "Hardware_files" (
     in_archive boolean NOT NULL,
     FOREIGN KEY (hardware_id) REFERENCES "Hardware"(id)
 );
+CREATE INDEX idx_hardware_files_hardware_id ON "Hardware_files" (hardware_id);
 
 CREATE TABLE IF NOT EXISTS "Event" (
     id bigserial PRIMARY KEY,
@@ -161,18 +189,24 @@ CREATE TABLE IF NOT EXISTS "Event" (
     FOREIGN KEY (node_id) REFERENCES "Node"(id),
     FOREIGN KEY (hardware_id) REFERENCES "Hardware"(id)
 );
+CREATE INDEX idx_event_house_id ON "Event"(house_id);
+CREATE INDEX idx_event_node_id ON "Event"(node_id);
+CREATE INDEX idx_event_hardware_id ON "Event"(hardware_id);
+CREATE INDEX idx_event_created_at ON "Event"(created_at DESC);
 
 CREATE TABLE IF NOT EXISTS "Roof_type" (
     id serial PRIMARY KEY,
     value character varying(255) NOT NULL UNIQUE,
     created_at bigint NOT NULL
 );
+CREATE INDEX idx_roof_type_value_trgm ON "Roof_type" USING GIN (value gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS "Wiring_type" (
     id serial PRIMARY KEY,
     value character varying(255) NOT NULL UNIQUE,
     created_at bigint NOT NULL
 );
+CREATE INDEX idx_wiring_type_value_trgm ON "Wiring_type" USING GIN (value gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS "House_param" (
     id serial PRIMARY KEY,
@@ -183,6 +217,9 @@ CREATE TABLE IF NOT EXISTS "House_param" (
     FOREIGN KEY (roof_type_id) REFERENCES "Roof_type"(id),
     FOREIGN KEY (wiring_type_id) REFERENCES "Wiring_type"(id)
 );
+CREATE INDEX idx_house_param_house_id ON "House_param" (house_id);
+CREATE INDEX idx_house_param_roof_type_id ON "House_param" (roof_type_id);
+CREATE INDEX idx_house_param_wiring_type_id ON "House_param" (wiring_type_id);
 
 INSERT INTO "Operation_mode"(key, value, created_at)
 VALUES
@@ -240,5 +277,5 @@ DROP TABLE IF EXISTS "House";
 DROP TABLE IF EXISTS "Street";
 DROP TABLE IF EXISTS "Street_type";
 DROP TABLE IF EXISTS "House_type";
-
+DROP EXTENSION IF EXISTS pg_trgm;
 -- +goose StatementEnd
