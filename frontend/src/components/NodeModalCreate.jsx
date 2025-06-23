@@ -75,8 +75,6 @@ const NodeModalCreate = ({action, setState, editNodeID, returnNode, defaultAddre
             FetchRequest("GET", `/nodes/${editNodeID}`)
                 .then(response => {
                     if (response.success) {
-                        console.log(response.data)
-
                         setEditNode(response.data)
 
                         setGeneralNode(response.data.Parent == null)
