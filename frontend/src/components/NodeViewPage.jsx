@@ -39,7 +39,7 @@ const NodeViewPage = () => {
                             </div>
                             <div className="block">
                                 <span>Адрес узла</span>
-                                <p>{`${node.Address.Street.Type.ShortName} ${node.Address.Street.Name}, ${node.Address.House.Type.ShortName} ${node.Address.House.Name}`}</p>
+                                <p>{`${node.Address.street.type.short_name} ${node.Address.street.name}, ${node.Address.house.type.short_name} ${node.Address.house.name}`}</p>
                             </div>
                             {!node.IsPassive && <>
                                 <div className="block">

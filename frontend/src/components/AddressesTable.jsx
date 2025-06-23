@@ -3,7 +3,7 @@ import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faAngleLeft, faAngleRight, faAnglesLeft, faAnglesRight} from "@fortawesome/free-solid-svg-icons";
 import {useNavigate} from "react-router-dom";
 
-const AddressesTable = ({addresses, count, setOffset, h = null}) => {
+const AddressesTable = ({addresses, count, addressAmounts, setOffset, h = null}) => {
     const [currentPage, setCurrentPage] = useState(1)
     const [allPage, setAllPage] = useState([])
     const [showPages, setShowPages] = useState(null)
@@ -73,11 +73,11 @@ const AddressesTable = ({addresses, count, setOffset, h = null}) => {
                 <h2>{h != null ? h : "Найдено совпадений: "}{count}</h2>
                 <div className="list">
                     {addresses.length > 0 && addresses.map((address, index) => (
-                        <div key={`address-${index}`} className="address" onClick={() => navigate(`/house/${address.House.ID}`)}>
-                            <h3>{address.Street.Type.ShortName} {address.Street.Name}, {address.House.Type.ShortName} {address.House.Name}</h3>
-                            <span>(файлов загружено: {address.FileAmount})</span>
-                            <span>(количество узлов: {address.NodeAmount})</span>
-                            <span>(количество оборудования: {address.HardwareAmount})</span>
+                        <div key={`address-${index}`} className="address" onClick={() => navigate(`/house/${address.house.id}`)}>
+                            <h3>{address.street.type.short_name} {address.street.name}, {address.house.type.short_name} {address.house.name}</h3>
+                            <span>(файлов загружено: {addressAmounts[address.house.id].FileAmount})</span>
+                            <span>(количество узлов: {addressAmounts[address.house.id].NodeAmount})</span>
+                            <span>(количество оборудования: {addressAmounts[address.house.id].HardwareAmount})</span>
                         </div>
                     ))}
                 </div>

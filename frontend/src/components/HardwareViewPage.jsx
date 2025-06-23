@@ -33,7 +33,7 @@ const HardwareViewPage = () => {
                             </div>
                             <div className="block">
                                 <span>Адрес</span>
-                                <p>{`${hardware.Node.Address.Street.Type.ShortName} ${hardware.Node.Address.Street.Name}, ${hardware.Node.Address.House.Type.ShortName} ${hardware.Node.Address.House.Name}`}</p>
+                                <p>{`${hardware.Node.Address.street.type.short_name} ${hardware.Node.Address.street.name}, ${hardware.Node.Address.house.type.short_name} ${hardware.Node.Address.house.name}`}</p>
                             </div>
                             <div className="block">
                                 <span>Тип оборудования</span>

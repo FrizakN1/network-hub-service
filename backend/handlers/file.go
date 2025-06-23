@@ -132,14 +132,16 @@ func (h *DefaultFileHandler) HandlerUploadFile(c *gin.Context) {
 	)
 
 	if fileFor == "houses" {
-		uploadFile.House.ID, err = strconv.Atoi(c.PostForm("id"))
+		houseID, err := strconv.Atoi(c.PostForm("id"))
 		if err != nil {
 			c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 			return
 		}
 
+		uploadFile.HouseId = int32(houseID)
+
 		event = models.Event{
-			Address:  models.Address{House: models.AddressElement{ID: uploadFile.House.ID}},
+			HouseId:  uploadFile.HouseId,
 			Node:     nil,
 			Hardware: nil,
 		}
@@ -156,7 +158,7 @@ func (h *DefaultFileHandler) HandlerUploadFile(c *gin.Context) {
 		}
 
 		event = models.Event{
-			Address:  models.Address{House: models.AddressElement{ID: uploadFile.Node.Address.House.ID}},
+			HouseId:  uploadFile.Node.HouseId,
 			Node:     &models.Node{ID: uploadFile.Node.ID},
 			Hardware: nil,
 		}
@@ -173,7 +175,7 @@ func (h *DefaultFileHandler) HandlerUploadFile(c *gin.Context) {
 		}
 
 		event = models.Event{
-			Address:  models.Address{House: models.AddressElement{ID: uploadFile.Hardware.Node.Address.House.ID}},
+			HouseId:  uploadFile.Hardware.Node.Address.House.Id,
 			Node:     &models.Node{ID: uploadFile.Hardware.Node.ID},
 			Hardware: &models.Hardware{ID: uploadFile.Hardware.ID},
 		}
@@ -297,11 +299,11 @@ func (h *DefaultFileHandler) HandlerFile(c *gin.Context) {
 		return
 	}
 
-	if file.House.ID > 0 {
+	if file.HouseId > 0 {
 		key = "HOUSES"
 
 		event = models.Event{
-			Address:  models.Address{House: models.AddressElement{ID: file.House.ID}},
+			HouseId:  file.HouseId,
 			Node:     nil,
 			Hardware: nil,
 		}
@@ -314,7 +316,7 @@ func (h *DefaultFileHandler) HandlerFile(c *gin.Context) {
 		}
 
 		event = models.Event{
-			Address:  models.Address{House: models.AddressElement{ID: file.Node.Address.House.ID}},
+			HouseId:  file.Node.HouseId,
 			Node:     &models.Node{ID: file.Node.ID},
 			Hardware: nil,
 		}
@@ -327,7 +329,7 @@ func (h *DefaultFileHandler) HandlerFile(c *gin.Context) {
 		}
 
 		event = models.Event{
-			Address:  models.Address{House: models.AddressElement{ID: file.Hardware.Node.Address.House.ID}},
+			HouseId:  file.Hardware.Node.HouseId,
 			Node:     &models.Node{ID: file.Hardware.Node.ID},
 			Hardware: &models.Hardware{ID: file.Hardware.ID},
 		}

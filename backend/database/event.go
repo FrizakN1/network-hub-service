@@ -33,7 +33,7 @@ func (r *DefaultEventRepository) CreateEvent(event models.Event) error {
 	}
 
 	_, err := stmt.Exec(
-		event.Address.House.ID,
+		event.HouseId,
 		nodeID,
 		hardwareID,
 		event.UserId,
@@ -86,16 +86,12 @@ func (r *DefaultEventRepository) GetEvents(offset int, from string, id int) ([]m
 
 		if err = rows.Scan(
 			&event.ID,
-			&event.Address.House.ID,
+			&event.HouseId,
 			&nodeID,
 			&hardwareID,
 			&event.UserId,
 			&event.Description,
 			&event.CreatedAt,
-			&event.Address.Street.Name,
-			&event.Address.Street.Type.ShortName,
-			&event.Address.House.Name,
-			&event.Address.House.Type.ShortName,
 			&nodeName,
 			&hardwareTypeTranslateValue,
 			&count,

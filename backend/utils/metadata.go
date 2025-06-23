@@ -7,7 +7,7 @@ import (
 )
 
 type Metadata interface {
-	SetAuthorizationHeader(c *gin.Context) context.Context
+	SetAuthorizationHeader(ctx *gin.Context) context.Context
 }
 type DefaultMetadata struct{}
 
@@ -22,7 +22,7 @@ func (m *DefaultMetadata) SetAuthorizationHeader(c *gin.Context) context.Context
 		"Authorization": authHeader,
 	})
 
-	ctx := metadata.NewOutgoingContext(c.Request.Context(), md)
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
 
 	return ctx
 }

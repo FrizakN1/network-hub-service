@@ -12,6 +12,7 @@ const ResultPage = () => {
     const [count, setCount] = useState(0)
     const [offset, setOffset] = useState(1)
     const [isLoaded, setIsLoaded] = useState(false)
+    const [addressAmounts, setAddressAmounts] = useState({})
 
     useEffect(() => {
         if (query.length > 0 && typeof query === "string") {
@@ -27,6 +28,7 @@ const ResultPage = () => {
                         if (response.data != null) {
                             setAddresses(response.data?.Addresses || [])
                             setCount(response.data?.Count || 0)
+                            setAddressAmounts(response.data?.AddressAmounts || {})
                         }
 
                         setIsLoaded(true)
@@ -38,7 +40,7 @@ const ResultPage = () => {
     return (
         <section className="result">
             <SearchInput defaultValue={query}/>
-            {isLoaded && <AddressesTable addresses={addresses} count={count} setOffset={setOffset}/>}
+            {isLoaded && <AddressesTable addresses={addresses} count={count} addressAmounts={addressAmounts} setOffset={setOffset}/>}
         </section>
     )
 }

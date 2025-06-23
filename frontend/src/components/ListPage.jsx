@@ -7,6 +7,7 @@ const ListPage = () => {
     const [count, setCount] = useState(0)
     const [offset, setOffset] = useState(1)
     const [isLoaded, setIsLoaded] = useState(false)
+    const [addressAmounts, setAddressAmounts] = useState({})
 
     useEffect(() => {
         let params = new URLSearchParams({
@@ -19,6 +20,7 @@ const ListPage = () => {
                     if (response.data != null) {
                         setAddresses(response.data?.Addresses || [])
                         setCount(response.data?.Count || 0)
+                        setAddressAmounts(response.data?.AddressAmounts || {})
                     }
                     setIsLoaded(true)
                 }
@@ -27,7 +29,7 @@ const ListPage = () => {
 
     return (
         <section className="result">
-            {isLoaded && <AddressesTable addresses={addresses} count={count} setOffset={setOffset} h={"Адреса, содержащие файлы, узлы или оборудование: "}/>}
+            {isLoaded && <AddressesTable addresses={addresses} count={count} addressAmounts={addressAmounts} setOffset={setOffset} h={"Адреса, содержащие файлы, узлы или оборудование: "}/>}
         </section>
     )
 }

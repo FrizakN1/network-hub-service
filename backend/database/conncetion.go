@@ -5,6 +5,7 @@ import (
 	"fmt"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
+	"log"
 )
 
 func InitDatabase(migration string) (Database, error) {
@@ -37,10 +38,10 @@ func InitDatabase(migration string) (Database, error) {
 	errorsList := d.PrepareQuery()
 	if len(errorsList) > 0 {
 		for _, err := range errorsList {
-			fmt.Println(err)
+			log.Println(err)
 		}
 
-		return nil, errors.New("ошибка при подготовке запросов")
+		return nil, errors.New("failed to prepare query")
 	}
 
 	return d, nil

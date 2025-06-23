@@ -5,7 +5,7 @@ import {
     faAngleRight,
     faAnglesLeft, faAnglesRight,
     faEye,
-    faPen, faPlus, faSquareCheck,
+    faPen, faPlus, faRotate, faSquareCheck,
     faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import {
@@ -140,11 +140,18 @@ const NodesTable = ({houseID = 0, canCreate = false, action, selectFunction, sel
     }
 
     const handlerDeleteNode = (nodeID) => {
-        FetchRequest("DELETE", `/nodes/${nodeID}`, null)
+        FetchRequest("DELETE", `/nodes/${nodeID}`)
             .then(response => {
                 if (response.success && response.data) {
                     setNodes(prevState => prevState.filter(node => node.ID !== nodeID))
                 }
+            })
+    }
+
+    const handlerIndexNodes = () => {
+        FetchRequest("GET", `/nodes/index`)
+            .then(response => {
+                console.log(response)
             })
     }
 
@@ -154,6 +161,9 @@ const NodesTable = ({houseID = 0, canCreate = false, action, selectFunction, sel
                 {modalCreate && <NodeModalCreate action={"create"} setState={setModalCreate} returnNode={handlerAddNode} defaultAddress={defaultAddress}/>}
                 {modalEdit.State && <NodeModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editNodeID={modalEdit.EditNodeID} returnNode={handlerEditNode}/>}
                 <div className="buttons">
+                    <button onClick={handlerIndexNodes}>
+                        <FontAwesomeIcon icon={faRotate} /> Индексация
+                    </button>
                     <button onClick={() => setModalCreate(true)}>
                         <FontAwesomeIcon icon={faPlus}/> Добавить узел
                     </button>
@@ -178,7 +188,7 @@ const NodesTable = ({houseID = 0, canCreate = false, action, selectFunction, sel
                         <tr key={index} className={index % 2 === 0 ? 'row-type-1' : 'row-type-2'}>
                             <td>{node.ID}</td>
                             <td>{node.Name}</td>
-                            {houseID > 0 ? "" : <td>{`${node.Address.Street.Type.ShortName} ${node.Address.Street.Name}, ${node.Address.House.Type.ShortName} ${node.Address.House.Name}`}</td>}
+                            {houseID > 0 ? "" : <td>{`${node.Address.street.type.short_name} ${node.Address.street.name}, ${node.Address.house.type.short_name} ${node.Address.house.name}`}</td>}
                             <td>{node.Owner.Value}</td>
                             <td>{node.Zone.String}</td>
                             <td>{node.IsPassive ? <span className="bg-red">Пассивный</span> : <span className="bg-green">Активный</span>}</td>

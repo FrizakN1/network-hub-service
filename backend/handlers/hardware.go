@@ -3,10 +3,16 @@ package handlers
 import (
 	"backend/database"
 	"backend/errors"
+	"backend/kafka"
 	"backend/models"
+	"backend/proto/addresspb"
+	"backend/proto/searchpb"
+	"backend/utils"
+	"context"
 	"database/sql"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -21,15 +27,22 @@ type HardwareHandler interface {
 	HandlerGetHouseHardware(c *gin.Context)
 	HandlerGetHardware(c *gin.Context)
 	HandlerDeleteHardware(c *gin.Context)
+	SendBatchHardware(ctx context.Context) error
+	SendSingleHardware(ctx context.Context, hardwareID int) error
 }
 
 type DefaultHardwareHandler struct {
-	Privilege    Privilege
-	HardwareRepo database.HardwareRepository
-	EventRepo    database.EventRepository
+	Privilege      Privilege
+	HardwareRepo   database.HardwareRepository
+	EventRepo      database.EventRepository
+	AddressService addresspb.AddressServiceClient
+	Metadata       utils.Metadata
+	SearchService  searchpb.SearchServiceClient
+	kafka.HardwareProducer
+	utils.Logger
 }
 
-func NewHardwareHandler(db *database.Database) HardwareHandler {
+func NewHardwareHandler(addressClient *addresspb.AddressServiceClient, searchClient *searchpb.SearchServiceClient, db *database.Database, logger *utils.Logger) HardwareHandler {
 	return &DefaultHardwareHandler{
 		Privilege: &DefaultPrivilege{},
 		HardwareRepo: &database.DefaultHardwareRepository{
@@ -38,8 +51,145 @@ func NewHardwareHandler(db *database.Database) HardwareHandler {
 		EventRepo: &database.DefaultEventRepository{
 			Database: *db,
 		},
+		AddressService:   *addressClient,
+		Metadata:         &utils.DefaultMetadata{},
+		SearchService:    *searchClient,
+		HardwareProducer: kafka.NewHardwareProducer(kafka.NewKafkaWriter("index-node")),
+		Logger:           *logger,
 	}
 }
+
+func (h *DefaultHardwareHandler) SendSingleHardware(ctx context.Context, hardwareID int) error {
+	hd := &models.Hardware{ID: hardwareID}
+
+	if err := h.HardwareRepo.GetHardwareByID(hd); err != nil {
+		return err
+	}
+
+	res, err := h.AddressService.GetAddress(ctx, &addresspb.GetAddressRequest{HouseId: hd.Node.HouseId})
+	if err != nil {
+		return err
+	}
+
+	grpcHd := &searchpb.Hardware{
+		Id:        int32(hd.ID),
+		Type:      hd.Type.Value,
+		NodeName:  hd.Node.Name,
+		ModelName: hd.Switch.Name,
+		IpAddress: hd.IpAddress.String,
+		Address: &searchpb.Address{
+			StreetName: res.Street.Name,
+			StreetType: res.Street.Type.ShortName,
+			HouseName:  res.House.Name,
+			HouseType:  res.House.Type.ShortName,
+		},
+		IsDelete: hd.IsDelete,
+	}
+
+	if err = h.HardwareProducer.SendSingleHardware(ctx, grpcHd); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *DefaultHardwareHandler) SendBatchHardware(ctx context.Context) error {
+	hardware, err := h.HardwareRepo.GetHardwareForIndex()
+	if err != nil {
+		return err
+	}
+
+	if len(hardware) == 0 {
+		return nil
+	}
+
+	if err = h.getAddressesForHardware(ctx, hardware); err != nil {
+		return err
+	}
+
+	var grpcHardware []*searchpb.Hardware
+
+	for _, hd := range hardware {
+
+		grpcHd := &searchpb.Hardware{
+			Id:        int32(hd.ID),
+			Type:      hd.Type.Value,
+			NodeName:  hd.Node.Name,
+			ModelName: hd.Switch.Name,
+			IpAddress: hd.IpAddress.String,
+			Address: &searchpb.Address{
+				StreetName: hd.Node.Address.Street.Name,
+				StreetType: hd.Node.Address.Street.Type.ShortName,
+				HouseName:  hd.Node.Address.House.Name,
+				HouseType:  hd.Node.Address.House.Type.ShortName,
+			},
+			IsDelete: hd.IsDelete,
+		}
+
+		grpcHardware = append(grpcHardware, grpcHd)
+	}
+
+	const batchSize = 1000
+
+	for i := 0; i < len(grpcHardware); i += batchSize {
+		end := i + batchSize
+		if end > len(grpcHardware) {
+			end = len(grpcHardware)
+		}
+
+		batch := grpcHardware[i:end]
+
+		if err = h.HardwareProducer.SendBatchHardware(ctx, batch); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+//func (h *DefaultHardwareHandler) HandlerIndexHardware(c *gin.Context) {
+//	hardware, err := h.HardwareRepo.GetHardwareForIndex()
+//	if err != nil {
+//		c.Error(errors.NewHTTPError(err, "failed to get hardware for index", http.StatusInternalServerError))
+//		return
+//	}
+//
+//	ctx := h.Metadata.SetAuthorizationHeader(c)
+//
+//	if err = h.getAddressesForHardware(ctx, hardware); err != nil {
+//		c.Error(errors.NewHTTPError(err, "failed to get addresses", http.StatusInternalServerError))
+//		return
+//	}
+//
+//	var grpcHardware []*searchpb.Hardware
+//
+//	for _, hd := range hardware {
+//		grpcHd := &searchpb.Hardware{
+//			Id:        int32(hd.ID),
+//			Type:      hd.Type.Value,
+//			NodeName:  hd.Node.Name,
+//			ModelName: hd.Switch.Name,
+//			IpAddress: hd.IpAddress.String,
+//			Address: &searchpb.Address{
+//				StreetName: hd.Node.Address.Street.Name,
+//				StreetType: hd.Node.Address.Street.Type.ShortName,
+//				HouseName:  hd.Node.Address.House.Name,
+//				HouseType:  hd.Node.Address.House.Type.ShortName,
+//			},
+//			IsDelete: hd.IsDelete,
+//		}
+//
+//		grpcHardware = append(grpcHardware, grpcHd)
+//	}
+//
+//	_, err = h.SearchService.IndexHardware(ctx, &searchpb.IndexHardwareRequest{Hardware: grpcHardware})
+//	if err != nil {
+//		c.Error(errors.NewHTTPError(err, "failed to index hardware", http.StatusInternalServerError))
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, nil)
+//}
 
 func (h *DefaultHardwareHandler) HandlerDeleteHardware(c *gin.Context) {
 	_, isAdmin, _ := h.Privilege.getPrivilege(c)
@@ -59,6 +209,13 @@ func (h *DefaultHardwareHandler) HandlerDeleteHardware(c *gin.Context) {
 		c.Error(errors.NewHTTPError(err, "failed to delete hardware", http.StatusInternalServerError))
 		return
 	}
+
+	go func() {
+		if e := h.SendSingleHardware(context.Background(), hardwareID); e != nil {
+			log.Printf("failed to send single hardware: %v\n", e)
+			h.Logger.Println(e)
+		}
+	}()
 
 	c.JSON(http.StatusOK, true)
 }
@@ -111,7 +268,7 @@ func (h *DefaultHardwareHandler) HandlerEditHardware(c *gin.Context) {
 	}
 
 	event := models.Event{
-		Address:     models.Address{House: models.AddressElement{ID: hardware.Node.Address.House.ID}},
+		HouseId:     hardware.Node.HouseId,
 		Node:        &models.Node{ID: hardware.Node.ID},
 		Hardware:    &models.Hardware{ID: hardware.ID},
 		UserId:      session.User.Id,
@@ -123,6 +280,13 @@ func (h *DefaultHardwareHandler) HandlerEditHardware(c *gin.Context) {
 		c.Error(errors.NewHTTPError(err, "failed to create event", http.StatusInternalServerError))
 		return
 	}
+
+	go func() {
+		if e := h.SendSingleHardware(context.Background(), hardware.ID); e != nil {
+			log.Printf("failed to send single hardware: %v\n", e)
+			h.Logger.Println(e)
+		}
+	}()
 
 	c.JSON(http.StatusOK, hardware)
 }
@@ -155,7 +319,7 @@ func (h *DefaultHardwareHandler) HandlerCreateHardware(c *gin.Context) {
 	}
 
 	event := models.Event{
-		Address:     models.Address{House: models.AddressElement{ID: hardware.Node.Address.House.ID}},
+		HouseId:     hardware.Node.HouseId,
 		Node:        &models.Node{ID: hardware.Node.ID},
 		Hardware:    nil,
 		UserId:      session.User.Id,
@@ -166,6 +330,13 @@ func (h *DefaultHardwareHandler) HandlerCreateHardware(c *gin.Context) {
 	if err := h.EventRepo.CreateEvent(event); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to create event", http.StatusInternalServerError))
 	}
+
+	go func() {
+		if e := h.SendSingleHardware(context.Background(), hardware.ID); e != nil {
+			log.Printf("failed to send single hardware: %v\n", e)
+			h.Logger.Println(e)
+		}
+	}()
 
 	c.JSON(http.StatusOK, hardware)
 }
@@ -178,15 +349,40 @@ func (h *DefaultHardwareHandler) HandlerGetSearchHardware(c *gin.Context) {
 	}
 	search := c.Query("search")
 
-	hardware, count, err := h.HardwareRepo.GetSearchHardware(search, offset)
+	ctx := h.Metadata.SetAuthorizationHeader(c)
+
+	res, err := h.SearchService.SearchHardware(ctx, &searchpb.SearchHardwareRequest{
+		Search:       &searchpb.Search{Query: search, Offset: int32(offset), Limit: 20},
+		SearchFilter: &searchpb.SearchHardwareFilter{UseIsDelete: false},
+	})
 	if err != nil {
-		c.Error(errors.NewHTTPError(err, "failed to get search hardware", http.StatusInternalServerError))
+		c.Error(errors.NewHTTPError(err, "failed to search hardware", http.StatusInternalServerError))
+		return
+	}
+
+	if res == nil || len(res.HardwareIDs) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"Hardware": []struct{}{},
+			"Count":    0,
+		})
+
+		return
+	}
+
+	hardware, err := h.HardwareRepo.GetHardwareByIDs(res.HardwareIDs)
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to get hardware", http.StatusInternalServerError))
+		return
+	}
+
+	if err = h.getAddressesForHardware(ctx, hardware); err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to get addresses", http.StatusInternalServerError))
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"Hardware": hardware,
-		"Count":    count,
+		"Count":    res.Total,
 	})
 }
 
@@ -253,8 +449,65 @@ func (h *DefaultHardwareHandler) HandlerGetHardware(c *gin.Context) {
 		return
 	}
 
+	houseIDSet := make(map[int32]struct{})
+	addressMap := make(map[int32]*addresspb.Address)
+
+	for _, hd := range hardware {
+		houseIDSet[hd.Node.HouseId] = struct{}{}
+	}
+
+	var houseIDs []int32
+	for houseID := range houseIDSet {
+		houseIDs = append(houseIDs, houseID)
+	}
+
+	ctx := h.Metadata.SetAuthorizationHeader(c)
+
+	res, err := h.AddressService.GetAddresses(ctx, &addresspb.GetAddressesRequest{HouseIDs: houseIDs})
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to get addresses", http.StatusInternalServerError))
+		return
+	}
+
+	for _, address := range res.Addresses {
+		addressMap[address.House.Id] = address
+	}
+
+	for i := range hardware {
+		hardware[i].Node.Address = addressMap[hardware[i].Node.HouseId]
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"Hardware": hardware,
 		"Count":    count,
 	})
+}
+
+func (h *DefaultHardwareHandler) getAddressesForHardware(ctx context.Context, hardware []models.Hardware) error {
+	houseIDSet := make(map[int32]struct{})
+	addressMap := make(map[int32]*addresspb.Address)
+
+	for _, hd := range hardware {
+		houseIDSet[hd.Node.HouseId] = struct{}{}
+	}
+
+	var houseIDs []int32
+	for houseID := range houseIDSet {
+		houseIDs = append(houseIDs, houseID)
+	}
+
+	res, err := h.AddressService.GetAddresses(ctx, &addresspb.GetAddressesRequest{HouseIDs: houseIDs})
+	if err != nil {
+		return err
+	}
+
+	for _, address := range res.Addresses {
+		addressMap[address.House.Id] = address
+	}
+
+	for i := range hardware {
+		hardware[i].Node.Address = addressMap[hardware[i].Node.HouseId]
+	}
+
+	return nil
 }

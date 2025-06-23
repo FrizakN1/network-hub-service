@@ -3,27 +3,46 @@ package router
 import (
 	"backend/database"
 	"backend/handlers"
+	"backend/kafka"
 	"backend/middleware"
 	"backend/utils"
+	"context"
 	"github.com/gin-gonic/gin"
+	"log"
 )
 
 // Initialization Функция инициализации роутинга
 func Initialization(db *database.Database) *gin.Engine {
 	userService := handlers.InitUserClient() // Инициализируем связь по gRPC с user-service
-	logger := utils.InitLogger()             // Инициализируем logger
+	addressService := handlers.InitAddressClient()
+	searchNodeService := handlers.InitSearchService()
+	logger := utils.InitLogger() // Инициализируем logger
 
-	mw := middleware.NewMiddleware(&userService, &logger) // Инициализируем все middleware
+	mw := middleware.NewMiddleware(userService, &logger) // Инициализируем все middleware
 	// Инициализируем хендлеры
-	handlerUser := handlers.NewUserHandler(&userService)
+	handlerUser := handlers.NewUserHandler(userService)
 	handlerSwitch := handlers.NewSwitchHandler(db)
 	handlerReference := handlers.NewReferenceHandler(db)
-	handlerNode := handlers.NewNodeHandler(db)
-	handlerHardware := handlers.NewHardwareHandler(db)
+	handlerNode := handlers.NewNodeHandler(addressService, searchNodeService, db, &logger)
+	handlerHardware := handlers.NewHardwareHandler(addressService, searchNodeService, db, &logger)
 	handlerFile := handlers.NewFileHandler(db)
-	handlerEvent := handlers.NewEventHandler(&userService, db)
-	handlerAuth := handlers.NewAuthHandler(&userService)
-	handlerAddress := handlers.NewAddressHandler(db)
+	handlerEvent := handlers.NewEventHandler(userService, addressService, db)
+	handlerAuth := handlers.NewAuthHandler(userService)
+	handlerAddress := handlers.NewAddressHandler(addressService, db)
+
+	go func() {
+		if err := kafka.CreateTopics(); err != nil {
+			log.Fatalln(err)
+		}
+
+		if err := handlerNode.SendBatchNodes(context.Background()); err != nil {
+			log.Println(err)
+		}
+
+		if err := handlerHardware.SendBatchHardware(context.Background()); err != nil {
+			log.Println(err)
+		}
+	}()
 
 	router := gin.Default() // Инициализируем роутер
 
@@ -62,13 +81,14 @@ func Initialization(db *database.Database) *gin.Engine {
 			handlerEvent.HandlerGetEvents(c, "NODE")
 		})
 		nodes.DELETE("/:id", handlerNode.HandlerDeleteNode)
+		//nodes.GET("/index", handlerNode.HandlerIndexNodes)
 	}
 
 	houses := routerAPI.Group("/houses")
 	{
 		houses.GET("", handlerAddress.HandlerGetHouses)
 		houses.GET("/:id", handlerAddress.HandlerGetHouse)
-		houses.GET("/search", handlerAddress.HandlerGetSuggestions)
+		houses.GET("/search", handlerAddress.HandlerSearchAddresses)
 		houses.GET("/:id/files", handlerFile.HandlerGetHouseFiles)
 		houses.GET("/:id/nodes", handlerNode.HandlerGetHouseNodes)
 		houses.GET("/:id/hardware", handlerHardware.HandlerGetHouseHardware)

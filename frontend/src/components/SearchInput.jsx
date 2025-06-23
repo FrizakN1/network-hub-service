@@ -63,10 +63,10 @@ const SearchInput = ({defaultValue = "", action, returnAddress}) => {
                 if (action === "select") {
                     returnAddress(suggestion)
                 } else {
-                    navigate(`/house/${suggestion.House.ID}`)
+                    navigate(`/house/${suggestion.house.id}`)
                 }
 
-                setInputValue(`${suggestion.Street.Type.ShortName} ${suggestion.Street.Name}, ${suggestion.House.Type.ShortName} ${suggestion.House.Name}`);
+                setInputValue(`${suggestion.street.type.short_name} ${suggestion.street.name}, ${suggestion.house.type.short_name} ${suggestion.house.name}`);
                 setSuggestions([]);
                 setActiveSuggestionIndex(-1)
             } else if (inputValue.length > 0) {
@@ -97,10 +97,10 @@ const SearchInput = ({defaultValue = "", action, returnAddress}) => {
         if (action === "select") {
             returnAddress(suggestion)
         } else {
-            navigate(`/house/${suggestion.House.ID}`)
+            navigate(`/house/${suggestion.house.id}`)
         }
 
-        setInputValue(`${suggestion.Street.Type.ShortName} ${suggestion.Street.Name}, ${suggestion.House.Type.ShortName} ${suggestion.House.Name}`);
+        setInputValue(`${suggestion.street.type.short_name} ${suggestion.street.name}, ${suggestion.house.type.short_name} ${suggestion.house.name}`);
         setSuggestions([]);
     };
 
@@ -112,7 +112,7 @@ const SearchInput = ({defaultValue = "", action, returnAddress}) => {
                     {suggestions.map((suggestion, index) => (
                         <li key={index} onClick={() => handleClickSuggestion(suggestion)}
                             className={index === activeSuggestionIndex ? "active" : ""}>
-                            {suggestion.Street.Type.ShortName} {suggestion.Street.Name}, {suggestion.House.Type.ShortName} {suggestion.House.Name}
+                            {suggestion.street.type.short_name} {suggestion.street.name}, {suggestion.house.type.short_name} {suggestion.house.name}
                         </li>
                     ))}
                 </ul>

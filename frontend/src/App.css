@@ -430,6 +430,7 @@ section.login {
   width: 80%;
   display: flex;
   justify-content: right;
+  gap: 10px;
   /*margin-bottom: 20px;*/
 }
 

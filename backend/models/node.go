@@ -1,11 +1,15 @@
 package models
 
-import "database/sql"
+import (
+	"backend/proto/addresspb"
+	"database/sql"
+)
 
 type Node struct {
 	ID          int
 	Parent      *Node
-	Address     Address
+	HouseId     int32
+	Address     *addresspb.Address
 	Type        *Reference
 	Owner       Reference
 	Name        string

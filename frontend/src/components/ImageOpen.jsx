@@ -33,11 +33,6 @@ const ImageOpen = ({setState, images, currentIndex}) => {
         setImage(images[index].Src)
     }, [index])
 
-
-    // useEffect(() => {
-    //     setImage(images[currentIndex].Src)
-    // }, [currentIndex, images]);
-
     const handlerNextImage = () => {
         setIndex(prevState => {
             if (prevState + 1 <= images.length-1) {

@@ -1,8 +1,11 @@
 package models
 
+import "backend/proto/addresspb"
+
 type File struct {
 	ID             int
-	House          AddressElement
+	HouseId        int32
+	Address        *addresspb.Address
 	Node           Node
 	Hardware       Hardware
 	Path           string

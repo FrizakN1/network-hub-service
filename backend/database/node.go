@@ -4,20 +4,57 @@ import (
 	"backend/models"
 	"database/sql"
 	"errors"
+	"github.com/lib/pq"
 )
 
 type NodeRepository interface {
-	GetSearchNodes(search string, offset int, onlyActive bool) ([]models.Node, int, error)
+	GetNodesByIDs(nodeIDs []int32) ([]models.Node, error)
 	EditNode(node *models.Node) error
 	CreateNode(node *models.Node) error
 	GetNode(node *models.Node) error
 	GetNodes(offset int, onlyActive bool, houseID int) ([]models.Node, int, error)
 	ValidateNode(node models.Node) bool
 	DeleteNode(nodeID int) error
+	GetNodesForIndex() ([]models.Node, error)
 }
 
 type DefaultNodeRepository struct {
 	Database Database
+}
+
+func (r *DefaultNodeRepository) GetNodesForIndex() ([]models.Node, error) {
+	stmt, ok := r.Database.GetQuery("GET_NODES_FOR_INDEX")
+	if !ok {
+		return nil, errors.New("query GET_NODES_FOR_INDEX is not prepare")
+	}
+
+	rows, err := stmt.Query()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var nodes []models.Node
+
+	for rows.Next() {
+		var node models.Node
+
+		if err = rows.Scan(
+			&node.ID,
+			&node.Name,
+			&node.Zone,
+			&node.Owner.Value,
+			&node.HouseId,
+			&node.IsDelete,
+			&node.IsPassive,
+		); err != nil {
+			return nil, err
+		}
+
+		nodes = append(nodes, node)
+	}
+
+	return nodes, nil
 }
 
 func (r *DefaultNodeRepository) DeleteNode(nodeID int) error {
@@ -34,45 +71,46 @@ func (r *DefaultNodeRepository) DeleteNode(nodeID int) error {
 	return nil
 }
 
-func (r *DefaultNodeRepository) GetSearchNodes(search string, offset int, onlyActive bool) ([]models.Node, int, error) {
-	stmt, ok := r.Database.GetQuery("GET_SEARCH_NODES")
+func (r *DefaultNodeRepository) GetNodesByIDs(nodeIDs []int32) ([]models.Node, error) {
+	stmt, ok := r.Database.GetQuery("GET_NODES_BY_IDS")
 	if !ok {
-		return nil, 0, errors.New("query GET_SEARCH_NODES is not prepare")
+		return nil, errors.New("query GET_NODES_BY_IDS is not prepare")
 	}
 
-	rows, err := stmt.Query(search, offset, onlyActive)
+	rows, err := stmt.Query(pq.Array(nodeIDs))
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	defer rows.Close()
 
-	var nodes []models.Node
-	var count int
+	orderedNodes := make([]models.Node, 0, len(nodeIDs))
+	nodeMap := make(map[int32]models.Node)
 
 	for rows.Next() {
 		var node models.Node
 
 		if err = rows.Scan(
 			&node.ID,
-			&node.Address.House.ID,
+			&node.HouseId,
 			&node.Owner.ID,
 			&node.Name,
 			&node.Zone,
 			&node.IsPassive,
-			&node.Address.Street.Name,
-			&node.Address.Street.Type.ShortName,
-			&node.Address.House.Name,
-			&node.Address.House.Type.ShortName,
 			&node.Owner.Value,
-			&count,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return nil, 0, err
+			return nil, err
 		}
 
-		nodes = append(nodes, node)
+		nodeMap[int32(node.ID)] = node
 	}
 
-	return nodes, count, nil
+	for _, id := range nodeIDs {
+		if node, ok := nodeMap[id]; ok {
+			orderedNodes = append(orderedNodes, node)
+		}
+	}
+
+	return orderedNodes, nil
 }
 
 func (r *DefaultNodeRepository) EditNode(node *models.Node) error {
@@ -104,7 +142,7 @@ func (r *DefaultNodeRepository) EditNode(node *models.Node) error {
 		node.Access,
 		node.Description,
 		node.UpdatedAt,
-		node.Address.House.ID,
+		node.Address.House.Id,
 		node.IsPassive,
 	)
 	if err != nil {
@@ -133,7 +171,7 @@ func (r *DefaultNodeRepository) CreateNode(node *models.Node) error {
 
 	if err := stmt.QueryRow(
 		parentID,
-		node.Address.House.ID,
+		node.HouseId,
 		typeID,
 		node.Owner.ID,
 		node.Name,
@@ -169,7 +207,7 @@ func (r *DefaultNodeRepository) GetNode(node *models.Node) error {
 	if err := stmt.QueryRow(node.ID).Scan(
 		&node.ID,
 		&parentID,
-		&node.Address.House.ID,
+		&node.HouseId,
 		&typeID,
 		&node.Owner.ID,
 		&node.Name,
@@ -182,10 +220,6 @@ func (r *DefaultNodeRepository) GetNode(node *models.Node) error {
 		&node.UpdatedAt,
 		&node.IsDelete,
 		&node.IsPassive,
-		&node.Address.Street.Name,
-		&node.Address.Street.Type.ShortName,
-		&node.Address.House.Name,
-		&node.Address.House.Type.ShortName,
 		&typeValue,
 		&node.Owner.Value,
 		&parentName,
@@ -224,15 +258,11 @@ func (r *DefaultNodeRepository) GetNodes(offset int, onlyActive bool, houseID in
 
 		if err = rows.Scan(
 			&node.ID,
-			&node.Address.House.ID,
+			&node.HouseId,
 			&node.Owner.ID,
 			&node.Name,
 			&node.Zone,
 			&node.IsPassive,
-			&node.Address.Street.Name,
-			&node.Address.Street.Type.ShortName,
-			&node.Address.House.Name,
-			&node.Address.House.Type.ShortName,
 			&node.Owner.Value,
 			&count,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -246,7 +276,7 @@ func (r *DefaultNodeRepository) GetNodes(offset int, onlyActive bool, houseID in
 }
 
 func (r *DefaultNodeRepository) ValidateNode(node models.Node) bool {
-	if len(node.Name) == 0 || node.Address.House.ID == 0 || node.Owner.ID == 0 || (!node.IsPassive && node.Type != nil && node.Type.ID == 0) {
+	if len(node.Name) == 0 || node.HouseId == 0 || node.Owner.ID == 0 || (!node.IsPassive && node.Type != nil && node.Type.ID == 0) {
 		return false
 	}
 

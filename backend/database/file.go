@@ -126,7 +126,7 @@ func (r *DefaultFileRepository) GetHouseFiles(houseID int) ([]models.File, error
 
 		err = rows.Scan(
 			&file.ID,
-			&file.House.ID,
+			&file.HouseId,
 			&file.Path,
 			&file.Name,
 			&file.UploadAt,
@@ -171,7 +171,7 @@ func (r *DefaultFileRepository) CreateFile(file *models.File, fileFor string) er
 		}
 	case "HOUSES":
 		params = []interface{}{
-			file.House.ID,
+			file.HouseId,
 			file.Path,
 			file.Name,
 			file.UploadAt,

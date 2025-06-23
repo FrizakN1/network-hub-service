@@ -131,7 +131,7 @@ const EventsTable = ({from = ""}) => {
                         <tr key={index} className={index % 2 === 0 ? 'row-type-1' : 'row-type-2'}>
                             <td>{event.ID}</td>
                             <td className="col2">{event.Description}</td>
-                            <td>{`${event.Address.Street.Type.ShortName} ${event.Address.Street.Name}, ${event.Address.House.Type.ShortName} ${event.Address.House.Name}`}</td>
+                            <td>{`${event.Address.street.type.short_name} ${event.Address.street.name}, ${event.Address.house.type.short_name} ${event.Address.house.name}`}</td>
                             <td>{event.Node != null ? event.Node.Name : "-"}</td>
                             <td>{event.Hardware != null ? event.Hardware.Type.Value : "-"}</td>
                             <td>{event.User.name}</td>

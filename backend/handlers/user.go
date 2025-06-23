@@ -26,7 +26,6 @@ type DefaultUserHandler struct {
 	Metadata    utils.Metadata
 	Privilege   Privilege
 	UserService userpb.UserServiceClient
-	Logger      utils.Logger
 }
 
 func NewUserHandler(userService *userpb.UserServiceClient) UserHandler {
@@ -37,7 +36,7 @@ func NewUserHandler(userService *userpb.UserServiceClient) UserHandler {
 	}
 }
 
-func InitUserClient() userpb.UserServiceClient {
+func InitUserClient() *userpb.UserServiceClient {
 	conn, err := grpc.NewClient(
 		fmt.Sprintf("%s:%s", os.Getenv("USER_SERVICE_ADDRESS"), os.Getenv("USER_SERVICE_PORT")),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -48,7 +47,7 @@ func InitUserClient() userpb.UserServiceClient {
 
 	userClient := userpb.NewUserServiceClient(conn)
 
-	return userClient
+	return &userClient
 }
 
 func (h *DefaultUserHandler) HandlerGetUsers(c *gin.Context) {

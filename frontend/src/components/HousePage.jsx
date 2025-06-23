@@ -14,6 +14,7 @@ import AuthContext from "../context/AuthContext";
 const HousePage = () => {
     const { id } = useParams()
     const [address, setAddress] = useState({})
+    const [addressParams, setAddressParams] = useState({})
     const [isLoaded, setIsLoaded] = useState(false)
     const [activeTab, setActiveTab] = useState(1)
     const [modalEdit, setModalEdit] = useState({
@@ -26,7 +27,8 @@ const HousePage = () => {
         FetchRequest("GET", `/houses/${id}`, null)
             .then(response => {
                 if (response.success && response.data != null) {
-                    setAddress(response.data)
+                    setAddress(response.data?.Address || {})
+                    setAddressParams(response.data?.Params || {})
                     setIsLoaded(true)
                 }
             })
@@ -35,15 +37,12 @@ const HousePage = () => {
     const handlerSetModalEdit = () => {
         setModalEdit({
             State: true,
-            EditData: {
-                RoofType: address.RoofType,
-                WiringType: address.WiringType
-            }
+            EditData: addressParams
         })
     }
 
     const handlerSetParams = (params) => {
-        setAddress(prevState => ({...prevState, RoofType: params.RoofType, WiringType: params.WiringType}))
+        setAddressParams(params)
         setModalEdit({State: false, EditData: {}})
     }
 
@@ -54,7 +53,7 @@ const HousePage = () => {
                       returnData={handlerSetParams}/>}
             {isLoaded &&
                 <div>
-                    <SearchInput defaultValue={`${address.Street.Type.ShortName} ${address.Street.Name}, ${address.House.Type.ShortName} ${address.House.Name}`}/>
+                    <SearchInput defaultValue={`${address.street.type.short_name} ${address.street.name}, ${address.house.type.short_name} ${address.house.name}`}/>
                     <div className="contain">
                         <div className="info column" style={{alignItems: "center"}}>
                             {user.role.key !== "user" && <div className="buttons">
@@ -66,13 +65,13 @@ const HousePage = () => {
                                 <div className="column">
                                     <div className="block">
                                         <span>Тип крыши</span>
-                                        <p>{address.RoofType.Value !== "" ? address.RoofType.Value : "-"}</p>
+                                        <p>{addressParams.RoofType.Value !== "" ? addressParams.RoofType.Value : "-"}</p>
                                     </div>
                                 </div>
                                 <div className="column">
                                     <div className="block">
                                         <span>Тип разводки</span>
-                                        <p>{address.WiringType.Value ? address.WiringType.Value : "-"}</p>
+                                        <p>{addressParams.WiringType.Value ? addressParams.WiringType.Value : "-"}</p>
                                     </div>
                                 </div>
                             </div>

@@ -3,6 +3,7 @@ package handlers
 import (
 	"backend/database"
 	"backend/errors"
+	"backend/proto/addresspb"
 	"backend/proto/userpb"
 	"backend/utils"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type EventHandler interface {
@@ -17,18 +19,20 @@ type EventHandler interface {
 }
 
 type DefaultEventHandler struct {
-	EventRepo   database.EventRepository
-	UserService userpb.UserServiceClient
-	Metadata    utils.Metadata
+	EventRepo      database.EventRepository
+	UserService    userpb.UserServiceClient
+	AddressService addresspb.AddressServiceClient
+	Metadata       utils.Metadata
 }
 
-func NewEventHandler(userClient *userpb.UserServiceClient, db *database.Database) EventHandler {
+func NewEventHandler(userClient *userpb.UserServiceClient, addressClient *addresspb.AddressServiceClient, db *database.Database) EventHandler {
 	return &DefaultEventHandler{
 		EventRepo: &database.DefaultEventRepository{
 			Database: *db,
 		},
-		UserService: *userClient,
-		Metadata:    &utils.DefaultMetadata{},
+		UserService:    *userClient,
+		AddressService: *addressClient,
+		Metadata:       &utils.DefaultMetadata{},
 	}
 }
 
@@ -58,31 +62,78 @@ func (h *DefaultEventHandler) HandlerGetEvents(c *gin.Context, from string) {
 		return
 	}
 
-	userIdSet := make(map[int32]struct{})
+	userIDSet := make(map[int32]struct{})
+	houseIDSet := make(map[int32]struct{})
+	usersMap := make(map[int32]*userpb.User)
+	addressMap := make(map[int32]*addresspb.Address)
+
 	for _, event := range events {
-		userIdSet[event.UserId] = struct{}{}
+		userIDSet[event.UserId] = struct{}{}
+		houseIDSet[event.HouseId] = struct{}{}
 	}
 
-	var userIds []int32
-	for userID := range userIdSet {
-		userIds = append(userIds, userID)
-	}
+	var wg sync.WaitGroup
+	errChan := make(chan error, 2)
 
 	ctx := h.Metadata.SetAuthorizationHeader(c)
 
-	userResp, err := h.UserService.GetUsersByIds(ctx, &userpb.GetUsersByIdsRequest{Ids: userIds})
-	if err != nil {
-		c.Error(errors.NewHTTPError(err, "failed to get users", http.StatusInternalServerError))
-		return
+	if len(userIDSet) > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			var userIDs []int32
+			for userID := range userIDSet {
+				userIDs = append(userIDs, userID)
+			}
+
+			userRes, e := h.UserService.GetUsersByIds(ctx, &userpb.GetUsersByIdsRequest{Ids: userIDs})
+			if e != nil {
+				errChan <- errors.NewHTTPError(e, "failed to get users", http.StatusInternalServerError)
+				return
+			}
+
+			for _, user := range userRes.Users {
+				usersMap[user.Id] = user
+			}
+		}()
 	}
 
-	usersMap := make(map[int32]*userpb.User)
-	for _, user := range userResp.Users {
-		usersMap[user.Id] = user
+	if len(houseIDSet) > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			var houseIDs []int32
+			for houseID := range houseIDSet {
+				houseIDs = append(houseIDs, houseID)
+			}
+
+			addressRes, e := h.AddressService.GetAddresses(ctx, &addresspb.GetAddressesRequest{HouseIDs: houseIDs})
+			if e != nil {
+				errChan <- errors.NewHTTPError(e, "failed to get addresses", http.StatusInternalServerError)
+				return
+			}
+
+			for _, address := range addressRes.Addresses {
+				addressMap[address.House.Id] = address
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	for e := range errChan {
+		if e != nil {
+			c.Error(e)
+			return
+		}
 	}
 
 	for i := range events {
 		events[i].User = usersMap[events[i].UserId]
+		events[i].Address = addressMap[events[i].HouseId]
 	}
 
 	c.JSON(http.StatusOK, gin.H{

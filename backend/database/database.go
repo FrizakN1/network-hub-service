@@ -44,94 +44,59 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	errorsList := make([]error, 0)
 	d.query = make(map[string]*sql.Stmt)
 
-	d.query["STREET_TYPE"], err = d.db.Prepare(`SELECT * FROM "Street_type" ORDER BY id`)
+	d.query["GET_ADDRESS_PARAMS"], err = d.db.Prepare(`
+		SELECT hp.roof_type_id, hp.wiring_type_id, rt.value, wt.value
+		FROM "House_param" AS hp
+		LEFT JOIN "Roof_type" AS rt ON hp.roof_type_id = rt.id
+		LEFT JOIN "Wiring_type" AS wt ON hp.wiring_type_id = wt.id
+		WHERE house_id = $1
+	`)
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
 
-	d.query["HOUSE_TYPE"], err = d.db.Prepare(`SELECT * FROM "House_type" ORDER BY id`)
-	if err != nil {
-		errorsList = append(errorsList, err)
-	}
-
-	d.query["GET_SUGGESTIONS"], err = d.db.Prepare(`
-		WITH search_data AS (
-			SELECT s.name AS street_name, s.type_id AS street_type_id, st.short_name AS street_type_short_name, 
-			       h.id AS house_id, h.name AS house_name, h.type_id AS house_type_id, ht.short_name AS house_type_short_name,
-				COUNT(f.id) AS files_count,
-				COUNT(n.id) AS nodes_count,
-				COUNT(hd.id) AS hardware_count,
-				COUNT(*) OVER() AS total_houses,
-				CASE
-					WHEN h.name = $2 THEN 0
-					WHEN h.name ~ ('^' || $2 || '[^0-9]') THEN 1
-					WHEN h.name ILIKE $2 || '%' THEN 2
-					ELSE 3
-				END AS sort_priority,
-				LENGTH(h.name) AS name_length
-			FROM "House" h
-			JOIN "Street" s ON h.street_id = s.id
-			JOIN "Street_type" st ON s.type_id = st.id
-			JOIN "House_type" ht ON h.type_id = ht.id
-			LEFT JOIN "House_files" f ON f.house_id = h.id
-			LEFT JOIN "Node" n ON n.house_id = h.id
-			LEFT JOIN "Hardware" hd ON hd.node_id = n.id
-			WHERE 
-				s.name ILIKE '%' || $1 || '%' AND
-				(h.name ILIKE '%' || $2 || '%' OR $2 = '')
-			GROUP BY h.id, s.id, st.short_name, ht.short_name
+	d.query["GET_ADDRESSES_AMOUNTS"], err = d.db.Prepare(`
+		WITH houses AS (
+		    SELECT house_id
+		    FROM (
+		        SELECT house_id FROM "Node"
+		        UNION ALL 
+		        SELECT house_id FROM "House_files"
+		    ) AS houses
+		    GROUP BY house_id
+		    ORDER BY house_id
+		    OFFSET $1
+		    LIMIT 20
 		)
-		SELECT street_name, street_type_id, street_type_short_name, house_id, house_name, house_type_id, house_type_short_name, 
-		       files_count, nodes_count, hardware_count, total_houses
-		FROM search_data
-		ORDER BY 
-			sort_priority,
-			name_length,
-			house_name
-		OFFSET $3
-		LIMIT $4;
-    `)
+		SELECT 
+            h.house_id,
+            COUNT(DISTINCT f.id) AS files_count,
+            COUNT(DISTINCT n.id) AS nodes_count,
+            COUNT(DISTINCT hd.id) AS hardware_count
+        FROM houses AS h 
+        LEFT JOIN "House_files" AS f ON h.house_id = f.house_id
+        LEFT JOIN "Node" AS n ON n.house_id = h.house_id AND n.is_delete = false
+        LEFT JOIN "Hardware" AS hd ON hd.node_id = n.id AND hd.is_delete = false
+        GROUP BY h.house_id
+		ORDER BY h.house_id
+	`)
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
 
-	d.query["GET_HOUSE"], err = d.db.Prepare(`
-		SELECT s.name, s.type_id, st.short_name, h.name, h.type_id, ht.short_name, rt.id, rt.value, wt.id, wt.value
-        FROM "House" AS h
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
-        LEFT JOIN "House_param" AS hp ON h.id = hp.house_id
-        LEFT JOIN "Roof_type" AS rt ON hp.roof_type_id = rt.id
-        LEFT JOIN "Wiring_type" AS wt ON hp.wiring_type_id = wt.id
-        WHERE h.id = $1
-    `)
-	if err != nil {
-		errorsList = append(errorsList, err)
-	}
-
-	d.query["GET_HOUSES"], err = d.db.Prepare(`
-		SELECT s.name, s.type_id, st.short_name, h.id, h.name, h.type_id, ht.short_name,
-			COUNT(hf.id),
-			COUNT(n.id),
-			COUNT(hdw.id),
-			COUNT(*) OVER()
-		FROM "House" h
-		JOIN "Street" s ON h.street_id = s.id
-		JOIN "Street_type" st ON s.type_id = st.id
-		JOIN "House_type" ht ON h.type_id = ht.id
-		LEFT JOIN "House_files" hf ON hf.house_id = h.id
-		LEFT JOIN "Node" n ON n.house_id = h.id AND n.is_delete = false
-		LEFT JOIN "Hardware" hdw ON hdw.node_id = n.id AND hdw.is_delete = false
-		GROUP BY h.id, s.id, st.short_name, ht.short_name
-		HAVING 
-			COUNT(hf.id) > 0 
-			OR COUNT(n.id) > 0 
-			OR COUNT(hdw.id) > 0
+	d.query["GET_ADDRESSES_AMOUNTS_BY_HOUSE_IDS"], err = d.db.Prepare(`
+		SELECT 
+            h.id AS house_id,
+            COUNT(DISTINCT f.id) AS files_count,
+            COUNT(DISTINCT n.id) AS nodes_count,
+            COUNT(DISTINCT hd.id) AS hardware_count
+        FROM (SELECT unnest($1::integer[]) AS id) AS h
+        LEFT JOIN "House_files" AS f ON h.id = f.house_id 
+        LEFT JOIN "Node" AS n ON n.house_id = h.id AND n.is_delete = false
+        LEFT JOIN "Hardware" AS hd ON hd.node_id = n.id AND hd.is_delete = false
+        GROUP BY h.id
 		ORDER BY h.id
-		OFFSET $1
-		LIMIT 20;
-    `)
+	`)
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
@@ -146,12 +111,8 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	}
 
 	d.query["GET_EVENTS"], err = d.db.Prepare(`
-		SELECT e.*, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.value, COUNT(*) OVER()
+		SELECT e.*, n.name, hwt.value, COUNT(*) OVER()
 		FROM "Event" AS e
-		JOIN "House" AS h ON e.house_id = h.id
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
 		LEFT JOIN "Node" AS n ON e.node_id = n.id
 		LEFT JOIN "Hardware" AS hw ON e.hardware_id = hw.id
 		LEFT JOIN "Hardware_type" AS hwt ON hw.type_id = hwt.id
@@ -164,12 +125,8 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	}
 
 	d.query["GET_EVENTS_HOUSE_ALL"], err = d.db.Prepare(`
-		SELECT e.*, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.value, COUNT(*) OVER()
+		SELECT e.*, n.name, hwt.value, COUNT(*) OVER()
 		FROM "Event" AS e
-		JOIN "House" AS h ON e.house_id = h.id
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
 		LEFT JOIN "Node" AS n ON e.node_id = n.id
 		LEFT JOIN "Hardware" AS hw ON e.hardware_id = hw.id
 		LEFT JOIN "Hardware_type" AS hwt ON hw.type_id = hwt.id
@@ -183,12 +140,8 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	}
 
 	d.query["GET_EVENTS_HOUSE_ONLY"], err = d.db.Prepare(`
-		SELECT e.*, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.value, COUNT(*) OVER()
+		SELECT e.*, n.name, hwt.value, COUNT(*) OVER()
 		FROM "Event" AS e
-		JOIN "House" AS h ON e.house_id = h.id
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
 		LEFT JOIN "Node" AS n ON e.node_id = n.id
 		LEFT JOIN "Hardware" AS hw ON e.hardware_id = hw.id
 		LEFT JOIN "Hardware_type" AS hwt ON hw.type_id = hwt.id
@@ -202,12 +155,8 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	}
 
 	d.query["GET_EVENTS_NODE_ALL"], err = d.db.Prepare(`
-		SELECT e.*, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.value, COUNT(*) OVER()
+		SELECT e.*, n.name, hwt.value, COUNT(*) OVER()
 		FROM "Event" AS e
-		JOIN "House" AS h ON e.house_id = h.id
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
 		LEFT JOIN "Node" AS n ON e.node_id = n.id
 		LEFT JOIN "Hardware" AS hw ON e.hardware_id = hw.id
 		LEFT JOIN "Hardware_type" AS hwt ON hw.type_id = hwt.id
@@ -221,12 +170,8 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	}
 
 	d.query["GET_EVENTS_NODE_ONLY"], err = d.db.Prepare(`
-		SELECT e.*, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.value, COUNT(*) OVER()
+		SELECT e.*, n.name, hwt.value, COUNT(*) OVER()
 		FROM "Event" AS e
-		JOIN "House" AS h ON e.house_id = h.id
-		JOIN "Street" AS s ON s.id = h.street_id
-		JOIN "Street_type" AS st ON s.type_id = st.id
-		JOIN "House_type" AS ht ON h.type_id = ht.id
 		LEFT JOIN "Node" AS n ON e.node_id = n.id
 		LEFT JOIN "Hardware" AS hw ON e.hardware_id = hw.id
 		LEFT JOIN "Hardware_type" AS hwt ON hw.type_id = hwt.id
@@ -240,12 +185,8 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	}
 
 	d.query["GET_EVENTS_HARDWARE"], err = d.db.Prepare(`
-		SELECT e.*, s.name, st.short_name, h.name, ht.short_name, n.name, hwt.value, COUNT(*) OVER()
+		SELECT e.*, n.name, hwt.value, COUNT(*) OVER()
 		FROM "Event" AS e
-		JOIN "House" AS h ON e.house_id = h.id
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
 		LEFT JOIN "Node" AS n ON e.node_id = n.id
 		LEFT JOIN "Hardware" AS hw ON e.hardware_id = hw.id
 		LEFT JOIN "Hardware_type" AS hwt ON hw.type_id = hwt.id
@@ -358,15 +299,21 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 		errorsList = append(errorsList, err)
 	}
 
-	d.query["GET_HARDWARE"], err = d.db.Prepare(`
-		SELECT hd.id, hd.node_id, hd.type_id, hd.switch_id, hd.ip_address, s.name, st.short_name, 
-		           h.id, h.name, ht.short_name, hdt.key, hdt.value, sw.name, n.name, COUNT(*) OVER()
+	d.query["GET_HARDWARE_FOR_INDEX"], err = d.db.Prepare(`
+		SELECT hd.id, hdt.value, n.name, sw.name, hd.ip_address, n.house_id, hd.is_delete
 		FROM "Hardware" AS hd
 		JOIN "Node" AS n ON hd.node_id = n.id
-		JOIN "House" AS h ON n.house_id = h.id
-		JOIN "Street" AS s ON s.id = h.street_id
-		JOIN "Street_type" AS st ON s.type_id = st.id
-		JOIN "House_type" AS ht ON h.type_id = ht.id
+		JOIN "Hardware_type" AS hdt ON hd.type_id = hdt.id
+		LEFT JOIN "Switch" AS sw ON hd.switch_id = sw.id
+    `)
+	if err != nil {
+		errorsList = append(errorsList, err)
+	}
+
+	d.query["GET_HARDWARE"], err = d.db.Prepare(`
+		SELECT hd.id, hd.node_id, hd.type_id, hd.switch_id, hd.ip_address, n.house_id, hdt.key, hdt.value, sw.name, n.name, COUNT(*) OVER()
+		FROM "Hardware" AS hd
+		JOIN "Node" AS n ON hd.node_id = n.id
 		JOIN "Hardware_type" AS hdt ON hd.type_id = hdt.id
 		LEFT JOIN "Switch" AS sw ON hd.switch_id = sw.id
 		WHERE hd.is_delete = false
@@ -380,30 +327,13 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 		errorsList = append(errorsList, err)
 	}
 
-	d.query["GET_SEARCH_HARDWARE"], err = d.db.Prepare(`
-		SELECT hd.id, hd.node_id, hd.type_id, hd.switch_id, hd.ip_address, s.name, st.short_name, 
-		           h.id, h.name, ht.short_name, hdt.key, hdt.value, sw.name, n.name, COUNT(*) OVER ()
+	d.query["GET_HARDWARE_BY_IDS"], err = d.db.Prepare(`
+		SELECT hd.id, hd.node_id, hd.type_id, hd.switch_id, hd.ip_address, n.house_id, hdt.key, hdt.value, sw.name, n.name
 		FROM "Hardware" AS hd
 		JOIN "Node" AS n ON hd.node_id = n.id
-		JOIN "House" AS h ON n.house_id = h.id
-		JOIN "Street" AS s ON s.id = h.street_id
-		JOIN "Street_type" AS st ON s.type_id = st.id
-		JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Hardware_type" AS hdt ON hd.type_id = hdt.id
 		LEFT JOIN "Switch" AS sw ON hd.switch_id = sw.id
-		WHERE (n.name ILIKE '%' || $1 || '%'
-			OR hdt.value ILIKE '%' || $1 || '%'
-			OR sw.name ILIKE '%' || $1 || '%'
-			OR hd.ip_address ILIKE '%' || $1 || '%'
-			OR s.name ILIKE '%' || $1 || '%'
-			OR st.short_name ILIKE '%' || $1 || '%'
-			OR h.name ILIKE '%' || $1 || '%'
-			OR ht.short_name ILIKE '%' || $1 || '%'
-			OR (st.short_name || ' ' || s.name || ', ' || ht.short_name || ' ' || h.name) ILIKE '%' || $1 || '%')
-			AND hd.is_delete = false
-		ORDER BY hd.id DESC
-		OFFSET $2
-		LIMIT 20
+		WHERE hd.id = ANY($1)
     `)
 	if err != nil {
 		errorsList = append(errorsList, err)
@@ -428,13 +358,9 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	}
 
 	d.query["GET_HARDWARE_BY_ID"], err = d.db.Prepare(`
-		SELECT hd.*, s.name, st.short_name, h.id, h.name, ht.short_name, hdt.key, hdt.value, sw.name, n.name
+		SELECT hd.*, n.house_id, hdt.key, hdt.value, sw.name, n.name
 		FROM "Hardware" AS hd
 		JOIN "Node" AS n ON hd.node_id = n.id
-		JOIN "House" AS h ON n.house_id = h.id
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Hardware_type" AS hdt ON hd.type_id = hdt.id
 		LEFT JOIN "Switch" AS sw ON hd.switch_id = sw.id
 		WHERE hd.id = $1
@@ -451,14 +377,18 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 		errorsList = append(errorsList, err)
 	}
 
-	d.query["GET_NODES"], err = d.db.Prepare(`
-		SELECT n.id, n.house_id, n.owner_id, n.name, n.zone, n.is_passive, s.name, st.short_name, h.name, 
-		       ht.short_name, no.value, COUNT(*) OVER ()
+	d.query["GET_NODES_FOR_INDEX"], err = d.db.Prepare(`
+		SELECT n.id, n.name, n.zone, no.value, n.house_id, n.is_delete, n.is_passive
 		FROM "Node" AS n 
-		JOIN "House" AS h ON n.house_id = h.id
-		JOIN "Street" AS s ON s.id = h.street_id
-		JOIN "Street_type" AS st ON s.type_id = st.id
-		JOIN "House_type" AS ht ON h.type_id = ht.id
+		JOIN "Node_owner" AS no ON n.owner_id = no.id
+    `)
+	if err != nil {
+		errorsList = append(errorsList, err)
+	}
+
+	d.query["GET_NODES"], err = d.db.Prepare(`
+		SELECT n.id, n.house_id, n.owner_id, n.name, n.zone, n.is_passive, no.value, COUNT(*) OVER ()
+		FROM "Node" AS n 
 		JOIN "Node_owner" AS no ON n.owner_id = no.id
 		WHERE n.is_delete = false
 			AND ($2 = false OR n.is_passive = false)
@@ -472,12 +402,8 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	}
 
 	d.query["GET_NODE"], err = d.db.Prepare(`
-		SELECT n.*, s.name, st.short_name, h.name, ht.short_name, nt.value, no.value, p.name
+		SELECT n.*, nt.value, no.value, p.name
 		FROM "Node" AS n 
-		JOIN "House" AS h ON n.house_id = h.id
-        JOIN "Street" AS s ON s.id = h.street_id
-        JOIN "Street_type" AS st ON s.type_id = st.id
-        JOIN "House_type" AS ht ON h.type_id = ht.id
 		LEFT JOIN "Node_type" AS nt ON n.type_id = nt.id
 		JOIN "Node_owner" AS no ON n.owner_id = no.id
 		LEFT JOIN "Node" AS p ON n.parent_id = p.id
@@ -505,28 +431,11 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 		errorsList = append(errorsList, err)
 	}
 
-	d.query["GET_SEARCH_NODES"], err = d.db.Prepare(`
-		SELECT n.id, n.house_id, n.owner_id, n.name, n.zone, n.is_passive, s.name, st.short_name, h.name, 
-		       ht.short_name, no.value, COUNT(*) OVER ()
+	d.query["GET_NODES_BY_IDS"], err = d.db.Prepare(`
+		SELECT n.id, n.house_id, n.owner_id, n.name, n.zone, n.is_passive, no.value
 		FROM "Node" AS n 
-		JOIN "House" AS h ON n.house_id = h.id
-		JOIN "Street" AS s ON s.id = h.street_id
-		JOIN "Street_type" AS st ON s.type_id = st.id
-		JOIN "House_type" AS ht ON h.type_id = ht.id
 		JOIN "Node_owner" AS no ON n.owner_id = no.id
-		WHERE (n.name ILIKE '%' || $1 || '%'
-			OR no.value ILIKE '%' || $1 || '%'
-			OR n.zone ILIKE '%' || $1 || '%'
-			OR s.name ILIKE '%' || $1 || '%'
-			OR st.short_name ILIKE '%' || $1 || '%'
-			OR h.name ILIKE '%' || $1 || '%'
-			OR ht.short_name ILIKE '%' || $1 || '%'
-			OR (st.short_name || ' ' || s.name || ', ' || ht.short_name || ' ' || h.name) ILIKE '%' || $1 || '%')
-			AND n.is_delete = false
-			AND ($3 = false OR is_passive = false)
-		ORDER BY n.id
-		OFFSET $2
-		LIMIT 20
+		WHERE n.id = ANY($1)
     `)
 	if err != nil {
 		errorsList = append(errorsList, err)

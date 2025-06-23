@@ -2,51 +2,13 @@
 -- +goose StatementBegin
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
-CREATE TABLE IF NOT EXISTS "House_type" (
-    id serial PRIMARY KEY,
-    name character varying(255) NOT NULL,
-    short_name character varying(255) NOT NULL
-);
-CREATE INDEX idx_house_type_short_name_trgm ON "House_type" USING GIN (short_name gin_trgm_ops);
-
-CREATE TABLE IF NOT EXISTS "Street_type" (
-    id serial PRIMARY KEY,
-    name character varying(255) NOT NULL,
-    short_name character varying(255) NOT NULL
-);
-CREATE INDEX idx_street_type_short_name_trgm ON "Street_type" USING GIN (short_name gin_trgm_ops);
-
-CREATE TABLE IF NOT EXISTS "Street" (
-    id serial PRIMARY KEY,
-    name character varying(255) NOT NULL,
-    type_id integer NOT NULL,
-    fias_id character varying(255),
-    FOREIGN KEY (type_id) REFERENCES "Street_type"(id)
-);
-CREATE INDEX idx_street_type_id ON "Street" (type_id);
-CREATE INDEX idx_street_name_trgm ON "Street" USING GIN (name gin_trgm_ops);
-
-CREATE TABLE IF NOT EXISTS "House" (
-    id serial PRIMARY KEY,
-    name character varying(255) NOT NULL,
-    type_id integer NOT NULL,
-    fias_id character varying(255),
-    street_id integer NOT NULL,
-    FOREIGN KEY (street_id) REFERENCES "Street"(id),
-    FOREIGN KEY (type_id) REFERENCES "House_type"(id)
-);
-CREATE INDEX idx_house_street_id ON "House"(street_id);
-CREATE INDEX idx_house_type_id ON "House"(type_id);
-CREATE INDEX idx_house_name_trgm ON "House" USING GIN (name gin_trgm_ops);
-
 CREATE TABLE IF NOT EXISTS "House_files" (
     id serial PRIMARY KEY,
     house_id integer NOT NULL,
     file_path character varying(255) NOT NULL UNIQUE,
     file_name character varying(255) NOT NULL,
     upload_at bigint NOT NULL,
-    in_archive boolean NOT NULL,
-    FOREIGN KEY (house_id) REFERENCES "House"(id)
+    in_archive boolean NOT NULL
 );
 CREATE INDEX idx_house_files_house_id ON "House_files"(house_id);
 
@@ -81,7 +43,6 @@ CREATE TABLE IF NOT EXISTS "Node" (
     is_delete boolean NOT NULL DEFAULT false,
     is_passive boolean NOT NULL,
     FOREIGN KEY (parent_id) REFERENCES "Node"(id),
-    FOREIGN KEY (house_id) REFERENCES "House"(id),
     FOREIGN KEY (type_id) REFERENCES "Node_type"(id),
     FOREIGN KEY (owner_id) REFERENCES "Node_owner"(id)
 );
@@ -185,7 +146,6 @@ CREATE TABLE IF NOT EXISTS "Event" (
     user_id integer NOT NULL,
     description character varying(255) NOT NULL,
     created_at bigint NOT NULL,
-    FOREIGN KEY (house_id) REFERENCES "House"(id),
     FOREIGN KEY (node_id) REFERENCES "Node"(id),
     FOREIGN KEY (hardware_id) REFERENCES "Hardware"(id)
 );
@@ -213,7 +173,6 @@ CREATE TABLE IF NOT EXISTS "House_param" (
     house_id integer NOT NULL UNIQUE,
     roof_type_id integer,
     wiring_type_id integer,
-    FOREIGN KEY (house_id) REFERENCES "House"(id),
     FOREIGN KEY (roof_type_id) REFERENCES "Roof_type"(id),
     FOREIGN KEY (wiring_type_id) REFERENCES "Wiring_type"(id)
 );
@@ -229,28 +188,6 @@ VALUES
 INSERT INTO "Hardware_type"(key, value, created_at)
 VALUES
     ('switch', 'Коммутатор', floor(extract(epoch from now())));
-
-INSERT INTO "Street_type" (name, short_name)
-VALUES
-    ('Километр', 'км'),
-    ('Переулок', 'пер'),
-    ('Бульвар', 'б-р'),
-    ('Магистраль', 'мгстр.'),
-    ('Площадь', 'пл.'),
-    ('Сквер', 'сквер'),
-    ('Парк', 'парк'),
-    ('Улица', 'ул'),
-    ('Территория', 'тер.'),
-    ('Территория', 'тер'),
-    ('Шоссе', 'ш'),
-    ('Шоссе', 'ш.'),
-    ('Набережная', 'наб'),
-    ('Тракт', 'тракт'),
-    ('Разъезд', 'рзд.'),
-    ('Микрорайон', 'мкр.'),
-    ('Площадь', 'пл'),
-    ('Проезд', 'пр-д'),
-    ('Проспект', 'пр-кт');
 -- +goose StatementEnd
 
 -- +goose Down
@@ -273,9 +210,5 @@ DROP TABLE IF EXISTS "House_history";
 DROP TABLE IF EXISTS "User";
 DROP TABLE IF EXISTS "Role";
 DROP TABLE IF EXISTS "House_files";
-DROP TABLE IF EXISTS "House";
-DROP TABLE IF EXISTS "Street";
-DROP TABLE IF EXISTS "Street_type";
-DROP TABLE IF EXISTS "House_type";
 DROP EXTENSION IF EXISTS pg_trgm;
 -- +goose StatementEnd

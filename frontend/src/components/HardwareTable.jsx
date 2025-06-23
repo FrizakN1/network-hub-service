@@ -6,7 +6,7 @@ import {
     faAnglesLeft, faAnglesRight,
     faEye,
     faPen,
-    faPlus,
+    faPlus, faRotate,
     faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import {useNavigate} from "react-router-dom";
@@ -143,12 +143,22 @@ const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
             })
     }
 
+    const handlerIndexHardware = () => {
+        FetchRequest("GET", `/hardware/index`)
+            .then(response => {
+                console.log(response)
+            })
+    }
+
     return (
         <div className="contain hardware">
             {user.role.key !== "user" && canCreate && <>
                 {modalCreate && <HardwareModalCreate action={"create"} setState={setModalCreate} returnHardware={handlerAddHardware}/>}
                 {modalEdit.State && <HardwareModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editHardwareID={modalEdit.EditHardwareID} returnHardware={handlerEditHardware}/>}
                 <div className="buttons">
+                    <button onClick={handlerIndexHardware}>
+                        <FontAwesomeIcon icon={faRotate} /> Индексация
+                    </button>
                     <button onClick={() => setModalCreate(true)}>
                         <FontAwesomeIcon icon={faPlus}/> Добавить оборудование
                     </button>
@@ -161,8 +171,8 @@ const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
                     <tr className={"row-type-2"}>
                         <th>ID</th>
                         <th>Тип оборудования</th>
-                        {type !== "node" && <th>Узел</th>}
-                        {type !== "house" && <th>Адрес</th>}
+                        {type !== "nodes" && <th>Узел</th>}
+                        {type !== "houses" && type !== "nodes" && <th>Адрес</th>}
                         <th>Модель</th>
                         <th>IP адрес</th>
                         <th></th>
@@ -173,8 +183,8 @@ const HardwareTable = ({id = 0, type = "", canCreate = false}) => {
                         <tr key={index} className={index % 2 === 0 ? 'row-type-1' : 'row-type-2'}>
                             <td>{_hardware.ID}</td>
                             <td>{_hardware.Type.Value}</td>
-                            {type !== "node" && <td>{_hardware.Node.Name}</td>}
-                            {type !== "house" && <td>{`${_hardware.Node.Address.Street.Type.ShortName} ${_hardware.Node.Address.Street.Name}, ${_hardware.Node.Address.House.Type.ShortName} ${_hardware.Node.Address.House.Name}`}</td>}
+                            {type !== "nodes" && <td>{_hardware.Node.Name}</td>}
+                            {type !== "houses" && type !== "nodes" && <td>{`${_hardware.Node.Address.street.type.short_name} ${_hardware.Node.Address.street.name}, ${_hardware.Node.Address.house.type.short_name} ${_hardware.Node.Address.house.name}`}</td>}
                             <td>{_hardware.Type.Key === "switch" ? _hardware.Switch.Name : "-"}</td>
                             <td>{_hardware.Type.Key === "switch" && _hardware.IpAddress.Valid ? _hardware.IpAddress.String : "-"}</td>
                             <td>

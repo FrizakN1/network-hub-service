@@ -4,20 +4,113 @@ import (
 	"backend/models"
 	"database/sql"
 	"errors"
+	"github.com/lib/pq"
 )
 
 type HardwareRepository interface {
 	GetHardwareByID(hardware *models.Hardware) error
 	EditHardware(hardware *models.Hardware) error
 	CreateHardware(hardware *models.Hardware) error
-	GetSearchHardware(search string, offset int) ([]models.Hardware, int, error)
 	GetHardware(offset int, houseID int, nodeID int) ([]models.Hardware, int, error)
 	ValidateHardware(hardware models.Hardware) bool
 	DeleteHardware(hardwareID int) error
+	GetHardwareForIndex() ([]models.Hardware, error)
+	GetHardwareByIDs(hardwareIDs []int32) ([]models.Hardware, error)
 }
 
 type DefaultHardwareRepository struct {
 	Database Database
+}
+
+func (r *DefaultHardwareRepository) GetHardwareByIDs(hardwareIDs []int32) ([]models.Hardware, error) {
+	stmt, ok := r.Database.GetQuery("GET_HARDWARE_BY_IDS")
+	if !ok {
+		return nil, errors.New("query GET_HARDWARE_BY_IDS is not prepare")
+	}
+
+	rows, err := stmt.Query(pq.Array(hardwareIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	orderedHardware := make([]models.Hardware, 0, len(hardwareIDs))
+	hardwareMap := make(map[int32]models.Hardware)
+
+	for rows.Next() {
+		var hd models.Hardware
+		var switchID sql.NullInt32
+		var switchName sql.NullString
+
+		if err = rows.Scan(
+			&hd.ID,
+			&hd.Node.ID,
+			&hd.Type.ID,
+			&switchID,
+			&hd.IpAddress,
+			&hd.Node.HouseId,
+			&hd.Type.Key,
+			&hd.Type.Value,
+			&switchName,
+			&hd.Node.Name,
+		); err != nil {
+			return nil, err
+		}
+
+		if switchID.Valid {
+			hd.Switch = models.Switch{ID: int(switchID.Int32), Name: switchName.String}
+		}
+
+		hardwareMap[int32(hd.ID)] = hd
+	}
+
+	for _, id := range hardwareIDs {
+		if node, ok := hardwareMap[id]; ok {
+			orderedHardware = append(orderedHardware, node)
+		}
+	}
+
+	return orderedHardware, nil
+}
+
+func (r *DefaultHardwareRepository) GetHardwareForIndex() ([]models.Hardware, error) {
+	stmt, ok := r.Database.GetQuery("GET_HARDWARE_FOR_INDEX")
+	if !ok {
+		return nil, errors.New("query GET_HARDWARE_FOR_INDEX is not prepare")
+	}
+
+	rows, err := stmt.Query()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var hardware []models.Hardware
+
+	for rows.Next() {
+		var hd models.Hardware
+		var switchName sql.NullString
+
+		if err = rows.Scan(
+			&hd.ID,
+			&hd.Type.Value,
+			&hd.Node.Name,
+			&switchName,
+			&hd.IpAddress,
+			&hd.Node.HouseId,
+			&hd.IsDelete,
+		); err != nil {
+			return nil, err
+		}
+
+		if switchName.Valid {
+			hd.Switch.Name = switchName.String
+		}
+
+		hardware = append(hardware, hd)
+	}
+
+	return hardware, nil
 }
 
 func (r *DefaultHardwareRepository) DeleteHardware(hardwareID int) error {
@@ -56,11 +149,7 @@ func (r *DefaultHardwareRepository) GetHardwareByID(hardware *models.Hardware) e
 		&hardware.CreatedAt,
 		&hardware.UpdatedAt,
 		&hardware.IsDelete,
-		&hardware.Node.Address.Street.Name,
-		&hardware.Node.Address.Street.Type.ShortName,
-		&hardware.Node.Address.House.ID,
-		&hardware.Node.Address.House.Name,
-		&hardware.Node.Address.House.Type.ShortName,
+		&hardware.Node.HouseId,
 		&hardware.Type.Key,
 		&hardware.Type.Value,
 		&switchName,
@@ -133,58 +222,6 @@ func (r *DefaultHardwareRepository) CreateHardware(hardware *models.Hardware) er
 	return nil
 }
 
-func (r *DefaultHardwareRepository) GetSearchHardware(search string, offset int) ([]models.Hardware, int, error) {
-	stmt, ok := r.Database.GetQuery("GET_SEARCH_HARDWARE")
-	if !ok {
-		return nil, 0, errors.New("query GET_SEARCH_HARDWARE is not prepare")
-	}
-
-	rows, err := stmt.Query(search, offset)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	var hardware []models.Hardware
-	var count int
-
-	for rows.Next() {
-		var (
-			_hardware  models.Hardware
-			switchID   sql.NullInt64
-			switchName sql.NullString
-		)
-
-		if err = rows.Scan(
-			&_hardware.ID,
-			&_hardware.Node.ID,
-			&_hardware.Type.ID,
-			&switchID,
-			&_hardware.IpAddress,
-			&_hardware.Node.Address.Street.Name,
-			&_hardware.Node.Address.Street.Type.ShortName,
-			&_hardware.Node.Address.House.ID,
-			&_hardware.Node.Address.House.Name,
-			&_hardware.Node.Address.House.Type.ShortName,
-			&_hardware.Type.Key,
-			&_hardware.Type.Value,
-			&switchName,
-			&_hardware.Node.Name,
-			&count,
-		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return nil, 0, err
-		}
-
-		if switchID.Valid {
-			_hardware.Switch = models.Switch{ID: int(switchID.Int64), Name: switchName.String}
-		}
-
-		hardware = append(hardware, _hardware)
-	}
-
-	return hardware, count, nil
-}
-
 func (r *DefaultHardwareRepository) GetHardware(offset int, houseID int, nodeID int) ([]models.Hardware, int, error) {
 	stmt, ok := r.Database.GetQuery("GET_HARDWARE")
 	if !ok {
@@ -213,11 +250,7 @@ func (r *DefaultHardwareRepository) GetHardware(offset int, houseID int, nodeID 
 			&_hardware.Type.ID,
 			&switchID,
 			&_hardware.IpAddress,
-			&_hardware.Node.Address.Street.Name,
-			&_hardware.Node.Address.Street.Type.ShortName,
-			&_hardware.Node.Address.House.ID,
-			&_hardware.Node.Address.House.Name,
-			&_hardware.Node.Address.House.Type.ShortName,
+			&_hardware.Node.HouseId,
 			&_hardware.Type.Key,
 			&_hardware.Type.Value,
 			&switchName,

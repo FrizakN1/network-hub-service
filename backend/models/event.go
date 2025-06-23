@@ -1,10 +1,14 @@
 package models
 
-import "backend/proto/userpb"
+import (
+	"backend/proto/addresspb"
+	"backend/proto/userpb"
+)
 
 type Event struct {
 	ID          int64
-	Address     Address
+	HouseId     int32
+	Address     *addresspb.Address
 	Node        *Node
 	Hardware    *Hardware
 	UserId      int32

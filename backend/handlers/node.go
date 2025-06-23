@@ -3,10 +3,16 @@ package handlers
 import (
 	"backend/database"
 	"backend/errors"
+	"backend/kafka"
 	"backend/models"
+	"backend/proto/addresspb"
+	"backend/proto/searchpb"
+	"backend/utils"
+	"context"
 	"database/sql"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -20,15 +26,22 @@ type NodeHandler interface {
 	HandlerGetHouseNodes(c *gin.Context)
 	HandlerGetNodes(c *gin.Context)
 	HandlerDeleteNode(c *gin.Context)
+	SendBatchNodes(ctx context.Context) error
+	SendSingleNode(ctx context.Context, nodeID int) error
 }
 
 type DefaultNodeHandler struct {
-	Privilege Privilege
-	NodeRepo  database.NodeRepository
-	EventRepo database.EventRepository
+	Privilege      Privilege
+	NodeRepo       database.NodeRepository
+	EventRepo      database.EventRepository
+	AddressService addresspb.AddressServiceClient
+	Metadata       utils.Metadata
+	SearchService  searchpb.SearchServiceClient
+	kafka.NodeProducer
+	utils.Logger
 }
 
-func NewNodeHandler(db *database.Database) NodeHandler {
+func NewNodeHandler(addressClient *addresspb.AddressServiceClient, searchClient *searchpb.SearchServiceClient, db *database.Database, logger *utils.Logger) NodeHandler {
 	return &DefaultNodeHandler{
 		Privilege: &DefaultPrivilege{},
 		NodeRepo: &database.DefaultNodeRepository{
@@ -37,7 +50,113 @@ func NewNodeHandler(db *database.Database) NodeHandler {
 		EventRepo: &database.DefaultEventRepository{
 			Database: *db,
 		},
+		AddressService: *addressClient,
+		Metadata:       &utils.DefaultMetadata{},
+		SearchService:  *searchClient,
+		NodeProducer:   kafka.NewNodeProducer(kafka.NewKafkaWriter("index-node")),
+		Logger:         *logger,
 	}
+}
+
+func (h *DefaultNodeHandler) SendSingleNode(ctx context.Context, nodeID int) error {
+	node := &models.Node{ID: nodeID}
+
+	if err := h.NodeRepo.GetNode(node); err != nil {
+		return err
+	}
+
+	res, err := h.AddressService.GetAddress(ctx, &addresspb.GetAddressRequest{HouseId: node.HouseId})
+	if err != nil {
+		return err
+	}
+
+	nodeType := "Активный"
+
+	if node.IsPassive {
+		nodeType = "Пассивный"
+	}
+
+	grpcNode := &searchpb.Node{
+		Id:    int32(node.ID),
+		Name:  node.Name,
+		Zone:  node.Zone.String,
+		Owner: node.Owner.Value,
+		Address: &searchpb.Address{
+			StreetName: res.Street.Name,
+			StreetType: res.Street.Type.ShortName,
+			HouseName:  res.House.Name,
+			HouseType:  res.House.Type.ShortName,
+		},
+		Type:      nodeType,
+		IsDelete:  node.IsDelete,
+		IsPassive: node.IsPassive,
+	}
+
+	if err = h.NodeProducer.SendSingleNode(ctx, grpcNode); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *DefaultNodeHandler) SendBatchNodes(ctx context.Context) error {
+	nodes, err := h.NodeRepo.GetNodesForIndex()
+	if err != nil {
+		return err
+	}
+
+	if len(nodes) == 0 {
+		return nil
+	}
+
+	if err = h.getAddressesForNodes(ctx, nodes); err != nil {
+		return err
+	}
+
+	var grpcNodes []*searchpb.Node
+
+	for _, node := range nodes {
+		nodeType := "Активный"
+
+		if node.IsPassive {
+			nodeType = "Пассивный"
+		}
+
+		grpcNode := &searchpb.Node{
+			Id:    int32(node.ID),
+			Name:  node.Name,
+			Zone:  node.Zone.String,
+			Owner: node.Owner.Value,
+			Address: &searchpb.Address{
+				StreetName: node.Address.Street.Name,
+				StreetType: node.Address.Street.Type.ShortName,
+				HouseName:  node.Address.House.Name,
+				HouseType:  node.Address.House.Type.ShortName,
+			},
+			Type:      nodeType,
+			IsDelete:  node.IsDelete,
+			IsPassive: node.IsPassive,
+		}
+
+		grpcNodes = append(grpcNodes, grpcNode)
+	}
+
+	const batchSize = 1000
+
+	for i := 0; i < len(grpcNodes); i += batchSize {
+		end := i + batchSize
+		if end > len(grpcNodes) {
+			end = len(grpcNodes)
+		}
+
+		batch := grpcNodes[i:end]
+
+		if err = h.NodeProducer.SendBatchNodes(ctx, batch); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (h *DefaultNodeHandler) HandlerDeleteNode(c *gin.Context) {
@@ -59,6 +178,13 @@ func (h *DefaultNodeHandler) HandlerDeleteNode(c *gin.Context) {
 		return
 	}
 
+	go func() {
+		if e := h.SendSingleNode(context.Background(), nodeID); e != nil {
+			log.Printf("failed to send single node: %v\n", e)
+			h.Logger.Println(e)
+		}
+	}()
+
 	c.JSON(http.StatusOK, true)
 }
 
@@ -77,59 +203,40 @@ func (h *DefaultNodeHandler) HandlerGetSearchNodes(c *gin.Context) {
 
 	search := c.Query("search")
 
-	nodes, count, err := h.NodeRepo.GetSearchNodes(search, offset, onlyActive)
+	ctx := h.Metadata.SetAuthorizationHeader(c)
+
+	res, err := h.SearchService.SearchNodes(ctx, &searchpb.SearchNodesRequest{
+		Search:       &searchpb.Search{Query: search, Offset: int32(offset), Limit: 20},
+		SearchFilter: &searchpb.SearchNodeFilter{UseIsDelete: true, UseIsPassive: onlyActive, IsPassive: !onlyActive, IsDelete: false},
+	})
 	if err != nil {
-		c.Error(errors.NewHTTPError(err, "failed to get search nodes", http.StatusInternalServerError))
+		c.Error(errors.NewHTTPError(err, "failed to search nodes", http.StatusInternalServerError))
 		return
 	}
-	//ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	//defer cancel()
-	//
-	//var wg sync.WaitGroup
-	//var nodes []models.Node
-	//var count int
-	//var errChan = make(chan *errors.HTTPError)
-	//
-	//wg.Add(2)
-	//
-	//go func() {
-	//	defer wg.Done()
-	//
-	//	var e error
-	//	nodes, e = h.NodeRepo.GetSearchNodes(search, offset)
-	//	if e != nil {
-	//		errChan <- errors.NewHTTPError(e, "failed to get search nodes", http.StatusInternalServerError)
-	//	}
-	//	errChan <- nil
-	//}()
-	//
-	//go func() {
-	//	defer wg.Done()
-	//
-	//	var e error
-	//	count, e = h.Counter.CountRecords(ctx, "SEARCH_NODES", []interface{}{search})
-	//	if e != nil {
-	//		errChan <- errors.NewHTTPError(e, "failed to get count search nodes", http.StatusInternalServerError)
-	//	}
-	//	errChan <- nil
-	//}()
-	//
-	//go func() {
-	//	wg.Wait()
-	//	close(errChan)
-	//}()
-	//
-	//for e := range errChan {
-	//	if e != nil {
-	//		cancel()
-	//		c.Error(e)
-	//		return
-	//	}
-	//}
+
+	if res == nil || len(res.NodesIDs) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"Nodes": []struct{}{},
+			"Count": 0,
+		})
+
+		return
+	}
+
+	nodes, err := h.NodeRepo.GetNodesByIDs(res.NodesIDs)
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to get nodes", http.StatusInternalServerError))
+		return
+	}
+
+	if err = h.getAddressesForNodes(ctx, nodes); err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to get addresses", http.StatusInternalServerError))
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"Nodes": nodes,
-		"Count": count,
+		"Count": res.Total,
 	})
 }
 
@@ -164,7 +271,7 @@ func (h *DefaultNodeHandler) HandlerEditNode(c *gin.Context) {
 	}
 
 	event := models.Event{
-		Address:     models.Address{House: models.AddressElement{ID: node.Address.House.ID}},
+		HouseId:     node.HouseId,
 		Node:        &models.Node{ID: node.ID},
 		Hardware:    nil,
 		UserId:      session.User.Id,
@@ -175,6 +282,13 @@ func (h *DefaultNodeHandler) HandlerEditNode(c *gin.Context) {
 	if err := h.EventRepo.CreateEvent(event); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to delete node", http.StatusInternalServerError))
 	}
+
+	go func() {
+		if e := h.SendSingleNode(context.Background(), node.ID); e != nil {
+			log.Printf("failed to send single node: %v\n", e)
+			h.Logger.Println(e)
+		}
+	}()
 
 	c.JSON(http.StatusOK, node)
 }
@@ -207,7 +321,7 @@ func (h *DefaultNodeHandler) HandlerCreateNode(c *gin.Context) {
 	}
 
 	event := models.Event{
-		Address:     models.Address{House: models.AddressElement{ID: node.Address.House.ID}},
+		HouseId:     node.HouseId,
 		Node:        nil,
 		Hardware:    nil,
 		UserId:      session.User.Id,
@@ -218,6 +332,13 @@ func (h *DefaultNodeHandler) HandlerCreateNode(c *gin.Context) {
 	if err := h.EventRepo.CreateEvent(event); err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to create event", http.StatusInternalServerError))
 	}
+
+	go func() {
+		if e := h.SendSingleNode(context.Background(), node.ID); e != nil {
+			log.Printf("failed to send single node: %v\n", e)
+			h.Logger.Println(e)
+		}
+	}()
 
 	c.JSON(http.StatusOK, node)
 }
@@ -239,6 +360,19 @@ func (h *DefaultNodeHandler) HandlerGetNode(c *gin.Context) {
 		return
 	}
 
+	ctx := h.Metadata.SetAuthorizationHeader(c)
+
+	res, e := h.AddressService.GetAddress(ctx, &addresspb.GetAddressRequest{HouseId: node.HouseId})
+	if e != nil {
+		c.Error(errors.NewHTTPError(e, "failed to get addresses", http.StatusInternalServerError))
+		return
+	}
+
+	node.Address = &addresspb.Address{
+		Street: res.Street,
+		House:  res.House,
+	}
+
 	c.JSON(http.StatusOK, node)
 }
 
@@ -254,6 +388,7 @@ func (h *DefaultNodeHandler) HandlerGetHouseNodes(c *gin.Context) {
 		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
 		return
 	}
+
 	nodes, count, err := h.NodeRepo.GetNodes(offset, false, houseID)
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to get nodes", http.StatusInternalServerError))
@@ -285,8 +420,44 @@ func (h *DefaultNodeHandler) HandlerGetNodes(c *gin.Context) {
 		return
 	}
 
+	ctx := h.Metadata.SetAuthorizationHeader(c)
+
+	if err = h.getAddressesForNodes(ctx, nodes); err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to get addresses", http.StatusInternalServerError))
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"Nodes": nodes,
 		"Count": count,
 	})
+}
+
+func (h *DefaultNodeHandler) getAddressesForNodes(ctx context.Context, nodes []models.Node) error {
+	houseIDSet := make(map[int32]struct{})
+	addressMap := make(map[int32]*addresspb.Address)
+
+	for _, node := range nodes {
+		houseIDSet[node.HouseId] = struct{}{}
+	}
+
+	var houseIDs []int32
+	for houseID := range houseIDSet {
+		houseIDs = append(houseIDs, houseID)
+	}
+
+	res, err := h.AddressService.GetAddresses(ctx, &addresspb.GetAddressesRequest{HouseIDs: houseIDs})
+	if err != nil {
+		return err
+	}
+
+	for _, address := range res.Addresses {
+		addressMap[address.House.Id] = address
+	}
+
+	for i := range nodes {
+		nodes[i].Address = addressMap[nodes[i].HouseId]
+	}
+
+	return nil
 }
