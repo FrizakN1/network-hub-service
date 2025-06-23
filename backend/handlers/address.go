@@ -160,8 +160,8 @@ func (h *DefaultAddressHandler) HandlerSearchAddresses(c *gin.Context) {
 
 	res, err := h.AddressService.SearchAddresses(ctx, &addresspb.SearchAddressesRequest{
 		Search: search,
-		Offset: uint32(offset),
-		Limit:  uint32(limit),
+		Offset: int32(offset),
+		Limit:  int32(limit),
 	})
 	if err != nil {
 		c.Error(errors.NewHTTPError(err, "failed to search addresses", http.StatusInternalServerError))
