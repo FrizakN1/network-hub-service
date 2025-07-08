@@ -96,6 +96,7 @@ func Initialization(db *database.Database) *gin.Engine {
 			handlerEvent.HandlerGetEvents(c, "HOUSE")
 		})
 		houses.POST("/:id/params", handlerAddress.HandlerSetHouseParams)
+		houses.GET("/:id/excel", handlerNode.HandlerGetNodesExcel)
 	}
 
 	hardware := routerAPI.Group("/hardware")

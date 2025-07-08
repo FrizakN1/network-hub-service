@@ -44,6 +44,13 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	errorsList := make([]error, 0)
 	d.query = make(map[string]*sql.Stmt)
 
+	d.query["GET_REPORT_DATA"], err = d.db.Prepare(`
+		SELECT * FROM "Report_data"
+	`)
+	if err != nil {
+		errorsList = append(errorsList, err)
+	}
+
 	d.query["GET_ADDRESS_PARAMS"], err = d.db.Prepare(`
 		SELECT hp.roof_type_id, hp.wiring_type_id, rt.value, wt.value
 		FROM "House_param" AS hp
@@ -387,9 +394,10 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	}
 
 	d.query["GET_NODES"], err = d.db.Prepare(`
-		SELECT n.id, n.house_id, n.owner_id, n.name, n.zone, n.is_passive, no.value, COUNT(*) OVER ()
+		SELECT n.id, n.house_id, n.owner_id, n.name, n.zone, n.is_passive, n.placement, n.supply, no.value, nt.key, COUNT(*) OVER ()
 		FROM "Node" AS n 
 		JOIN "Node_owner" AS no ON n.owner_id = no.id
+		LEFT JOIN "Node_type" AS nt ON n.type_id = nt.id
 		WHERE n.is_delete = false
 			AND ($2 = false OR n.is_passive = false)
 			AND ($3 = 0 OR house_id = $3)
@@ -470,7 +478,7 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	}
 
 	d.query["GET_NODE_TYPES"], err = d.db.Prepare(`
-		SELECT * FROM "Node_type"
+		SELECT id, value, created_at FROM "Node_type"
     `)
 	if err != nil {
 		errorsList = append(errorsList, err)

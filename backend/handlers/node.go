@@ -10,8 +10,10 @@ import (
 	"backend/utils"
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/xuri/excelize/v2"
 	"log"
 	"net/http"
 	"strconv"
@@ -28,11 +30,13 @@ type NodeHandler interface {
 	HandlerDeleteNode(c *gin.Context)
 	SendBatchNodes(ctx context.Context) error
 	SendSingleNode(ctx context.Context, nodeID int) error
+	HandlerGetNodesExcel(c *gin.Context)
 }
 
 type DefaultNodeHandler struct {
 	Privilege      Privilege
 	NodeRepo       database.NodeRepository
+	ReportRepo     database.ReportRepository
 	EventRepo      database.EventRepository
 	AddressService addresspb.AddressServiceClient
 	Metadata       utils.Metadata
@@ -47,6 +51,9 @@ func NewNodeHandler(addressClient *addresspb.AddressServiceClient, searchClient 
 		NodeRepo: &database.DefaultNodeRepository{
 			Database: *db,
 		},
+		ReportRepo: &database.DefaultReportRepository{
+			Database: *db,
+		},
 		EventRepo: &database.DefaultEventRepository{
 			Database: *db,
 		},
@@ -56,6 +63,233 @@ func NewNodeHandler(addressClient *addresspb.AddressServiceClient, searchClient 
 		NodeProducer:   kafka.NewNodeProducer(kafka.NewKafkaWriter("index-node")),
 		Logger:         *logger,
 	}
+}
+
+func generateExcel(nodes []models.Node, reportData map[string]string) ([]byte, error) {
+	sheetName := "Sheet1"
+
+	f := excelize.NewFile()
+	defer f.Close()
+
+	_, err := f.NewSheet(sheetName)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = setExcelHeaders(f, sheetName); err != nil {
+		return nil, err
+	}
+
+	if err = setExcelData(f, sheetName, nodes, reportData); err != nil {
+		return nil, err
+	}
+
+	if err = setExcelStyle(f, sheetName); err != nil {
+		return nil, err
+	}
+
+	buf, err := f.WriteToBuffer()
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func setExcelStyle(f *excelize.File, sheetName string) error {
+	if err := f.SetColWidth(sheetName, "A", "A", 40); err != nil {
+		return err
+	}
+
+	if err := f.SetColWidth(sheetName, "B", "G", 35); err != nil {
+		return err
+	}
+
+	shortCols := []string{"C", "E", "G"}
+
+	for _, col := range shortCols {
+		if err := f.SetColWidth(sheetName, col, col, 15); err != nil {
+			return err
+		}
+	}
+
+	styleCenter, err := f.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+	})
+	if err != nil {
+		return err
+	}
+
+	styleLeft, err := f.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"},
+	})
+	if err != nil {
+		return err
+	}
+
+	styleRight, err := f.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "right", Vertical: "center"},
+	})
+	if err != nil {
+		return err
+	}
+
+	if err = f.SetCellStyle(sheetName, "A1", "G9", styleCenter); err != nil {
+		return err
+	}
+
+	if err = f.SetCellStyle(sheetName, "A2", "A9", styleLeft); err != nil {
+		return err
+	}
+
+	colLeft := []string{"B", "D", "F"}
+
+	for _, col := range colLeft {
+		if err = f.SetCellStyle(sheetName, fmt.Sprintf("%s5", col), fmt.Sprintf("%s6", col), styleLeft); err != nil {
+			return err
+		}
+
+		if err = f.SetCellStyle(sheetName, fmt.Sprintf("%s7", col), fmt.Sprintf("%s7", col), styleRight); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func setExcelData(f *excelize.File, sheetName string, nodes []models.Node, reportData map[string]string) error {
+	colNum := 2
+
+	for i, node := range nodes {
+		data := [][]interface{}{
+			{fmt.Sprintf("Узел связи №%d", i+1)},
+			{node.Placement.String},
+			{node.Supply.String},
+			{"модель", "мощность, кВт"},
+			{reportData["HN_SWITCH"], reportData["HN_SWITCH_POWER"]},
+			{reportData["OPTICAL_RECEIVER"], reportData["OPTICAL_RECEIVER_POWER"]},
+			{"Итого мощность:", reportData["HN_TOTAL_CAPACITY"]},
+			{reportData["VOLTAGE_LEVEL"]},
+			{reportData["CATEGORY_RELIABILITY_POWER_SUPPLY"]},
+		}
+
+		if node.Type != nil && node.Type.Key != "HN" {
+			data[4] = []interface{}{reportData["BN_SWITCH"], reportData["BN_SWITCH_POWER"]}
+			data[6] = []interface{}{"Итого мощность:", reportData["BN_TOTAL_CAPACITY"]}
+		}
+
+		for j, row := range data {
+			cell, _ := excelize.CoordinatesToCellName(colNum, j+1)
+			cellNext, _ := excelize.CoordinatesToCellName(colNum+1, j+1)
+
+			if err := f.SetCellValue(sheetName, cell, row[0]); err != nil {
+				return err
+			}
+
+			if len(row) > 1 {
+				if err := f.SetCellValue(sheetName, cellNext, row[1]); err != nil {
+					return err
+				}
+			} else {
+				if err := f.MergeCell(sheetName, cell, cellNext); err != nil {
+					return err
+				}
+			}
+		}
+
+		colNum += 2
+	}
+
+	return nil
+}
+
+func setExcelHeaders(f *excelize.File, sheetName string) error {
+	headers := []interface{}{
+		"Средство связи",
+		"Размещение узла",
+		"Точки присоединения по эл.энергии",
+		"Перечень и мощность оборудования",
+		"",
+		"",
+		"",
+		"Уровень напряжения",
+		"Категория надежности электроснабжения",
+	}
+
+	for i, header := range headers {
+		cell, _ := excelize.CoordinatesToCellName(1, i+1)
+
+		if err := f.SetCellValue(sheetName, cell, header); err != nil {
+			return err
+		}
+	}
+
+	if err := f.MergeCell(sheetName, "A4", "A7"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *DefaultNodeHandler) HandlerGetNodesExcel(c *gin.Context) {
+	houseID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to parse param(id) to int", http.StatusBadRequest))
+		return
+	}
+
+	nodes, _, err := h.NodeRepo.GetNodes(0, true, houseID)
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to get nodes", http.StatusInternalServerError))
+		return
+	}
+
+	reportData, err := h.ReportRepo.GetReportData()
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to get report data", http.StatusInternalServerError))
+		return
+	}
+
+	dataMap, err := parseReportData(reportData)
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to parse report data", http.StatusInternalServerError))
+	}
+
+	excelData, err := generateExcel(nodes, dataMap)
+	if err != nil {
+		c.Error(errors.NewHTTPError(err, "failed to generate Excel", http.StatusInternalServerError))
+		return
+	}
+
+	c.JSON(http.StatusOK, base64.StdEncoding.EncodeToString(excelData))
+}
+
+func parseReportData(reportData []models.Report) (map[string]string, error) {
+	reportDataMap := make(map[string]string)
+
+	for _, report := range reportData {
+		reportDataMap[report.Key] = report.Value
+	}
+
+	HNSwitchPower, err := strconv.ParseFloat(reportDataMap["HN_SWITCH_POWER"], 8)
+	if err != nil {
+		return nil, err
+	}
+
+	BNSwitchPower, err := strconv.ParseFloat(reportDataMap["BN_SWITCH_POWER"], 8)
+	if err != nil {
+		return nil, err
+	}
+
+	opticalReceiverPower, err := strconv.ParseFloat(reportDataMap["OPTICAL_RECEIVER_POWER"], 8)
+	if err != nil {
+		return nil, err
+	}
+
+	reportDataMap["HN_TOTAL_CAPACITY"] = fmt.Sprintf("%v", HNSwitchPower+opticalReceiverPower)
+	reportDataMap["BN_TOTAL_CAPACITY"] = fmt.Sprintf("%v", BNSwitchPower+opticalReceiverPower)
+
+	return reportDataMap, nil
 }
 
 func (h *DefaultNodeHandler) SendSingleNode(ctx context.Context, nodeID int) error {

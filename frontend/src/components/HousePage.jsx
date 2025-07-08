@@ -6,7 +6,7 @@ import FetchRequest from "../fetchRequest";
 import NodesTable from "./NodesTable";
 import HardwareTable from "./HardwareTable";
 import EventsTable from "./EventsTable";
-import {faPen} from "@fortawesome/free-solid-svg-icons";
+import {faFileExcel, faPen} from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import HouseParamsModalEdit from "./HouseParamsModalEdit";
 import AuthContext from "../context/AuthContext";
@@ -46,6 +46,33 @@ const HousePage = () => {
         setModalEdit({State: false, EditData: {}})
     }
 
+    const handlerGetExcel = () => {
+        FetchRequest("GET", `/houses/${id}/excel`)
+            .then(response => {
+                if (response.success) {
+                    const binaryString = atob(response.data);
+                    const byteArray = new Uint8Array(binaryString.length);
+
+                    for (let i = 0; i < binaryString.length; i++) {
+                        byteArray[i] = binaryString.charCodeAt(i);
+                    }
+
+                    // Создаем Blob и скачиваем файл
+                    const blob = new Blob([byteArray], {
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+
+                    a.href = url;
+                    a.download = 'Узлы.xlsx';
+                    a.click();
+
+                    URL.revokeObjectURL(url);
+                }
+            })
+    }
+
     return (
         <section className="house">
             {modalEdit.State && <HouseParamsModalEdit editData={modalEdit.EditData} setState={(s) => setModalEdit(
@@ -57,6 +84,10 @@ const HousePage = () => {
                     <div className="contain">
                         <div className="info column" style={{alignItems: "center"}}>
                             {user.role.key !== "user" && <div className="buttons">
+                                <button onClick={handlerGetExcel}>
+                                    <FontAwesomeIcon icon={faFileExcel} /> Получить Excel
+                                </button>
+
                                 <button onClick={handlerSetModalEdit}>
                                     <FontAwesomeIcon icon={faPen}/> Редактировать
                                 </button>

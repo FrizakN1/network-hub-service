@@ -21,7 +21,8 @@ CREATE INDEX idx_node_owner_value_trgm ON "Node_owner" USING GIN (value gin_trgm
 
 CREATE TABLE IF NOT EXISTS "Node_type" (
     id serial PRIMARY KEY,
-    value character varying(255) NOT NULL UNIQUE,
+    key character varying(255) NOT NULL UNIQUE,
+    value character varying(255) NOT NULL,
     created_at bigint NOT NULL
 );
 CREATE INDEX idx_node_type_value_trgm ON "Node_type" USING GIN (value gin_trgm_ops);
@@ -188,6 +189,12 @@ VALUES
 INSERT INTO "Hardware_type"(key, value, created_at)
 VALUES
     ('switch', 'Коммутатор', floor(extract(epoch from now())));
+
+INSERT INTO "Node_type"(key, value, created_at)
+VALUES
+    ('HN', 'Домовой', floor(extract(epoch from now()))),
+    ('BN', 'Магистральный', floor(extract(epoch from now()))),
+    ('DN', 'Районный', floor(extract(epoch from now())));
 -- +goose StatementEnd
 
 -- +goose Down

@@ -255,6 +255,7 @@ func (r *DefaultNodeRepository) GetNodes(offset int, onlyActive bool, houseID in
 
 	for rows.Next() {
 		var node models.Node
+		var nodeTypeKey sql.NullString
 
 		if err = rows.Scan(
 			&node.ID,
@@ -263,10 +264,17 @@ func (r *DefaultNodeRepository) GetNodes(offset int, onlyActive bool, houseID in
 			&node.Name,
 			&node.Zone,
 			&node.IsPassive,
+			&node.Placement,
+			&node.Supply,
 			&node.Owner.Value,
+			&nodeTypeKey,
 			&count,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, 0, err
+		}
+
+		if nodeTypeKey.Valid {
+			node.Type = &models.Reference{Key: nodeTypeKey.String}
 		}
 
 		nodes = append(nodes, node)
