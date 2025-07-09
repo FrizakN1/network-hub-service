@@ -27,6 +27,9 @@ const ReferencesPage = () => {
                     <Link to="/switches">
                         Модели коммутаторов
                     </Link>
+                    <Link to="/report">
+                        Статические данные для Excel
+                    </Link>
                 </div>
             </div>
         </section>

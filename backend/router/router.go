@@ -29,6 +29,7 @@ func Initialization(db *database.Database) *gin.Engine {
 	handlerEvent := handlers.NewEventHandler(userService, addressService, db)
 	handlerAuth := handlers.NewAuthHandler(userService)
 	handlerAddress := handlers.NewAddressHandler(addressService, db)
+	handlerReport := handlers.NewReportHandler(db, &logger)
 
 	go func() {
 		if err := kafka.CreateTopics(); err != nil {
@@ -135,6 +136,12 @@ func Initialization(db *database.Database) *gin.Engine {
 		references.PUT("/:reference", func(c *gin.Context) {
 			handlerReference.HandlerReferenceRecord(c, true)
 		})
+	}
+
+	report := routerAPI.Group("/report")
+	{
+		report.GET("", handlerReport.HandlerGetReportData)
+		report.PUT("", handlerReport.HandlerEditReportData)
 	}
 
 	routerAPI.GET("/events", func(c *gin.Context) {

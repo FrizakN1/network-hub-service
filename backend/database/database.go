@@ -44,8 +44,15 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	errorsList := make([]error, 0)
 	d.query = make(map[string]*sql.Stmt)
 
+	d.query["EDIT_REPORT_DATA"], err = d.db.Prepare(`
+		UPDATE "Report_data" SET value = $2, description = $3 WHERE key = $1
+	`)
+	if err != nil {
+		errorsList = append(errorsList, err)
+	}
+
 	d.query["GET_REPORT_DATA"], err = d.db.Prepare(`
-		SELECT * FROM "Report_data"
+		SELECT * FROM "Report_data" ORDER BY id
 	`)
 	if err != nil {
 		errorsList = append(errorsList, err)

@@ -419,7 +419,7 @@ section.login {
   background-color: rgb(37,147,184);
 }
 
-.users, .references {
+.users, .references, .report {
   display: flex;
   align-items: center;
   flex-direction: column;
@@ -574,7 +574,7 @@ table th, table td {
   padding: 25px;
 }
 
-.users table td:last-child svg, .references table td:last-child svg {
+.users table td:last-child svg, .references table td:last-child svg, .report table td:last-child svg {
   padding: 15px;
 }
 

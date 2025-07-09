@@ -17,7 +17,7 @@ const PrivateRoute = ({requiredAdmin}) => {
             setActiveTab(2)
         } else if (location.pathname.includes("nodes")) {
             setActiveTab(3)
-        } else if (location.pathname.includes("/references") || (location.pathname.includes("/switches"))) {
+        } else if (location.pathname.includes("/references") || (location.pathname.includes("/switches")) || (location.pathname.includes("/report"))) {
             setActiveTab(6)
         } else if (location.pathname.includes("/hardware")) {
             setActiveTab(4)

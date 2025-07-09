@@ -15,6 +15,7 @@ import HardwarePage from "./components/HardwarePage";
 import HardwareViewPage from "./components/HardwareViewPage";
 import SwitchesPage from "./components/SwitchesPage";
 import EventsPage from "./components/EventsPage";
+import ReportDataPage from "./components/ReportDataPage";
 
 function App() {
     return (
@@ -49,6 +50,9 @@ function App() {
                 <Route path="/hardware/" element={<PrivateRoute />}>
                     <Route path="" element={<HardwarePage />} />
                     <Route path="view/:id" element={<HardwareViewPage />} />
+                </Route>
+                <Route path="/report/" element={<PrivateRoute />}>
+                    <Route path="" element={<ReportDataPage />} />
                 </Route>
                 <Route path="/events/" element={<PrivateRoute />}>
                     <Route path="" element={<EventsPage />} />
