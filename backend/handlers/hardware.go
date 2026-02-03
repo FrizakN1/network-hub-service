@@ -237,6 +237,19 @@ func (h *DefaultHardwareHandler) HandlerGetHardwareByID(c *gin.Context) {
 		return
 	}
 
+	ctx := h.Metadata.SetAuthorizationHeader(c)
+
+	res, e := h.AddressService.GetAddress(ctx, &addresspb.GetAddressRequest{HouseId: hardware.Node.HouseId})
+	if e != nil {
+		c.Error(errors.NewHTTPError(e, "failed to get addresses", http.StatusInternalServerError))
+		return
+	}
+
+	hardware.Node.Address = &addresspb.Address{
+		Street: res.Street,
+		House:  res.House,
+	}
+
 	c.JSON(http.StatusOK, hardware)
 }
 
