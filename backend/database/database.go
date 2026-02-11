@@ -417,7 +417,7 @@ func (d *DefaultDatabase) PrepareQuery() []error {
 	}
 
 	d.query["GET_NODE"], err = d.db.Prepare(`
-		SELECT n.*, nt.value, no.value, p.name
+		SELECT n.*, nt.value, no.value, p.name, p.house_id
 		FROM "Node" AS n 
 		LEFT JOIN "Node_type" AS nt ON n.type_id = nt.id
 		JOIN "Node_owner" AS no ON n.owner_id = no.id

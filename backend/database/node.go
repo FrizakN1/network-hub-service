@@ -198,10 +198,11 @@ func (r *DefaultNodeRepository) GetNode(node *models.Node) error {
 	}
 
 	var (
-		parentID   sql.NullInt64
-		parentName sql.NullString
-		typeID     sql.NullInt32
-		typeValue  sql.NullString
+		parentID      sql.NullInt64
+		parentName    sql.NullString
+		parentHouseID sql.NullInt32
+		typeID        sql.NullInt32
+		typeValue     sql.NullString
 	)
 
 	if err := stmt.QueryRow(node.ID).Scan(
@@ -223,12 +224,13 @@ func (r *DefaultNodeRepository) GetNode(node *models.Node) error {
 		&typeValue,
 		&node.Owner.Value,
 		&parentName,
+		&parentHouseID,
 	); err != nil {
 		return err
 	}
 
 	if parentID.Valid {
-		node.Parent = &models.Node{ID: int(parentID.Int64), Name: parentName.String}
+		node.Parent = &models.Node{ID: int(parentID.Int64), Name: parentName.String, HouseId: parentHouseID.Int32}
 	}
 
 	if typeID.Valid {

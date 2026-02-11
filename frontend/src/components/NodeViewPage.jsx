@@ -48,7 +48,7 @@ const NodeViewPage = () => {
                                 </div>
                                 <div className="block">
                                     <span>Родительский узел</span>
-                                    {node.Parent != null ? <Link to={`/nodes/view/${node.Parent.ID}`}><p>{node.Parent.Name}</p></Link> : <p>-</p>}
+                                    {node.Parent != null ? <Link to={`/nodes/view/${node.Parent.ID}`}><p>{node.Parent.Name} ({`${node.Address.street.type.short_name} ${node.Address.street.name}, ${node.Address.house.type.short_name} ${node.Address.house.name}`})</p></Link> : <p>-</p>}
                                 </div>
                             </>}
                             <div className="block">

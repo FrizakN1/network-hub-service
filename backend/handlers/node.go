@@ -596,15 +596,33 @@ func (h *DefaultNodeHandler) HandlerGetNode(c *gin.Context) {
 
 	ctx := h.Metadata.SetAuthorizationHeader(c)
 
-	res, e := h.AddressService.GetAddress(ctx, &addresspb.GetAddressRequest{HouseId: node.HouseId})
-	if e != nil {
-		c.Error(errors.NewHTTPError(e, "failed to get addresses", http.StatusInternalServerError))
-		return
-	}
+	if node.Parent != nil {
+		houseIDs := []int32{node.HouseId, node.Parent.HouseId}
+		addressMap := make(map[int32]*addresspb.Address)
 
-	node.Address = &addresspb.Address{
-		Street: res.Street,
-		House:  res.House,
+		res, e := h.AddressService.GetAddresses(ctx, &addresspb.GetAddressesRequest{HouseIDs: houseIDs})
+		if e != nil {
+			c.Error(errors.NewHTTPError(e, "failed to get addresses", http.StatusInternalServerError))
+			return
+		}
+
+		for _, address := range res.Addresses {
+			addressMap[address.House.Id] = address
+		}
+
+		node.Address = addressMap[node.HouseId]
+		node.Parent.Address = addressMap[node.Parent.HouseId]
+	} else {
+		res, e := h.AddressService.GetAddress(ctx, &addresspb.GetAddressRequest{HouseId: node.HouseId})
+		if e != nil {
+			c.Error(errors.NewHTTPError(e, "failed to get addresses", http.StatusInternalServerError))
+			return
+		}
+
+		node.Address = &addresspb.Address{
+			Street: res.Street,
+			House:  res.House,
+		}
 	}
 
 	c.JSON(http.StatusOK, node)
