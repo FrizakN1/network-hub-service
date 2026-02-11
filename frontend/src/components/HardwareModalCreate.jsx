@@ -48,7 +48,7 @@ const HardwareModalCreate = ({action, setState, returnHardware, editHardwareID, 
                         })
                     }
                 })
-        } else {
+        } else if (defaultNode != null) {
             setFields(prevState => ({...prevState, Node: defaultNode}))
         }
     }, [action, editHardwareID, defaultNode]);
