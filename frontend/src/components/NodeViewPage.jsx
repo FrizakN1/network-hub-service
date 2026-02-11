@@ -99,7 +99,7 @@ const NodeViewPage = () => {
             </div>
             {activeTab === 1 && <ImageTable type="nodes"/>}
             {activeTab === 2 && <FilesTable type="nodes"/>}
-            {activeTab === 3 && <HardwareTable type="nodes" id={Number(id)} canCreate={true}/>}
+            {activeTab === 3 && <HardwareTable type="nodes" id={Number(id)} canCreate={true} defaultNode={node}/>}
             {activeTab === 4 && <EventsTable from={"nodes"}/>}
         </section>
     )

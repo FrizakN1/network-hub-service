@@ -4,7 +4,7 @@ import CustomSelect from "./CustomSelect";
 import FetchRequest from "../fetchRequest";
 import ModalSelectTable from "./ModalSelectTable";
 
-const HardwareModalCreate = ({action, setState, returnHardware, editHardwareID}) => {
+const HardwareModalCreate = ({action, setState, returnHardware, editHardwareID, defaultNode = null}) => {
     const validateDebounceTimer = useRef(0)
     const [fields, setFields] = useState({
         Node: {ID: 0, Name: ""},
@@ -48,8 +48,10 @@ const HardwareModalCreate = ({action, setState, returnHardware, editHardwareID})
                         })
                     }
                 })
+        } else {
+            setFields(prevState => ({...prevState, Node: defaultNode}))
         }
-    }, [action, editHardwareID]);
+    }, [action, editHardwareID, defaultNode]);
 
     useEffect(() => {
         FetchRequest("GET", "/switches", null)
