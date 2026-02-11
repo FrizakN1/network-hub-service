@@ -245,7 +245,7 @@ const NodeModalCreate = ({action, setState, editNodeID, returnNode, defaultAddre
                            {!fields.IsPassive && <>
                                <label>
                                    <span>Родительский узел</span>
-                                   <div className="select-field" onClick={() => setModalSelectTable({State: true, Uri: "", Type: "node", SelectRecord: handlerSelectParent})}>{fields.Parent.Name === "" ? "Выбрать..." : `${fields.Parent.Name} (${fields.Parent.Address.street.type.short_name} ${fields.Parent.Address.street.name}, ${fields.Parent.Address.house.type.short_name} ${fields.Parent.Address.house.name})`}</div>
+                                   <div className="select-field node" onClick={() => setModalSelectTable({State: true, Uri: "", Type: "node", SelectRecord: handlerSelectParent})}>{fields.Parent.Name === "" ? "Выбрать..." : `${fields.Parent.Name} (${fields.Parent.Address.street.type.short_name} ${fields.Parent.Address.street.name}, ${fields.Parent.Address.house.type.short_name} ${fields.Parent.Address.house.name})`}</div>
                                    {!validation.Parent && <InputErrorDescription text={"Поле не может быть пустым"}/>}
                                </label>
 

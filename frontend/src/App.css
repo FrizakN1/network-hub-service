@@ -934,6 +934,11 @@ nav div button {
   cursor: pointer;
 }
 
+.modal-window .form .fields label .select-field.node {
+  height: unset !important;
+  min-height: 39px;
+}
+
 .modal-window .form .fields .buttons {
   margin-top: 50px;
   display: flex;
