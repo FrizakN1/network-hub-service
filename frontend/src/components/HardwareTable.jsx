@@ -153,8 +153,8 @@ const HardwareTable = ({id = 0, type = "", canCreate = false, defaultNode}) => {
     return (
         <div className="contain hardware">
             {user.role.key !== "user" && canCreate && <>
-                {modalCreate && <HardwareModalCreate action={"create"} setState={setModalCreate} returnHardware={handlerAddHardware} defaultNode={defaultNode}/>}
-                {modalEdit.State && <HardwareModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} editHardwareID={modalEdit.EditHardwareID} returnHardware={handlerEditHardware}/>}
+                {modalCreate && <HardwareModalCreate action={"create"} setState={setModalCreate} returnHardware={handlerAddHardware} defaultNode={defaultNode} houseID={type === "houses" ? id : 0}/>}
+                {modalEdit.State && <HardwareModalCreate action={"edit"} setState={(state) => setModalEdit(prevState => ({...prevState, State: state}))} houseID={type === "houses" ? id : 0} editHardwareID={modalEdit.EditHardwareID} returnHardware={handlerEditHardware}/>}
                 <div className="buttons">
                     <button onClick={handlerIndexHardware}>
                         <FontAwesomeIcon icon={faRotate} /> Индексация

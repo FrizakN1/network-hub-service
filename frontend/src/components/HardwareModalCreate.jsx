@@ -4,7 +4,7 @@ import CustomSelect from "./CustomSelect";
 import FetchRequest from "../fetchRequest";
 import ModalSelectTable from "./ModalSelectTable";
 
-const HardwareModalCreate = ({action, setState, returnHardware, editHardwareID, defaultNode = null}) => {
+const HardwareModalCreate = ({action, setState, returnHardware, editHardwareID, defaultNode = null, houseID = 0}) => {
     const validateDebounceTimer = useRef(0)
     const [fields, setFields] = useState({
         Node: {ID: 0, Name: ""},
@@ -173,7 +173,7 @@ const HardwareModalCreate = ({action, setState, returnHardware, editHardwareID, 
 
     return (
         <div className={"modal-window"} onMouseDown={handlerModalCreateClose}>
-            {modalSelectTable && <ModalSelectTable setState={setModalSelectTable} alreadySelect={fields.Node} selectRecord={handlerSelectNode} />}
+            {modalSelectTable && <ModalSelectTable setState={setModalSelectTable} alreadySelect={fields.Node} selectRecord={handlerSelectNode} houseID={houseID}/>}
             <div className="form">
                 <h2>{action === "create" ? "Создание оборудования" : "Изменение оборудования"}</h2>
                 <div className="fields">
