@@ -42,9 +42,9 @@ const PrivateRoute = ({requiredAdmin}) => {
                     <Link to={"/"}>
                         <li className={activeTab === 1 ? "active" : ""} onClick={() => {setActiveTab(1)}}>Поиск</li>
                     </Link>
-                    <Link to={"/list"}>
-                        <li className={activeTab === 2 ? "active" : ""} onClick={() => {setActiveTab(2)}}>Дома</li>
-                    </Link>
+                    {/*<Link to={"/list"}>*/}
+                    {/*    <li className={activeTab === 2 ? "active" : ""} onClick={() => {setActiveTab(2)}}>Дома</li>*/}
+                    {/*</Link>*/}
                     <Link to={"/nodes"}>
                         <li className={activeTab === 3 ? "active" : ""} onClick={() => {setActiveTab(3)}}>Узлы</li>
                     </Link>
